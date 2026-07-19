@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(gh --version 2>$null)",
+      "PowerShell(gh auth status 2>&1)",
+      "PowerShell(vercel --version 2>$null)",
+      "PowerShell(git config --global user.name)",
+      "PowerShell(git config --global user.email)",
+      "PowerShell(vercel whoami 2>&1)",
+      "PowerShell(git init -b main)",
+      "PowerShell(git add -A)"
+    ]
+  }
+}
