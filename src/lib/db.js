@@ -72,7 +72,11 @@ const DEFAULTS = [
 ];
 export async function seedDefaultCategories() {
   const rows = DEFAULTS.map((c, i) => toRowCategory(c, i));
-  const { error } = await supabase.from("categories").insert(rows);
+  // upsert on name so concurrent first-loads (StrictMode, or Tommy + Wing at
+  // once) can't double-seed. Needs a unique(name) constraint — see schema.
+  const { error } = await supabase
+    .from("categories")
+    .upsert(rows, { onConflict: "name", ignoreDuplicates: true });
   if (error) throw error;
 }
 

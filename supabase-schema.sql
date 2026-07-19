@@ -15,7 +15,7 @@ create table if not exists members (
 
 create table if not exists categories (
   id             uuid primary key default gen_random_uuid(),
-  name           text not null,
+  name           text not null unique,
   name_zh        text,
   color          text not null default '#64748B',
   monthly_budget numeric(10,2),
