@@ -609,7 +609,14 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
   };
   const patch = (id, key, val) => setList(list.map((c) => (c.id === id ? { ...c, [key]: val } : c)));
   const del = (id) => setList(list.filter((c) => c.id !== id));
-  const done = () => { onChange(list); onClose(); };
+  // Saving with text still sitting in the new-category field used to discard it
+  // silently. Treat a filled field as an intent to add — the + button is a shortcut,
+  // not a required step.
+  const done = () => {
+    const pending = name.trim();
+    onChange(pending ? [...list, { id: uid(), name: pending, nameZh: pending, color, budget: null }] : list);
+    onClose();
+  };
 
   return (
     <Overlay onClose={onClose} title={t("categories")} t={t}>
