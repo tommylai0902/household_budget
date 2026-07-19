@@ -18,6 +18,9 @@ create table if not exists members (
 create table if not exists ledgers (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
+  -- Which starter template it was made from; also picks the icon in the list.
+  template   text not null default 'household'
+               check (template in ('household', 'travel', 'personal', 'blank')),
   sort_order int  not null default 0,
   created_at timestamptz not null default now()
 );

@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
   Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart, Store, Languages,
+  Home, Plane,
 } from "lucide-react";
+
+// Each starter template gets its own mark in the ledger list.
+const LEDGER_ICONS = { household: Home, travel: Plane, personal: Users, blank: BookOpen };
+const ledgerIcon = (tpl) => LEDGER_ICONS[tpl] || BookOpen;
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
 import { settlements } from "./lib/settle";
@@ -275,12 +280,14 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
   // whole row can't double as "open this ledger" while you're typing in it.
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
-  const startRename = (l) => { setEditingId(l.id); setDraft(l.name); };
+  const [draftTpl, setDraftTpl] = useState("household");
+  const startRename = (l) => { setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template); };
   const cancelRename = () => { setEditingId(null); setDraft(""); };
   const saveRename = async (l) => {
     const trimmed = draft.trim();
-    if (!trimmed || trimmed === l.name) return cancelRename();
-    try { await db.renameLedger(l.id, trimmed); cancelRename(); load(); }
+    if (!trimmed) return cancelRename();
+    if (trimmed === l.name && draftTpl === l.template) return cancelRename();
+    try { await db.updateLedger(l.id, { name: trimmed, template: draftTpl }); cancelRename(); load(); }
     catch (e) { setError(e.message || String(e)); cancelRename(); }
   };
 
@@ -289,17 +296,10 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
   return (
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-          <div>
-            <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>Tommy &amp; Wing</div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, margin: "4px 0 0", letterSpacing: -0.4 }}>{t("ledgers")}</h1>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <LangToggle lang={lang} changeLang={changeLang} />
-            <button onClick={() => supabase.auth.signOut()} style={iconBtn} aria-label={t("signOut")} title={t("signOut")}>
-              <LogOut size={16} />
-            </button>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>{t("ledgers")}</h1>
+          {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
+          <HeaderMenu t={t} lang={lang} changeLang={changeLang} />
         </div>
         <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
 
@@ -313,26 +313,41 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
             </div>
           )}
           {ledgers.map((l) => (
-            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div key={l.id}>
               {editingId === l.id ? (
-                <>
-                  <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") saveRename(l); if (e.key === "Escape") cancelRename(); }}
-                    style={{ ...input, flex: 1, fontWeight: 700 }} />
-                  <button onClick={() => saveRename(l)} style={{ ...iconBtn, color: TEAL }} aria-label={t("saveChanges")}><Check size={16} /></button>
-                  <button onClick={cancelRename} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
-                </>
+                <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveRename(l); if (e.key === "Escape") cancelRename(); }}
+                      style={{ ...input, flex: 1, fontWeight: 700 }} />
+                    <button onClick={() => saveRename(l)} style={{ ...iconBtn, color: TEAL }} aria-label={t("saveChanges")}><Check size={16} /></button>
+                    <button onClick={cancelRename} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
+                  </div>
+                  {/* Icon is editable here too, otherwise ledgers made before this
+                      existed would be stuck with the default mark. */}
+                  <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                    {["household", "travel", "personal", "blank"].map((k) => {
+                      const Icon = ledgerIcon(k);
+                      return (
+                        <button key={k} onClick={() => setDraftTpl(k)} aria-label={t("tpl" + k[0].toUpperCase() + k.slice(1))}
+                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : "#fff", color: draftTpl === k ? "#fff" : SUB }}>
+                          <Icon size={16} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : (
-                <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button onClick={() => onOpen(l)} aria-label={t("openLedger", { name: l.name })}
                     style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                    <BookOpen size={17} style={{ color: TEAL, flexShrink: 0 }} />
+                    {(() => { const Icon = ledgerIcon(l.template); return <Icon size={17} style={{ color: TEAL, flexShrink: 0 }} />; })()}
                     <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
                     <ChevronRight size={17} style={{ color: SUB }} />
                   </button>
                   <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>
                   <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
-                </>
+                </div>
               )}
             </div>
           ))}
@@ -1181,13 +1196,18 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onStores }) {
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
-          <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
-            <PieChart size={15} /> {t("budget")}
-          </button>
-          <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
-            <Store size={15} /> {t("stores")}
-          </button>
-          <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
+          {/* Ledger-scoped entries are absent on the picker, which has no ledger. */}
+          {onBudget && (
+            <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
+              <PieChart size={15} /> {t("budget")}
+            </button>
+          )}
+          {onStores && (
+            <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
+              <Store size={15} /> {t("stores")}
+            </button>
+          )}
+          {(onBudget || onStores) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (

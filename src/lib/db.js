@@ -39,18 +39,20 @@ const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.
 export async function fetchLedgers() {
   const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, name: r.name }));
+  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household" }));
 }
 // Seeds at creation time rather than lazily on first open, so the "blank"
 // template stays blank instead of being backfilled with defaults.
 export async function createLedger(name, template = "household") {
-  const { data, error } = await supabase.from("ledgers").insert({ name }).select().single();
+  const { data, error } = await supabase.from("ledgers").insert({ name, template }).select().single();
   if (error) throw error;
   await Promise.all([seedCategories(data.id, template), seedMembers(data.id)]);
-  return { id: data.id, name: data.name };
+  return { id: data.id, name: data.name, template: data.template };
 }
-export async function renameLedger(id, name) {
-  const { error } = await supabase.from("ledgers").update({ name }).eq("id", id);
+// Only touches the ledger row itself — changing the template here swaps the icon,
+// it does not re-seed categories on a ledger already in use.
+export async function updateLedger(id, fields) {
+  const { error } = await supabase.from("ledgers").update(fields).eq("id", id);
   if (error) throw error;
 }
 // Categories and expenses cascade with the ledger (see schema), so this is a
