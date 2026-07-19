@@ -22,6 +22,18 @@ create table if not exists ledgers (
   created_at timestamptz not null default now()
 );
 
+-- Who splits the bills in this ledger. Household is Tommy + Wing; a trip may
+-- add whoever else came along.
+create table if not exists ledger_members (
+  id         uuid primary key default gen_random_uuid(),
+  ledger_id  uuid not null references ledgers(id) on delete cascade,
+  name       text not null,
+  color      text not null default '#0E9384',
+  sort_order int  not null default 0,
+  created_at timestamptz not null default now(),
+  unique (ledger_id, name)
+);
+
 create table if not exists categories (
   id             uuid primary key default gen_random_uuid(),
   ledger_id      uuid not null references ledgers(id) on delete cascade,
@@ -42,7 +54,9 @@ create table if not exists expenses (
   category_id      uuid references categories(id) on delete set null,
   transaction_date date not null default current_date,
   note             text,
-  paid_by          text not null check (paid_by in ('tommy','wing')),
+  paid_by_id       uuid not null references ledger_members(id) on delete restrict,
+  -- 'shared_50' is historical: it means "split equally between everyone in the
+  -- ledger", which is a 50/50 split only when the ledger has two members.
   split_type       text not null default 'personal'
                      check (split_type in ('personal','shared_50')),
   receipt_url      text,                            -- Step 4
@@ -71,7 +85,8 @@ create trigger trg_expenses_touch before update on expenses
 
 -- ---------------- Row Level Security ----------------
 alter table members    enable row level security;
-alter table ledgers    enable row level security;
+alter table ledgers        enable row level security;
+alter table ledger_members enable row level security;
 alter table categories enable row level security;
 alter table expenses   enable row level security;
 alter table budgets    enable row level security;
@@ -88,7 +103,7 @@ create policy members_self on members for select using (user_id = auth.uid());
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['ledgers','categories','expenses','budgets'] loop
+  foreach tbl in array array['ledgers','ledger_members','categories','expenses','budgets'] loop
     execute format('drop policy if exists rw_%1$s on %1$s;', tbl);
     execute format(
       'create policy rw_%1$s on %1$s for all using (is_member()) with check (is_member());', tbl);
@@ -97,4 +112,4 @@ end $$;
 
 -- ---------------- Realtime ----------------
 -- (If this errors with "already member of publication", it's already on — ignore.)
-alter publication supabase_realtime add table expenses, categories, budgets, ledgers;
+alter publication supabase_realtime add table expenses, categories, budgets, ledgers, ledger_members;

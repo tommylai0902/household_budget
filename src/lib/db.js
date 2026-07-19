@@ -14,7 +14,7 @@ const toRowCategory = (c, sortOrder) => ({
 });
 const toAppExpense = (r) => ({
   id: r.id, description: r.description, amount: Number(r.amount), categoryId: r.category_id,
-  date: r.transaction_date, note: r.note || "", paidBy: r.paid_by,
+  date: r.transaction_date, note: r.note || "", paidById: r.paid_by_id,
   split: r.split_type === "shared_50" ? "shared" : "personal", receiptUrl: r.receipt_url || null,
 });
 const toRowExpense = (e) => ({
@@ -23,8 +23,14 @@ const toRowExpense = (e) => ({
   category_id: e.categoryId,
   transaction_date: e.date,
   note: e.note || null,
-  paid_by: e.paidBy,
+  paid_by_id: e.paidById,
   split_type: e.split === "shared" ? "shared_50" : "personal",
+});
+const toAppMember = (r) => ({ id: r.id, name: r.name, color: r.color });
+const toRowMember = (m, sortOrder) => ({
+  name: m.name,
+  color: m.color,
+  ...(sortOrder != null ? { sort_order: sortOrder } : {}),
 });
 const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id);
 
@@ -39,7 +45,7 @@ export async function fetchLedgers() {
 export async function createLedger(name, template = "household") {
   const { data, error } = await supabase.from("ledgers").insert({ name }).select().single();
   if (error) throw error;
-  await seedCategories(data.id, template);
+  await Promise.all([seedCategories(data.id, template), seedMembers(data.id)]);
   return { id: data.id, name: data.name };
 }
 export async function renameLedger(id, name) {
@@ -51,6 +57,51 @@ export async function renameLedger(id, name) {
 export async function deleteLedger(id) {
   const { error } = await supabase.from("ledgers").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ---- ledger members ---- */
+// Colours cycle for members added after the first two.
+export const MEMBER_COLORS = ["#0E9384", "#EA580C", "#7C3AED", "#EC4899", "#0369A1", "#16A34A", "#D97706", "#64748B"];
+const DEFAULT_MEMBERS = [{ name: "Tommy" }, { name: "Wing" }];
+
+export async function fetchMembers(ledgerId) {
+  const { data, error } = await supabase
+    .from("ledger_members").select("*").eq("ledger_id", ledgerId).order("sort_order").order("created_at");
+  if (error) throw error;
+  return data.map(toAppMember);
+}
+
+export async function seedMembers(ledgerId) {
+  const rows = DEFAULT_MEMBERS.map((m, i) => ({
+    ...toRowMember({ ...m, color: MEMBER_COLORS[i] }, i),
+    ledger_id: ledgerId,
+  }));
+  const { error } = await supabase
+    .from("ledger_members").upsert(rows, { onConflict: "ledger_id,name", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+// Same diff-then-write shape as persistCategories. Removing a member who still
+// has expenses is blocked by the FK (on delete restrict) — the UI surfaces that.
+export async function persistMembers(newList, oldList, ledgerId) {
+  const newIds = new Set(newList.map((m) => m.id));
+  const toDelete = oldList.filter((m) => !newIds.has(m.id)).map((m) => m.id);
+  if (toDelete.length) {
+    const { error } = await supabase.from("ledger_members").delete().in("id", toDelete);
+    if (error) throw error;
+  }
+  const toInsert = newList
+    .filter((m) => !isUuid(m.id))
+    .map((m, i) => ({ ...toRowMember(m, oldList.length + i), ledger_id: ledgerId }));
+  if (toInsert.length) {
+    const { error } = await supabase.from("ledger_members").insert(toInsert);
+    if (error) throw error;
+  }
+  for (const m of newList.filter((m) => isUuid(m.id))) {
+    const { error } = await supabase.from("ledger_members").update(toRowMember(m)).eq("id", m.id);
+    if (error) throw error;
+  }
+  return fetchMembers(ledgerId);
 }
 
 /* ---- reads (always scoped to one ledger) ---- */
@@ -164,6 +215,7 @@ export function subscribeLedger(onChange) {
     .channel("ledger-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "ledger_members" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
 }

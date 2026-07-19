@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
+import { settlements } from "./lib/settle";
 
 /* ------------------------------------------------------------------ *
  * Household Budget — Step 2: shared, live-synced ledger (Supabase).
@@ -18,12 +19,8 @@ const LINE = "#E4E7EB";
 const PAPER = "#F6F7F9";
 const TEAL = "#0E9384";
 
-const PEOPLE = [
-  { id: "tommy", name: "Tommy", color: "#0E9384" },
-  { id: "wing", name: "Wing", color: "#E4572E" },
-];
-const personById = (id) => PEOPLE.find((p) => p.id === id) || PEOPLE[0];
-const otherPerson = (id) => PEOPLE.find((p) => p.id !== id) || PEOPLE[1];
+// Members come from the ledger now — a trip splits between whoever came along.
+const memberById = (members, id) => members.find((m) => m.id === id) || null;
 
 /* --------------------------- i18n ---------------------------------- */
 const STRINGS = {
@@ -51,6 +48,10 @@ const STRINGS = {
     newCatPh: "New category name", saveCategories: "Save categories", deleteCategory: "Delete category",
     close: "Close",
     owesLine: "{debtor} owes {creditor} {amount}", personalLine: "Personal expense — not split",
+    sharedLine: "Split {n} ways — {amount} each",
+    members: "Members", manageMembers: "Edit members", editMembers: "Edit members",
+    memberHasExpenses: "That member still has expenses in this ledger. Reassign or delete them first.",
+    newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
     scanReceipt: "Scan receipt", scanning: "Reading receipt…",
@@ -91,6 +92,10 @@ const STRINGS = {
     newCatPh: "新類別名稱", saveCategories: "儲存類別", deleteCategory: "刪除類別",
     close: "關閉",
     owesLine: "{debtor} 欠 {creditor} {amount}", personalLine: "個人支出，不分帳",
+    sharedLine: "{n} 人平分 — 每人 {amount}",
+    members: "成員", manageMembers: "編輯成員", editMembers: "編輯成員",
+    memberHasExpenses: "呢位成員喺呢本帳簿仲有支出，要先改咗付款人或者刪走嗰啲支出。",
+    newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
     scanReceipt: "掃描收據", scanning: "讀取收據中…",
@@ -339,6 +344,7 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
 /* ============================ Ledger ============================== */
 function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [categories, setCategories] = useState([]);
+  const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
@@ -347,13 +353,17 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [editing, setEditing] = useState(null);   // null | "new" | expense
   const [detail, setDetail] = useState(null);      // null | expense
   const [managingCats, setManagingCats] = useState(false);
+  const [managingMembers, setManagingMembers] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       setError("");
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
-      const [cats, exps] = await Promise.all([db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id)]);
+      const [cats, exps, mems] = await Promise.all([
+        db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id), db.fetchMembers(ledger.id),
+      ]);
+      setMembers(mems);
       setCategories(cats);
       setExpenses(exps);
       setReady(true);
@@ -379,6 +389,12 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const removeExpense = async (id) => { try { await db.deleteExpense(id); refresh(); } catch (e) { setError(e.message); } };
   const reassign = async (id, categoryId) => { try { await db.setExpenseCategory(id, categoryId); refresh(); } catch (e) { setError(e.message); } };
   const commitCategories = async (list) => { try { setCategories(await db.persistCategories(list, categories, ledger.id)); } catch (e) { setError(e.message); } };
+  // Removing someone who still has expenses is refused by the FK, so the error
+  // surfaces here rather than silently dropping who paid for what.
+  const commitMembers = async (list) => {
+    try { setMembers(await db.persistMembers(list, members, ledger.id)); }
+    catch (e) { setError(/foreign key/i.test(e.message || "") ? t("memberHasExpenses") : e.message); }
+  };
 
   const monthsAvailable = useMemo(() => {
     const set = new Set(expenses.map((e) => monthOf(e.date)));
@@ -392,13 +408,15 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   );
 
   const summary = useMemo(() => {
-    let total = 0; const paid = { tommy: 0, wing: 0 }; let balance = 0;
+    let total = 0;
+    const paid = new Map(members.map((m) => [m.id, 0]));
     for (const e of rows) {
-      const amt = Number(e.amount) || 0; total += amt; paid[e.paidBy] += amt;
-      if (e.split === "shared") balance += e.paidBy === "tommy" ? amt / 2 : -amt / 2;
+      const amt = Number(e.amount) || 0;
+      total += amt;
+      if (paid.has(e.paidById)) paid.set(e.paidById, paid.get(e.paidById) + amt);
     }
-    return { total, paid, balance };
-  }, [rows]);
+    return { total, paid, transfers: settlements(rows, members) };
+  }, [rows, members]);
 
   if (!ready) return <Centered>{t("connecting")}</Centered>;
   const label = monthName(month, lang);
@@ -437,11 +455,12 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         {/* Summary / settlement */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 14 }}>
           <Stat label={t("spentIn", { month: label })} value={money(summary.total)} big />
-          <Stat label={t("paidSuffix", { name: "Tommy" })} value={money(summary.paid.tommy)} dot={PEOPLE[0].color} />
-          <Stat label={t("paidSuffix", { name: "Wing" })} value={money(summary.paid.wing)} dot={PEOPLE[1].color} />
+          {members.map((m) => (
+            <Stat key={m.id} label={t("paidSuffix", { name: m.name })} value={money(summary.paid.get(m.id) || 0)} dot={m.color} />
+          ))}
         </div>
 
-        <SettlementBar balance={summary.balance} t={t} />
+        <SettlementBar transfers={summary.transfers} members={members} t={t} />
 
         <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
 
@@ -455,7 +474,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           ) : (
             rows.map((e, i) => {
               const cat = catById(e.categoryId);
-              const payer = personById(e.paidBy);
+              const payer = memberById(members, e.paidById);
               return (
                 <div key={e.id} className="exp-row" role="button" tabIndex={0}
                   onClick={() => setDetail(e)}
@@ -469,8 +488,8 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                     <div style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span>{e.date}</span>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: 99, background: payer.color }} />
-                        {t("paidByRow", { name: payer.name })}
+                        <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
+                        {t("paidByRow", { name: payer?.name || "—" })}
                       </span>
                       <span style={splitBadge(e.split)}>
                         {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
@@ -492,7 +511,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
       </div>
 
       {detail && (
-        <ExpenseDetail expense={detail} categories={categories} lang={lang} t={t}
+        <ExpenseDetail expense={detail} categories={categories} members={members} lang={lang} t={t}
           onReassign={(cid) => { reassign(detail.id, cid); setDetail({ ...detail, categoryId: cid }); }}
           onEdit={() => { setEditing(detail); setDetail(null); }}
           onDelete={() => { if (confirm(t("deleteConfirm", { name: detail.description }))) { removeExpense(detail.id); setDetail(null); } }}
@@ -500,12 +519,15 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           onClose={() => setDetail(null)} />
       )}
       {editing !== null && (
-        <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} lang={lang} t={t}
+        <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense}
-          onEditCategories={() => setManagingCats(true)} defaultMonth={month} />
+          onEditCategories={() => setManagingCats(true)} onEditMembers={() => setManagingMembers(true)} defaultMonth={month} />
       )}
       {managingCats && (
         <CategoryManager categories={categories} lang={lang} t={t} onChange={commitCategories} onClose={() => setManagingCats(false)} />
+      )}
+      {managingMembers && (
+        <MemberManager members={members} t={t} onChange={commitMembers} onClose={() => setManagingMembers(false)} />
       )}
     </div>
   );
@@ -535,37 +557,46 @@ function Stat({ label, value, big, dot }) {
   );
 }
 
-function SettlementBar({ balance, t }) {
-  const settled = Math.abs(balance) < 0.005;
-  const wingOwes = balance > 0;
-  const from = wingOwes ? PEOPLE[1] : PEOPLE[0];
-  const to = wingOwes ? PEOPLE[0] : PEOPLE[1];
+// With three or more members there can be several transfers, so this renders a
+// list rather than a single "A owes B" line.
+function SettlementBar({ transfers, members, t }) {
+  const settled = transfers.length === 0;
+  const first = transfers[0];
+  const tint = settled || !first
+    ? "#334155"
+    : `linear-gradient(90deg, ${memberById(members, first.fromId)?.color || TEAL}, ${memberById(members, first.toId)?.color || TEAL})`;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", marginBottom: 14, borderRadius: 12, color: "#fff", background: settled ? "#334155" : `linear-gradient(90deg, ${from.color}, ${to.color})` }}>
-      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, opacity: 0.85, fontWeight: 700 }}>{t("settleUp")}</div>
+    <div style={{ display: "flex", alignItems: transfers.length > 1 ? "flex-start" : "center", gap: 12, padding: "14px 16px", marginBottom: 14, borderRadius: 12, color: "#fff", background: tint, flexWrap: "wrap" }}>
+      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, opacity: 0.85, fontWeight: 700, paddingTop: transfers.length > 1 ? 3 : 0 }}>{t("settleUp")}</div>
       {settled ? (
         <div style={{ fontWeight: 700 }}>{t("allSquare")}</div>
       ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, flexWrap: "wrap" }}>
-          <span>{from.name}</span><ArrowRight size={16} /><span>{to.name}</span>
-          <span style={{ marginLeft: 4, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>{money(Math.abs(balance))}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {transfers.map((x, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, flexWrap: "wrap" }}>
+              <span>{memberById(members, x.fromId)?.name || "—"}</span>
+              <ArrowRight size={16} />
+              <span>{memberById(members, x.toId)?.name || "—"}</span>
+              <span style={{ marginLeft: 4, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>{money(x.amount)}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function ExpenseDetail({ expense, categories, lang, t, onReassign, onEdit, onDelete, onEditCategories, onClose }) {
-  const payer = personById(expense.paidBy);
-  const other = otherPerson(expense.paidBy);
+function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEdit, onDelete, onEditCategories, onClose }) {
+  const payer = memberById(members, expense.paidById);
   const amt = Number(expense.amount) || 0;
   const shared = expense.split === "shared";
+  const share = members.length ? amt / members.length : amt;
   return (
     <Overlay title={expense.description} onClose={onClose} t={t}>
       <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px" }}>
         <div style={{ fontSize: 28, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(amt)}</div>
         <div style={{ fontSize: 13, color: shared ? TEAL : SUB, fontWeight: 600, marginTop: 2 }}>
-          {shared ? t("owesLine", { debtor: other.name, creditor: payer.name, amount: money(amt / 2) }) : t("personalLine")}
+          {shared ? t("sharedLine", { n: members.length, amount: money(share) }) : t("personalLine")}
         </div>
       </div>
 
@@ -585,7 +616,7 @@ function ExpenseDetail({ expense, categories, lang, t, onReassign, onEdit, onDel
         <FieldRow label={t("date")}>{expense.date}</FieldRow>
         <FieldRow label={t("paidBy")}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 99, background: payer.color }} />{payer.name}
+            <span style={{ width: 8, height: 8, borderRadius: 99, background: payer?.color || SUB }} />{payer?.name || "—"}
           </span>
         </FieldRow>
         <FieldRow label={t("split")}>{shared ? t("split5050") : t("personal")}</FieldRow>
@@ -637,10 +668,10 @@ async function toScaledJpegBase64(file, max = 2000) {
   });
 }
 
-function ExpenseForm({ initial, categories, lang, t, onClose, onSave, onEditCategories, defaultMonth }) {
+function ExpenseForm({ initial, categories, members, lang, t, onClose, onSave, onEditCategories, onEditMembers, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
-    date: `${defaultMonth}-15`, note: "", paidBy: "tommy", split: "shared",
+    date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
   });
   const [addHst, setAddHst] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -682,7 +713,7 @@ function ExpenseForm({ initial, categories, lang, t, onClose, onSave, onEditCate
 
   const base = Number(d.amount) || 0;
   const finalAmount = addHst ? Math.round(base * 1.13 * 100) / 100 : base;
-  const valid = d.description.trim() && finalAmount > 0 && d.date && d.categoryId && !busy;
+  const valid = d.description.trim() && finalAmount > 0 && d.date && d.categoryId && d.paidById && !busy;
 
   const submit = async () => {
     if (!valid) return;
@@ -728,12 +759,13 @@ function ExpenseForm({ initial, categories, lang, t, onClose, onSave, onEditCate
         </div>
       </Field>
       <Field label={t("whoPaid")}>
-        <div style={{ display: "flex", gap: 8 }}>
-          {PEOPLE.map((p) => (
-            <button key={p.id} onClick={() => setD({ ...d, paidBy: p.id })} style={segBtn(d.paidBy === p.id, p.color)}>
-              <span style={{ width: 8, height: 8, borderRadius: 99, background: p.color }} />{p.name}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {members.map((m) => (
+            <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={segBtn(d.paidById === m.id, m.color)}>
+              <span style={{ width: 8, height: 8, borderRadius: 99, background: m.color }} />{m.name}
             </button>
           ))}
+          <button onClick={onEditMembers} style={editCatsPill}><Users size={13} /> {t("editMembers")}</button>
         </div>
       </Field>
       <Field label={t("split")}>
@@ -795,6 +827,45 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
         <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
       </div>
       <button onClick={done} style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveCategories")}</button>
+    </Overlay>
+  );
+}
+
+function MemberManager({ members, t, onChange, onClose }) {
+  const [list, setList] = useState(members);
+  const [name, setName] = useState("");
+
+  const nextColor = () => db.MEMBER_COLORS[list.length % db.MEMBER_COLORS.length];
+  const add = () => {
+    if (!name.trim()) return;
+    setList([...list, { id: uid(), name: name.trim(), color: nextColor() }]);
+    setName("");
+  };
+  const patch = (id, key, val) => setList(list.map((m) => (m.id === id ? { ...m, [key]: val } : m)));
+  const del = (id) => setList(list.filter((m) => m.id !== id));
+  // Same as the category manager: a name typed but not yet added still counts.
+  const done = () => {
+    const pending = name.trim();
+    onChange(pending ? [...list, { id: uid(), name: pending, color: nextColor() }] : list);
+    onClose();
+  };
+
+  return (
+    <Overlay onClose={onClose} title={t("members")} t={t}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {list.map((m) => (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="color" value={m.color} onChange={(e) => patch(m.id, "color", e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
+            <input value={m.name} onChange={(e) => patch(m.id, "name", e.target.value)} style={{ ...input, flex: 1 }} />
+            <button onClick={() => del(m.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteMember")}><Trash2 size={15} /></button>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 12, paddingTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={t("newMemberPh")} style={{ ...input, flex: 1 }} />
+        <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
+      </div>
+      <button onClick={done} style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveMembers")}</button>
     </Overlay>
   );
 }
