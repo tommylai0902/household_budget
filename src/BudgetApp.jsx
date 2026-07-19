@@ -91,7 +91,10 @@ const interpolate = (str, vars) =>
 const makeT = (lang) => (key, vars) =>
   interpolate((STRINGS[lang] && STRINGS[lang][key]) ?? STRINGS.en[key] ?? key, vars);
 const dateLocale = (lang) => (lang === "zh" ? "zh-Hant" : "en-CA");
-const catName = (c, lang) => (!c ? "" : lang === "zh" ? c.nameZh || c.name : c.name || c.nameZh);
+// Category names are deliberately language-neutral — one name, shown as-is in both
+// EN and 繁中. `lang` is still accepted so call sites read consistently with the
+// rest of the UI, which does translate.
+const catName = (c) => (!c ? "" : c.name || c.nameZh || "");
 
 const CAD = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
 const money = (n) => CAD.format(Number(n || 0));
@@ -600,7 +603,6 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
   const [list, setList] = useState(categories);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#0E9384");
-  const nameField = lang === "zh" ? "nameZh" : "name";
 
   const add = () => {
     if (!name.trim()) return;
@@ -608,6 +610,8 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
     setName("");
   };
   const patch = (id, key, val) => setList(list.map((c) => (c.id === id ? { ...c, [key]: val } : c)));
+  // Write both name fields together so the EN and 繁中 names can never drift apart.
+  const patchName = (id, val) => setList(list.map((c) => (c.id === id ? { ...c, name: val, nameZh: val } : c)));
   const del = (id) => setList(list.filter((c) => c.id !== id));
   // Saving with text still sitting in the new-category field used to discard it
   // silently. Treat a filled field as an intent to add — the + button is a shortcut,
@@ -624,7 +628,7 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
         {list.map((c) => (
           <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input type="color" value={c.color} onChange={(e) => patch(c.id, "color", e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
-            <input value={catName(c, lang)} onChange={(e) => patch(c.id, nameField, e.target.value)} style={{ ...input, flex: 1 }} />
+            <input value={catName(c)} onChange={(e) => patchName(c.id, e.target.value)} style={{ ...input, flex: 1 }} />
             <button onClick={() => del(c.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteCategory")}><Trash2 size={15} /></button>
           </div>
         ))}
