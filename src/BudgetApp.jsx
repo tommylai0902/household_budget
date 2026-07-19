@@ -944,8 +944,9 @@ function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, 
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 99, background: c.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 700, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catName(c)}</span>
+                {/* Just what's been spent — the budget itself is in the field alongside. */}
                 <span style={{ fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                  {money(s)}{b > 0 ? ` / ${money(b)}` : ""}
+                  {money(s)}
                 </span>
                 <div style={{ position: "relative", width: 104, flexShrink: 0 }}>
                   <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>$</span>
