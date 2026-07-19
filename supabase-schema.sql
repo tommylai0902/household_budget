@@ -34,6 +34,16 @@ create table if not exists ledger_members (
   unique (ledger_id, name)
 );
 
+-- Shops you've chosen to remember, offered as suggestions when typing an
+-- expense. Never populated automatically — saving one is always an explicit tick.
+create table if not exists merchants (
+  id         uuid primary key default gen_random_uuid(),
+  ledger_id  uuid not null references ledgers(id) on delete cascade,
+  name       text not null,
+  created_at timestamptz not null default now(),
+  unique (ledger_id, name)
+);
+
 create table if not exists categories (
   id             uuid primary key default gen_random_uuid(),
   ledger_id      uuid not null references ledgers(id) on delete cascade,
@@ -89,6 +99,7 @@ create trigger trg_expenses_touch before update on expenses
 alter table members    enable row level security;
 alter table ledgers        enable row level security;
 alter table ledger_members enable row level security;
+alter table merchants      enable row level security;
 alter table categories enable row level security;
 alter table expenses   enable row level security;
 alter table budgets    enable row level security;
@@ -105,7 +116,7 @@ create policy members_self on members for select using (user_id = auth.uid());
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['ledgers','ledger_members','categories','expenses','budgets'] loop
+  foreach tbl in array array['ledgers','ledger_members','merchants','categories','expenses','budgets'] loop
     execute format('drop policy if exists rw_%1$s on %1$s;', tbl);
     execute format(
       'create policy rw_%1$s on %1$s for all using (is_member()) with check (is_member());', tbl);
@@ -114,4 +125,4 @@ end $$;
 
 -- ---------------- Realtime ----------------
 -- (If this errors with "already member of publication", it's already on — ignore.)
-alter publication supabase_realtime add table expenses, categories, budgets, ledgers, ledger_members;
+alter publication supabase_realtime add table expenses, categories, budgets, ledgers, ledger_members, merchants;

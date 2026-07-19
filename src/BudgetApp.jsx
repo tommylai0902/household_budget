@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart,
+  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart, Store,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
@@ -57,6 +57,10 @@ const STRINGS = {
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget",
     budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
+    stores: "Saved shops", editStores: "Edit saved shops", rememberStore: 'Remember "{name}"',
+    rememberHint: "Saved shops are suggested as you type. Nothing is saved unless you tick this.",
+    newStorePh: "New shop name", saveStores: "Save shops", deleteStore: "Remove shop",
+    noStores: "No saved shops yet. Tick the box when adding an expense to keep one.",
     newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
@@ -107,6 +111,10 @@ const STRINGS = {
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算",
     budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
+    stores: "已記住嘅店家", editStores: "編輯店家", rememberStore: "記住「{name}」",
+    rememberHint: "記住咗嘅店家打頭幾個字就會彈出。唔剔呢格就唔會記。",
+    newStorePh: "新店家名稱", saveStores: "儲存店家", deleteStore: "移除店家",
+    noStores: "仲未記低任何店家。入數時剔個格就會記住。",
     newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
@@ -368,18 +376,21 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [managingMembers, setManagingMembers] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
+  const [merchants, setMerchants] = useState([]);
+  const [managingStores, setManagingStores] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       setError("");
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
-      const [cats, exps, mems, buds] = await Promise.all([
+      const [cats, exps, mems, buds, shops] = await Promise.all([
         db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id),
-        db.fetchMembers(ledger.id), db.fetchBudgets(ledger.id),
+        db.fetchMembers(ledger.id), db.fetchBudgets(ledger.id), db.fetchMerchants(ledger.id),
       ]);
       setMembers(mems);
       setBudgets(buds);
+      setMerchants(shops);
       setCategories(cats);
       setExpenses(exps);
       setReady(true);
@@ -411,8 +422,9 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
     } catch (e) { setError(e.message); }
   };
 
-  const upsertExpense = async (draft) => {
+  const upsertExpense = async (draft, rememberName) => {
     try {
+      if (rememberName) await db.rememberMerchant(ledger.id, rememberName);
       if (draft.id) await db.updateExpense(draft.id, draft);
       else await db.insertExpense(draft, ledger.id);
       setEditing(null);
@@ -424,6 +436,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const commitCategories = async (list) => { try { setCategories(await db.persistCategories(list, categories, ledger.id)); } catch (e) { setError(e.message); } };
   // Removing someone who still has expenses is refused by the FK, so the error
   // surfaces here rather than silently dropping who paid for what.
+  const commitStores = async (list) => { try { setMerchants(await db.persistMerchants(list, merchants, ledger.id)); } catch (e) { setError(e.message); } };
   const commitMembers = async (list) => {
     try { setMembers(await db.persistMembers(list, members, ledger.id)); }
     catch (e) { setError(/foreign key/i.test(e.message || "") ? t("memberHasExpenses") : e.message); }
@@ -479,7 +492,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onStores={() => setManagingStores(true)} />
           </div>
         </div>
 
@@ -552,9 +565,14 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           onClose={() => setDetail(null)} />
       )}
       {editing !== null && (
-        <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} lang={lang} t={t}
+        <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members}
+          merchants={merchants} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense}
-          onEditCategories={() => setManagingCats(true)} onEditMembers={() => setManagingMembers(true)} defaultMonth={month} />
+          onEditCategories={() => setManagingCats(true)} onEditMembers={() => setManagingMembers(true)}
+          onEditStores={() => setManagingStores(true)} defaultMonth={month} />
+      )}
+      {managingStores && (
+        <StoreManager merchants={merchants} t={t} onChange={commitStores} onClose={() => setManagingStores(false)} />
       )}
       {managingCats && (
         <CategoryManager categories={categories} lang={lang} t={t} onChange={commitCategories} onClose={() => setManagingCats(false)} />
@@ -706,7 +724,7 @@ async function toScaledJpegBase64(file, max = 2000) {
   });
 }
 
-function ExpenseForm({ initial, categories, members, lang, t, onClose, onSave, onEditCategories, onEditMembers, defaultMonth }) {
+function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose, onSave, onEditCategories, onEditMembers, onEditStores, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
@@ -715,6 +733,8 @@ function ExpenseForm({ initial, categories, members, lang, t, onClose, onSave, o
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanErr, setScanErr] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
 
   // Scanning only prefills the form — you still review and save it yourself.
   const scanReceipt = async (file) => {
@@ -753,10 +773,23 @@ function ExpenseForm({ initial, categories, members, lang, t, onClose, onSave, o
   const finalAmount = addHst ? Math.round(base * 1.13 * 100) / 100 : base;
   const valid = d.description.trim() && finalAmount > 0 && d.date && d.categoryId && d.paidById && !busy;
 
+  // Offer to keep a shop only when it isn't already saved, and never pre-ticked —
+  // plenty of entries are one-offs that shouldn't clutter the suggestions.
+  const typed = d.description.trim();
+  const canRemember = typed.length > 1 && !merchants.some((m) => m.name.toLowerCase() === typed.toLowerCase());
+  // Substring, not prefix — "frills" should still find "No Frills". An exact
+  // match is dropped so the list doesn't hang around once you've picked one.
+  const suggestions = merchants
+    .filter((m) => m.name.toLowerCase().includes(typed.toLowerCase()) && m.name.toLowerCase() !== typed.toLowerCase())
+    .slice(0, 6);
+  // Every distinct name gets its own unticked ask. Without this, ticking for one
+  // shop and then retyping a different name would silently keep the second one.
+  useEffect(() => { setRemember(false); }, [typed]);
+
   const submit = async () => {
     if (!valid) return;
     setBusy(true);
-    await onSave({ ...d, description: d.description.trim(), amount: finalAmount });
+    await onSave({ ...d, description: typed, amount: finalAmount }, remember && canRemember ? typed : null);
   };
 
   return (
@@ -771,7 +804,39 @@ function ExpenseForm({ initial, categories, members, lang, t, onClose, onSave, o
       <div style={{ textAlign: "center", color: SUB, fontSize: 12, margin: "-2px 0 2px" }}>{t("scanHint")}</div>
 
       <Field label={t("formWhat")}>
-        <input autoFocus value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder={t("formWhatPh")} style={input} />
+        {/* A native <datalist> was the obvious choice here, but Chrome dismisses its
+            popup when the "remember" checkbox below appears mid-typing, so the
+            suggestions never showed. Hand-rolled dropdown instead. */}
+        <div style={{ position: "relative" }}>
+          <input autoFocus value={d.description}
+            onChange={(e) => { setD({ ...d, description: e.target.value }); setSuggestOpen(true); }}
+            onFocus={() => setSuggestOpen(true)}
+            onBlur={() => setSuggestOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setSuggestOpen(false)}
+            placeholder={t("formWhatPh")} autoComplete="off" style={input} />
+          {suggestOpen && suggestions.length > 0 && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 70, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", overflow: "hidden" }}>
+              {suggestions.map((m) => (
+                // mousedown, not click: blur would close the list first otherwise.
+                <button key={m.id} onMouseDown={(e) => { e.preventDefault(); setD({ ...d, description: m.name }); setSuggestOpen(false); }} style={suggestItem}>
+                  <Store size={13} style={{ color: SUB, flexShrink: 0 }} /> {m.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {canRemember && (
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: SUB, cursor: "pointer", marginTop: 8 }}>
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ marginTop: 2 }} />
+            <span>{t("rememberStore", { name: typed })}</span>
+          </label>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginTop: 6 }}>
+          <span style={{ fontSize: 12, color: SUB }}>{t("rememberHint")}</span>
+          <button onClick={onEditStores} style={{ ...editCatsPill, flexShrink: 0, padding: "5px 9px", fontSize: 12 }}>
+            <Store size={12} /> {t("editStores")}
+          </button>
+        </div>
       </Field>
       <div style={{ display: "flex", gap: 10 }}>
         <Field label={t("amount")}>
@@ -974,6 +1039,50 @@ function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, 
   );
 }
 
+function StoreManager({ merchants, t, onChange, onClose }) {
+  const [list, setList] = useState(merchants);
+  const [name, setName] = useState("");
+
+  const add = () => {
+    if (!name.trim()) return;
+    setList([...list, { id: uid(), name: name.trim() }]);
+    setName("");
+  };
+  const patch = (id, val) => setList(list.map((m) => (m.id === id ? { ...m, name: val } : m)));
+  const del = (id) => setList(list.filter((m) => m.id !== id));
+  // Same as the other managers: a name typed but not yet added still counts.
+  const done = () => {
+    const pending = name.trim();
+    onChange(pending ? [...list, { id: uid(), name: pending }] : list);
+    onClose();
+  };
+
+  return (
+    <Overlay onClose={onClose} title={t("stores")} t={t}>
+      {list.length === 0 && (
+        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "22px 16px", textAlign: "center", color: SUB, fontSize: 13 }}>
+          <Store size={20} style={{ opacity: 0.4 }} />
+          <div style={{ marginTop: 8 }}>{t("noStores")}</div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {list.map((m) => (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Store size={15} style={{ color: SUB, flexShrink: 0 }} />
+            <input value={m.name} onChange={(e) => patch(m.id, e.target.value)} style={{ ...input, flex: 1 }} />
+            <button onClick={() => del(m.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteStore")}><Trash2 size={15} /></button>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 12, paddingTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={t("newStorePh")} style={{ ...input, flex: 1 }} />
+        <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
+      </div>
+      <button onClick={done} style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveStores")}</button>
+    </Overlay>
+  );
+}
+
 function MemberManager({ members, t, onChange, onClose }) {
   const [list, setList] = useState(members);
   const [name, setName] = useState("");
@@ -1016,7 +1125,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang, onBudget }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onStores }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -1038,6 +1147,9 @@ function HeaderMenu({ t, lang, changeLang, onBudget }) {
         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
           <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
             <PieChart size={15} /> {t("budget")}
+          </button>
+          <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
+            <Store size={15} /> {t("stores")}
           </button>
           <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
           <div style={{ padding: "6px 10px 4px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: SUB }}>{t("language")}</div>
@@ -1086,6 +1198,7 @@ const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid #F3C4C4`, background: "#fff", color: "#DC2626", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: "#fff", color: SUB, cursor: "pointer" };
 const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
+const suggestItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 12px", border: "none", background: "none", color: INK, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 // Dashed outline sets it apart from the coloured category pills — it's an action, not a category.
 const editCatsPill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 999, border: `1px dashed ${SUB}`, background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const errorBox = { fontSize: 13, color: "#B42318", background: "#FEF3F2", border: "1px solid #FDA29B", borderRadius: 10, padding: "10px 12px", marginBottom: 12 };

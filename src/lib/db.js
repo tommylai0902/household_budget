@@ -207,6 +207,42 @@ export async function persistCategories(newList, oldList, ledgerId) {
   return fetchCategories(ledgerId);
 }
 
+/* ---- remembered shops ---- */
+export async function fetchMerchants(ledgerId) {
+  const { data, error } = await supabase
+    .from("merchants").select("id, name").eq("ledger_id", ledgerId).order("name");
+  if (error) throw error;
+  return data;
+}
+
+// Only ever called from an explicit tick in the form — never inferred from use.
+// Ignores duplicates so re-ticking a shop you already kept isn't an error.
+export async function rememberMerchant(ledgerId, name) {
+  const { error } = await supabase
+    .from("merchants")
+    .upsert({ ledger_id: ledgerId, name }, { onConflict: "ledger_id,name", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+export async function persistMerchants(newList, oldList, ledgerId) {
+  const newIds = new Set(newList.map((m) => m.id));
+  const toDelete = oldList.filter((m) => !newIds.has(m.id)).map((m) => m.id);
+  if (toDelete.length) {
+    const { error } = await supabase.from("merchants").delete().in("id", toDelete);
+    if (error) throw error;
+  }
+  const toInsert = newList.filter((m) => !isUuid(m.id)).map((m) => ({ name: m.name, ledger_id: ledgerId }));
+  if (toInsert.length) {
+    const { error } = await supabase.from("merchants").insert(toInsert);
+    if (error) throw error;
+  }
+  for (const m of newList.filter((m) => isUuid(m.id))) {
+    const { error } = await supabase.from("merchants").update({ name: m.name }).eq("id", m.id);
+    if (error) throw error;
+  }
+  return fetchMerchants(ledgerId);
+}
+
 /* ---- budgets: one figure per category per month ---- */
 // `month` is the app's "YYYY-MM"; the column stores the first of that month.
 const monthToDate = (month) => `${month}-01`;
@@ -246,6 +282,7 @@ export function subscribeLedger(onChange) {
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "ledger_members" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "budgets" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "merchants" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
