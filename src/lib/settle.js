@@ -16,9 +16,15 @@ export function netBalances(expenses, members) {
     // A personal expense is paid and borne by the same person — nets to zero.
     if (e.split !== "shared") continue;
     if (!net.has(e.paidById)) continue; // payer no longer in the ledger
+
+    // Only the people actually on this expense share it — the payer may not be
+    // one of them (covering a meal you didn't eat still leaves you owed in full).
+    const sharers = (e.sharedWith || []).filter((id) => net.has(id));
+    if (!sharers.length) continue;
+
     const amount = Number(e.amount) || 0;
-    const share = amount / members.length;
-    for (const m of members) net.set(m.id, net.get(m.id) - share);
+    const share = amount / sharers.length;
+    for (const id of sharers) net.set(id, net.get(id) - share);
     net.set(e.paidById, net.get(e.paidById) + amount);
   }
 

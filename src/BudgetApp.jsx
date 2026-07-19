@@ -57,6 +57,9 @@ const STRINGS = {
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget",
     budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
+    splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
+    splitNobody: "Tick at least one person to split between.",
+    sharedAmong: "Split between {names}",
     stores: "Saved shops", editStores: "Edit saved shops", rememberStore: 'Remember "{name}"',
     rememberHint: "Saved shops are suggested as you type. Nothing is saved unless you tick this.",
     newStorePh: "New shop name", saveStores: "Save shops", deleteStore: "Remove shop",
@@ -111,6 +114,9 @@ const STRINGS = {
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算",
     budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
+    splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
+    splitNobody: "至少要剔一個人先分到帳。",
+    sharedAmong: "由 {names} 平分",
     stores: "已記住嘅店家", editStores: "編輯店家", rememberStore: "記住「{name}」",
     rememberHint: "記住咗嘅店家打頭幾個字就會彈出。唔剔呢格就唔會記。",
     newStorePh: "新店家名稱", saveStores: "儲存店家", deleteStore: "移除店家",
@@ -539,7 +545,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                       </span>
                       <span style={splitBadge(e.split)}>
                         {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
-                        {e.split === "shared" ? t("split5050") : t("personal")}
+                        {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
                       </span>
                     </div>
                   </div>
@@ -648,13 +654,14 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
   const payer = memberById(members, expense.paidById);
   const amt = Number(expense.amount) || 0;
   const shared = expense.split === "shared";
-  const share = members.length ? amt / members.length : amt;
+  const sharers = members.filter((m) => (expense.sharedWith || []).includes(m.id));
+  const share = sharers.length ? amt / sharers.length : amt;
   return (
     <Overlay title={expense.description} onClose={onClose} t={t}>
       <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px" }}>
         <div style={{ fontSize: 28, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(amt)}</div>
         <div style={{ fontSize: 13, color: shared ? TEAL : SUB, fontWeight: 600, marginTop: 2 }}>
-          {shared ? t("sharedLine", { n: members.length, amount: money(share) }) : t("personalLine")}
+          {shared ? t("sharedLine", { n: sharers.length, amount: money(share) }) : t("personalLine")}
         </div>
       </div>
 
@@ -677,7 +684,9 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
             <span style={{ width: 8, height: 8, borderRadius: 99, background: payer?.color || SUB }} />{payer?.name || "—"}
           </span>
         </FieldRow>
-        <FieldRow label={t("split")}>{shared ? t("split5050") : t("personal")}</FieldRow>
+        <FieldRow label={t("split")}>
+          {shared ? t("sharedAmong", { names: sharers.map((m) => m.name).join(", ") || "—" }) : t("personal")}
+        </FieldRow>
         <FieldRow label={t("noteDisplay")} last>{expense.note ? expense.note : "—"}</FieldRow>
       </div>
 
@@ -730,6 +739,7 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
+    sharedWith: members.map((m) => m.id), // everyone by default; untick who wasn't there
   });
   const [addHst, setAddHst] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -773,7 +783,10 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
 
   const base = Number(d.amount) || 0;
   const finalAmount = addHst ? Math.round(base * 1.13 * 100) / 100 : base;
-  const valid = d.description.trim() && finalAmount > 0 && d.date && d.categoryId && d.paidById && !busy;
+  // A shared expense with nobody ticked can't be divided, so block saving it.
+  const sharerCount = d.split === "shared" ? (d.sharedWith || []).length : 0;
+  const valid = d.description.trim() && finalAmount > 0 && d.date && d.categoryId && d.paidById
+    && (d.split !== "shared" || sharerCount > 0) && !busy;
 
   // Offer to keep a shop only when it isn't already saved, and never pre-ticked —
   // plenty of entries are one-offs that shouldn't clutter the suggestions.
@@ -876,8 +889,29 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
       <Field label={t("split")}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setD({ ...d, split: "personal" })} style={segBtn(d.split === "personal", TEAL)}><User size={14} /> {t("personal")}</button>
-          <button onClick={() => setD({ ...d, split: "shared" })} style={segBtn(d.split === "shared", TEAL)}><Users size={14} /> {t("split5050")}</button>
+          <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segBtn(d.split === "shared", TEAL)}>
+            <Users size={14} /> {t("splitBetween")}
+          </button>
         </div>
+        {d.split === "shared" && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {members.map((m) => {
+                const on = (d.sharedWith || []).includes(m.id);
+                return (
+                  <button key={m.id}
+                    onClick={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
+                    style={selectablePill(m.color, on)}>
+                    {on ? <Check size={12} /> : null} {m.name}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 12, color: sharerCount ? SUB : "#DC2626", marginTop: 6 }}>
+              {sharerCount ? t("splitWays", { n: sharerCount, amount: money(finalAmount / sharerCount) }) : t("splitNobody")}
+            </div>
+          </div>
+        )}
       </Field>
       <Field label={t("noteLabel")}>
         <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder={t("notePh")} style={input} />

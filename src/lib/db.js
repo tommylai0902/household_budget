@@ -16,6 +16,7 @@ const toAppExpense = (r) => ({
   id: r.id, description: r.description, amount: Number(r.amount), categoryId: r.category_id,
   date: r.transaction_date, note: r.note || "", paidById: r.paid_by_id,
   split: r.split_type === "shared_50" ? "shared" : "personal", receiptUrl: r.receipt_url || null,
+  sharedWith: (r.expense_splits || []).map((s) => s.member_id),
 });
 const toRowExpense = (e) => ({
   description: e.description,
@@ -112,8 +113,9 @@ export async function fetchCategories(ledgerId) {
   return data.map(toAppCategory);
 }
 export async function fetchExpenses(ledgerId) {
+  // Embedded select pulls each expense's sharers in the same round trip.
   const { data, error } = await supabase
-    .from("expenses").select("*").eq("ledger_id", ledgerId)
+    .from("expenses").select("*, expense_splits(member_id)").eq("ledger_id", ledgerId)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -121,13 +123,28 @@ export async function fetchExpenses(ledgerId) {
 }
 
 /* ---- expense writes ---- */
-export async function insertExpense(e, ledgerId) {
-  const { error } = await supabase.from("expenses").insert({ ...toRowExpense(e), ledger_id: ledgerId });
+// Sharers live in their own table, so both writes replace the set wholesale
+// rather than trying to diff it — an expense has a handful of them at most.
+async function writeSplits(expenseId, e) {
+  const { error: del } = await supabase.from("expense_splits").delete().eq("expense_id", expenseId);
+  if (del) throw del;
+  const ids = e.split === "shared" ? [...new Set(e.sharedWith || [])] : [];
+  if (!ids.length) return;
+  const { error } = await supabase
+    .from("expense_splits").insert(ids.map((member_id) => ({ expense_id: expenseId, member_id })));
   if (error) throw error;
+}
+
+export async function insertExpense(e, ledgerId) {
+  const { data, error } = await supabase
+    .from("expenses").insert({ ...toRowExpense(e), ledger_id: ledgerId }).select("id").single();
+  if (error) throw error;
+  await writeSplits(data.id, e);
 }
 export async function updateExpense(id, e) {
   const { error } = await supabase.from("expenses").update(toRowExpense(e)).eq("id", id);
   if (error) throw error;
+  await writeSplits(id, e);
 }
 export async function setExpenseCategory(id, categoryId) {
   const { error } = await supabase.from("expenses").update({ category_id: categoryId }).eq("id", id);
@@ -283,6 +300,7 @@ export function subscribeLedger(onChange) {
     .on("postgres_changes", { event: "*", schema: "public", table: "ledger_members" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "budgets" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "merchants" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "expense_splits" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
