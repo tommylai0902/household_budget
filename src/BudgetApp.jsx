@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu,
+  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
@@ -56,6 +56,16 @@ const STRINGS = {
     scanReceipt: "Scan receipt", scanning: "Reading receipt…",
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
     editCategories: "Edit categories", menu: "Menu",
+    ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
+    newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
+    noLedgers: "No ledgers yet. Create your first one below.",
+    exit: "Exit", language: "Language", openLedger: "Open {name}",
+    startWith: "Start with", tplHousehold: "Household", tplTravel: "Travel",
+    tplPersonal: "Personal", tplBlank: "Blank",
+    tplHint: "{n} categories — you can rename or add more later",
+    tplHintBlank: "No categories — add your own from inside the ledger",
+    deleteLedger: "Delete ledger", renameLedger: "Rename ledger",
+    deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
   },
   zh: {
     eyebrow: "家庭帳簿",
@@ -86,6 +96,16 @@ const STRINGS = {
     scanReceipt: "掃描收據", scanning: "讀取收據中…",
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
     editCategories: "編輯類別", menu: "選單",
+    ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
+    newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
+    noLedgers: "仲未有帳簿。喺下面建立第一本。",
+    exit: "離開", language: "語言", openLedger: "開啟{name}",
+    startWith: "起始類別", tplHousehold: "家用", tplTravel: "旅行",
+    tplPersonal: "個人", tplBlank: "空白",
+    tplHint: "{n} 個類別 — 之後可以改名或者加",
+    tplHintBlank: "冇類別 — 入咗帳簿之後自己加",
+    deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
+    deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
   },
 };
 const interpolate = (str, vars) =>
@@ -123,9 +143,13 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // No ledger picked = the picker is home. Exiting a ledger comes back here.
+  const [ledger, setLedger] = useState(null);
+
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} />;
-  return <Ledger lang={lang} changeLang={changeLang} t={t} />;
+  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger} />;
+  return <Ledger ledger={ledger} onExit={() => setLedger(null)} lang={lang} changeLang={changeLang} t={t} />;
 }
 
 function Centered({ children }) {
@@ -184,8 +208,136 @@ function Login({ lang, changeLang, t }) {
   );
 }
 
+/* ========================= Ledger picker ========================== */
+function LedgerPicker({ lang, changeLang, t, onOpen }) {
+  const [ledgers, setLedgers] = useState(null); // null = still loading
+  const [name, setName] = useState("");
+  const [template, setTemplate] = useState("household");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try { setError(""); setLedgers(await db.fetchLedgers()); }
+    catch (e) { setError(e.message || String(e)); setLedgers([]); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => db.subscribeLedgerList(() => load()), [load]);
+
+  const create = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || busy) return;
+    setBusy(true);
+    try {
+      const created = await db.createLedger(trimmed, template);
+      setName("");
+      onOpen(created); // drop straight into the ledger you just made
+    } catch (e) { setError(e.message || String(e)); setBusy(false); }
+  };
+
+  const remove = async (l) => {
+    if (!confirm(t("deleteLedgerConfirm", { name: l.name }))) return;
+    try { await db.deleteLedger(l.id); load(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+
+  // Renaming happens in place: the row swaps its open-button for an input so the
+  // whole row can't double as "open this ledger" while you're typing in it.
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState("");
+  const startRename = (l) => { setEditingId(l.id); setDraft(l.name); };
+  const cancelRename = () => { setEditingId(null); setDraft(""); };
+  const saveRename = async (l) => {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === l.name) return cancelRename();
+    try { await db.renameLedger(l.id, trimmed); cancelRename(); load(); }
+    catch (e) { setError(e.message || String(e)); cancelRename(); }
+  };
+
+  if (ledgers === null) return <Centered>{t("connecting")}</Centered>;
+
+  return (
+    <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+          <div>
+            <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>Tommy &amp; Wing</div>
+            <h1 style={{ fontSize: 26, fontWeight: 800, margin: "4px 0 0", letterSpacing: -0.4 }}>{t("ledgers")}</h1>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <LangToggle lang={lang} changeLang={changeLang} />
+            <button onClick={() => supabase.auth.signOut()} style={iconBtn} aria-label={t("signOut")} title={t("signOut")}>
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
+
+        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {ledgers.length === 0 && (
+            <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "26px 18px", textAlign: "center", color: SUB, fontSize: 13 }}>
+              <BookOpen size={22} style={{ opacity: 0.4 }} />
+              <div style={{ marginTop: 8 }}>{t("noLedgers")}</div>
+            </div>
+          )}
+          {ledgers.map((l) => (
+            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {editingId === l.id ? (
+                <>
+                  <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveRename(l); if (e.key === "Escape") cancelRename(); }}
+                    style={{ ...input, flex: 1, fontWeight: 700 }} />
+                  <button onClick={() => saveRename(l)} style={{ ...iconBtn, color: TEAL }} aria-label={t("saveChanges")}><Check size={16} /></button>
+                  <button onClick={cancelRename} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => onOpen(l)} aria-label={t("openLedger", { name: l.name })}
+                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                    <BookOpen size={17} style={{ color: TEAL, flexShrink: 0 }} />
+                    <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
+                    <ChevronRight size={17} style={{ color: SUB }} />
+                  </button>
+                  <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>
+                  <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("startWith")}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {["household", "travel", "personal", "blank"].map((k) => (
+              <button key={k} onClick={() => setTemplate(k)} style={selectablePill(TEAL, template === k)}>
+                {t("tpl" + k[0].toUpperCase() + k.slice(1))}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: SUB, margin: "8px 0 12px" }}>
+            {db.TEMPLATES[template].length
+              ? `${t("tplHint", { n: db.TEMPLATES[template].length })} · ${db.TEMPLATES[template].map((c) => c.name).join(", ")}`
+              : t("tplHintBlank")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()}
+            placeholder={t("newLedgerPh")} style={{ ...input, flex: 1 }} />
+          <button onClick={create} disabled={!name.trim() || busy}
+            style={{ ...addBtn, width: "auto", flexShrink: 0, marginTop: 0, whiteSpace: "nowrap", opacity: !name.trim() || busy ? 0.5 : 1, cursor: !name.trim() || busy ? "not-allowed" : "pointer" }}>
+            {busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} {t("createLedger")}
+          </button>
+        </div>
+        <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+}
+
 /* ============================ Ledger ============================== */
-function Ledger({ lang, changeLang, t }) {
+function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [categories, setCategories] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [ready, setReady] = useState(false);
@@ -199,8 +351,9 @@ function Ledger({ lang, changeLang, t }) {
   const refresh = useCallback(async () => {
     try {
       setError("");
-      let [cats, exps] = await Promise.all([db.fetchCategories(), db.fetchExpenses()]);
-      if (cats.length === 0) { await db.seedDefaultCategories(); cats = await db.fetchCategories(); }
+      // No lazy seeding here — categories are seeded from the chosen template when
+      // the ledger is created, so an intentionally blank ledger stays blank.
+      const [cats, exps] = await Promise.all([db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id)]);
       setCategories(cats);
       setExpenses(exps);
       setReady(true);
@@ -208,7 +361,7 @@ function Ledger({ lang, changeLang, t }) {
       setError(e.message || String(e));
       setReady(true);
     }
-  }, []);
+  }, [ledger.id]);
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => db.subscribeLedger(() => refresh()), [refresh]); // live sync
@@ -218,14 +371,14 @@ function Ledger({ lang, changeLang, t }) {
   const upsertExpense = async (draft) => {
     try {
       if (draft.id) await db.updateExpense(draft.id, draft);
-      else await db.insertExpense(draft);
+      else await db.insertExpense(draft, ledger.id);
       setEditing(null);
       refresh();
     } catch (e) { setError(e.message); }
   };
   const removeExpense = async (id) => { try { await db.deleteExpense(id); refresh(); } catch (e) { setError(e.message); } };
   const reassign = async (id, categoryId) => { try { await db.setExpenseCategory(id, categoryId); refresh(); } catch (e) { setError(e.message); } };
-  const commitCategories = async (list) => { try { setCategories(await db.persistCategories(list, categories)); } catch (e) { setError(e.message); } };
+  const commitCategories = async (list) => { try { setCategories(await db.persistCategories(list, categories, ledger.id)); } catch (e) { setError(e.message); } };
 
   const monthsAvailable = useMemo(() => {
     const set = new Set(expenses.map((e) => monthOf(e.date)));
@@ -263,17 +416,19 @@ function Ledger({ lang, changeLang, t }) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("eyebrow")}</div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, margin: "4px 0 0", letterSpacing: -0.4 }}>Tommy &amp; Wing</h1>
+            <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>Tommy &amp; Wing</div>
+            <h1 style={{ fontSize: 26, fontWeight: 800, margin: "4px 0 0", letterSpacing: -0.4 }}>{ledger.name}</h1>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <LangToggle lang={lang} changeLang={changeLang} />
+            <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
+              <ArrowLeft size={15} /> {t("exit")}
+            </button>
             <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label={t("selectMonth")} style={selectStyle}>
               {monthsAvailable.map((m) => (
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} />
           </div>
         </div>
 
@@ -647,7 +802,7 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t }) {
+function HeaderMenu({ t, lang, changeLang }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -666,7 +821,10 @@ function HeaderMenu({ t }) {
         <Menu size={16} />
       </button>
       {open && (
-        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 170, zIndex: 60 }}>
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
+          <div style={{ padding: "6px 10px 4px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: SUB }}>{t("language")}</div>
+          <div style={{ padding: "0 10px 8px" }}><LangToggle lang={lang} changeLang={changeLang} /></div>
+          <div style={{ borderTop: `1px solid ${LINE}`, margin: "2px 0 4px" }} />
           <button role="menuitem" onClick={() => { setOpen(false); supabase.auth.signOut(); }} style={menuItem}>
             <LogOut size={15} /> {t("signOut")}
           </button>

@@ -6,7 +6,8 @@ const toAppCategory = (r) => ({
 });
 const toRowCategory = (c, sortOrder) => ({
   name: c.name,
-  name_zh: c.nameZh || null,
+  // Category names are language-neutral, so both columns carry the same value.
+  name_zh: c.nameZh || c.name,
   color: c.color,
   monthly_budget: c.budget ?? null,
   ...(sortOrder != null ? { sort_order: sortOrder } : {}),
@@ -27,15 +28,41 @@ const toRowExpense = (e) => ({
 });
 const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id);
 
-/* ---- reads ---- */
-export async function fetchCategories() {
-  const { data, error } = await supabase.from("categories").select("*").order("sort_order");
+/* ---- ledgers ---- */
+export async function fetchLedgers() {
+  const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, name: r.name }));
+}
+// Seeds at creation time rather than lazily on first open, so the "blank"
+// template stays blank instead of being backfilled with defaults.
+export async function createLedger(name, template = "household") {
+  const { data, error } = await supabase.from("ledgers").insert({ name }).select().single();
+  if (error) throw error;
+  await seedCategories(data.id, template);
+  return { id: data.id, name: data.name };
+}
+export async function renameLedger(id, name) {
+  const { error } = await supabase.from("ledgers").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+// Categories and expenses cascade with the ledger (see schema), so this is a
+// full teardown — the UI confirms before calling it.
+export async function deleteLedger(id) {
+  const { error } = await supabase.from("ledgers").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ---- reads (always scoped to one ledger) ---- */
+export async function fetchCategories(ledgerId) {
+  const { data, error } = await supabase
+    .from("categories").select("*").eq("ledger_id", ledgerId).order("sort_order");
   if (error) throw error;
   return data.map(toAppCategory);
 }
-export async function fetchExpenses() {
+export async function fetchExpenses(ledgerId) {
   const { data, error } = await supabase
-    .from("expenses").select("*")
+    .from("expenses").select("*").eq("ledger_id", ledgerId)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -43,8 +70,8 @@ export async function fetchExpenses() {
 }
 
 /* ---- expense writes ---- */
-export async function insertExpense(e) {
-  const { error } = await supabase.from("expenses").insert(toRowExpense(e));
+export async function insertExpense(e, ledgerId) {
+  const { error } = await supabase.from("expenses").insert({ ...toRowExpense(e), ledger_id: ledgerId });
   if (error) throw error;
 }
 export async function updateExpense(id, e) {
@@ -60,36 +87,64 @@ export async function deleteExpense(id) {
   if (error) throw error;
 }
 
-/* ---- category writes ---- */
-const DEFAULTS = [
-  { name: "Rent+Utilities", nameZh: "租金水電", color: "#475569" },
-  { name: "Household", nameZh: "家居用品", color: "#EC4899" },
-  { name: "Grocery", nameZh: "買餸", color: "#16A34A" },
-  { name: "Ubereats/doordash", nameZh: "外賣", color: "#059669" },
-  { name: "Entertainment", nameZh: "娛樂", color: "#7C3AED" },
-  { name: "Dine in", nameZh: "堂食", color: "#EA580C" },
-  { name: "Mochi", nameZh: "Mochi", color: "#D97706" },
-];
-export async function seedDefaultCategories() {
-  const rows = DEFAULTS.map((c, i) => toRowCategory(c, i));
-  // upsert on name so concurrent first-loads (StrictMode, or Tommy + Wing at
-  // once) can't double-seed. Needs a unique(name) constraint — see schema.
+/* ---- category templates ----
+   Starting categories for a new ledger. Labels for the picker live in the UI's
+   STRINGS table; these are the category names themselves, which are
+   language-neutral (see catName). */
+export const TEMPLATES = {
+  household: [
+    { name: "Rent", color: "#475569" },
+    { name: "Utilities", color: "#0E9384" },
+    { name: "Household", color: "#EC4899" },
+    { name: "Grocery", color: "#16A34A" },
+    { name: "Food Delivery", color: "#059669" },
+    { name: "Dine in", color: "#EA580C" },
+    { name: "Entertainment", color: "#7C3AED" },
+  ],
+  travel: [
+    { name: "Flights", color: "#0369A1" },
+    { name: "Accommodation", color: "#7C3AED" },
+    { name: "Food", color: "#EA580C" },
+    { name: "Transport", color: "#0E9384" },
+    { name: "Activities", color: "#16A34A" },
+    { name: "Shopping", color: "#EC4899" },
+    { name: "Other", color: "#64748B" },
+  ],
+  personal: [
+    { name: "Food", color: "#EA580C" },
+    { name: "Transport", color: "#0E9384" },
+    { name: "Shopping", color: "#EC4899" },
+    { name: "Health", color: "#16A34A" },
+    { name: "Subscriptions", color: "#7C3AED" },
+    { name: "Other", color: "#64748B" },
+  ],
+  blank: [],
+};
+
+export async function seedCategories(ledgerId, template = "household") {
+  const rows = (TEMPLATES[template] ?? TEMPLATES.household)
+    .map((c, i) => ({ ...toRowCategory(c, i), ledger_id: ledgerId }));
+  if (!rows.length) return;
+  // upsert on (ledger_id, name) so concurrent first-loads (StrictMode, or Tommy
+  // and Wing at once) can't double-seed. Needs that unique constraint — see schema.
   const { error } = await supabase
     .from("categories")
-    .upsert(rows, { onConflict: "name", ignoreDuplicates: true });
+    .upsert(rows, { onConflict: "ledger_id,name", ignoreDuplicates: true });
   if (error) throw error;
 }
 
 // Diff the edited list against what was loaded: delete removed, insert new
 // (client temp ids aren't uuids), update the rest.
-export async function persistCategories(newList, oldList) {
+export async function persistCategories(newList, oldList, ledgerId) {
   const newIds = new Set(newList.map((c) => c.id));
   const toDelete = oldList.filter((c) => !newIds.has(c.id)).map((c) => c.id);
   if (toDelete.length) {
     const { error } = await supabase.from("categories").delete().in("id", toDelete);
     if (error) throw error;
   }
-  const toInsert = newList.filter((c) => !isUuid(c.id)).map((c, i) => toRowCategory(c, i));
+  const toInsert = newList
+    .filter((c) => !isUuid(c.id))
+    .map((c, i) => ({ ...toRowCategory(c, i), ledger_id: ledgerId }));
   if (toInsert.length) {
     const { error } = await supabase.from("categories").insert(toInsert);
     if (error) throw error;
@@ -98,15 +153,24 @@ export async function persistCategories(newList, oldList) {
     const { error } = await supabase.from("categories").update(toRowCategory(c)).eq("id", c.id);
     if (error) throw error;
   }
-  return fetchCategories();
+  return fetchCategories(ledgerId);
 }
 
-/* ---- realtime: fire onChange whenever either table changes ---- */
+/* ---- realtime ---- */
+// Postgres filters can't be applied to DELETEs (the old row isn't sent), so this
+// stays unfiltered and the caller refetches its own ledger. Cheap at this scale.
 export function subscribeLedger(onChange) {
   const ch = supabase
     .channel("ledger-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+export function subscribeLedgerList(onChange) {
+  const ch = supabase
+    .channel("ledgers-list")
+    .on("postgres_changes", { event: "*", schema: "public", table: "ledgers" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
 }

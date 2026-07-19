@@ -13,18 +13,30 @@ create table if not exists members (
   label   text                                    -- 'tommy' | 'wing' (optional)
 );
 
+-- One row per ledger: Household, Personal, Travel, …
+-- Categories, expenses and budgets all belong to exactly one ledger.
+create table if not exists ledgers (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  sort_order int  not null default 0,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists categories (
   id             uuid primary key default gen_random_uuid(),
-  name           text not null unique,
+  ledger_id      uuid not null references ledgers(id) on delete cascade,
+  name           text not null,
   name_zh        text,
   color          text not null default '#64748B',
   monthly_budget numeric(10,2),
   sort_order     int  not null default 0,
-  created_at     timestamptz not null default now()
+  created_at     timestamptz not null default now(),
+  unique (ledger_id, name)          -- Household and Travel may each have a 'Food'
 );
 
 create table if not exists expenses (
   id               uuid primary key default gen_random_uuid(),
+  ledger_id        uuid not null references ledgers(id) on delete cascade,
   description      text not null,
   amount           numeric(10,2) not null check (amount >= 0),
   category_id      uuid references categories(id) on delete set null,
@@ -42,6 +54,7 @@ create index if not exists idx_expenses_category on expenses (category_id);
 
 create table if not exists budgets (                -- Step 3
   id          uuid primary key default gen_random_uuid(),
+  ledger_id   uuid not null references ledgers(id) on delete cascade,
   category_id uuid not null references categories(id) on delete cascade,
   month       date not null,
   amount      numeric(10,2) not null check (amount >= 0),
@@ -58,6 +71,7 @@ create trigger trg_expenses_touch before update on expenses
 
 -- ---------------- Row Level Security ----------------
 alter table members    enable row level security;
+alter table ledgers    enable row level security;
 alter table categories enable row level security;
 alter table expenses   enable row level security;
 alter table budgets    enable row level security;
@@ -74,7 +88,7 @@ create policy members_self on members for select using (user_id = auth.uid());
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['categories','expenses','budgets'] loop
+  foreach tbl in array array['ledgers','categories','expenses','budgets'] loop
     execute format('drop policy if exists rw_%1$s on %1$s;', tbl);
     execute format(
       'create policy rw_%1$s on %1$s for all using (is_member()) with check (is_member());', tbl);
@@ -83,4 +97,4 @@ end $$;
 
 -- ---------------- Realtime ----------------
 -- (If this errors with "already member of publication", it's already on — ignore.)
-alter publication supabase_realtime add table expenses, categories, budgets;
+alter publication supabase_realtime add table expenses, categories, budgets, ledgers;
