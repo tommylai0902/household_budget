@@ -76,6 +76,18 @@ create table if not exists expenses (
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
+-- The lines a scanned receipt was broken into. `amount` is the printed price
+-- with its share of the tax folded in, so these sum to the expense total.
+-- Expenses entered by hand have no rows here.
+create table if not exists expense_items (
+  id         uuid primary key default gen_random_uuid(),
+  expense_id uuid not null references expenses(id) on delete cascade,
+  name       text not null,
+  amount     numeric(10,2) not null,
+  sort_order int not null default 0
+);
+create index if not exists idx_expense_items_expense on expense_items (expense_id, sort_order);
+
 -- Who shares a given expense. Absent for personal expenses; for shared ones it
 -- is whoever was ticked, which need not be everyone in the ledger.
 create table if not exists expense_splits (
@@ -113,6 +125,7 @@ alter table ledgers        enable row level security;
 alter table ledger_members enable row level security;
 alter table merchants      enable row level security;
 alter table expense_splits enable row level security;
+alter table expense_items  enable row level security;
 alter table categories enable row level security;
 alter table expenses   enable row level security;
 alter table budgets    enable row level security;
@@ -129,7 +142,7 @@ create policy members_self on members for select using (user_id = auth.uid());
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['ledgers','ledger_members','merchants','categories','expenses','expense_splits','budgets'] loop
+  foreach tbl in array array['ledgers','ledger_members','merchants','categories','expenses','expense_splits','expense_items','budgets'] loop
     execute format('drop policy if exists rw_%1$s on %1$s;', tbl);
     execute format(
       'create policy rw_%1$s on %1$s for all using (is_member()) with check (is_member());', tbl);
@@ -138,4 +151,4 @@ end $$;
 
 -- ---------------- Realtime ----------------
 -- (If this errors with "already member of publication", it's already on — ignore.)
-alter publication supabase_realtime add table expenses, categories, budgets, ledgers, ledger_members, merchants, expense_splits;
+alter publication supabase_realtime add table expenses, categories, budgets, ledgers, ledger_members, merchants, expense_splits, expense_items;

@@ -722,10 +722,21 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
       {/* Receipt items — stub for the future scan feature */}
       <div>
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("receiptTitle")}</div>
-        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 10, padding: "18px 16px", textAlign: "center", color: SUB, background: "#fff" }}>
-          <Receipt size={22} style={{ opacity: 0.4 }} />
-          <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5 }}>{t("receiptEmpty")}</div>
-        </div>
+        {expense.items?.length ? (
+          <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, overflow: "hidden" }}>
+            {expense.items.map((i, idx) => (
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 14px", borderTop: idx === 0 ? "none" : `1px solid ${LINE}`, fontSize: 13 }}>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</span>
+                <span style={{ color: SUB, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{money(i.amount)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ border: `1px dashed ${LINE}`, borderRadius: 10, padding: "18px 16px", textAlign: "center", color: SUB, background: "#fff" }}>
+            <Receipt size={22} style={{ opacity: 0.4 }} />
+            <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5 }}>{t("receiptEmpty")}</div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -776,7 +787,10 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   const [scanErr, setScanErr] = useState("");
   const [remember, setRemember] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
-  const [items, setItems] = useState([]);          // { name, price, mode: split|personal|drop }
+  // { name, price, mode: split|personal|drop }. Reopening a saved expense brings
+  // its stored lines back; those prices already include their share of the tax,
+  // which is why scanTotal stays null and the ratio below comes out as 1.
+  const [items, setItems] = useState(() => (initial?.items || []).map((i) => ({ name: i.name, price: i.amount, mode: "split" })));
   const [scanTotal, setScanTotal] = useState(null); // receipt total, tax included
   const [personalLedgerId, setPersonalLedgerId] = useState(ledgers[0]?.id || null);
 
@@ -828,14 +842,11 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   const personalTotal = round2(sumOf("personal") * taxRatio);
 
   // With items on screen the amount is theirs to determine; typing over it would
-  // only be undone the next time a row changed.
+  // only be undone the next time a row changed. The note is left alone — the
+  // breakdown is already listed above it.
   useEffect(() => {
     if (!items.length) return;
-    setD((prev) => ({
-      ...prev,
-      amount: String(round2(sumOf("split") * taxRatio)),
-      note: splitItems.map((i) => `${i.name} ${money(round2(i.price * taxRatio))}`).join("\n"),
-    }));
+    setD((prev) => ({ ...prev, amount: String(round2(sumOf("split") * taxRatio)) }));
   }, [items, taxRatio]);
 
   const setItemMode = (idx, mode) => setItems(items.map((it, i) => (i === idx ? { ...it, mode } : it)));
@@ -865,16 +876,22 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
     setBusy(true);
     // Items marked personal leave as their own unsplit expense in the ledger you
     // chose, so they never reach this ledger's settle-up.
+    const asItems = (list) => list.map((i) => ({ name: i.name, amount: round2(i.price * taxRatio) }));
     const personal = personalItems.length && personalLedgerId && personalTotal > 0
       ? {
           ledgerId: personalLedgerId,
           amount: personalTotal,
           description: typed,
           date: d.date,
-          note: personalItems.map((i) => `${i.name} ${money(round2(i.price * taxRatio))}`).join("\n"),
+          note: null,
+          items: asItems(personalItems),
         }
       : null;
-    await onSave({ ...d, description: typed, amount: finalAmount }, remember && canRemember ? typed : null, personal);
+    await onSave(
+      { ...d, description: typed, amount: finalAmount, items: asItems(splitItems) },
+      remember && canRemember ? typed : null,
+      personal,
+    );
   };
 
   return (
@@ -1021,8 +1038,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       <Field label={t("noteLabel")}>
         {/* Textarea, not an input: scanned item lists are one line per item. */}
         <textarea value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder={t("notePh")}
-          rows={items.length ? Math.min(8, splitItems.length + 1) : 2}
-          style={{ ...input, resize: "vertical", lineHeight: 1.5, fontFamily: "inherit" }} />
+          rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5, fontFamily: "inherit" }} />
       </Field>
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>

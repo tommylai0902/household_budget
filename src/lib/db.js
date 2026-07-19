@@ -17,6 +17,10 @@ const toAppExpense = (r) => ({
   date: r.transaction_date, note: r.note || "", paidById: r.paid_by_id,
   split: r.split_type === "shared_50" ? "shared" : "personal", receiptUrl: r.receipt_url || null,
   sharedWith: (r.expense_splits || []).map((s) => s.member_id),
+  items: (r.expense_items || [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((i) => ({ name: i.name, amount: Number(i.amount) })),
 });
 const toRowExpense = (e) => ({
   description: e.description,
@@ -117,7 +121,8 @@ export async function fetchCategories(ledgerId) {
 export async function fetchExpenses(ledgerId) {
   // Embedded select pulls each expense's sharers in the same round trip.
   const { data, error } = await supabase
-    .from("expenses").select("*, expense_splits(member_id)").eq("ledger_id", ledgerId)
+    .from("expenses").select("*, expense_splits(member_id), expense_items(name, amount, sort_order)")
+    .eq("ledger_id", ledgerId)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -127,6 +132,18 @@ export async function fetchExpenses(ledgerId) {
 /* ---- expense writes ---- */
 // Sharers live in their own table, so both writes replace the set wholesale
 // rather than trying to diff it — an expense has a handful of them at most.
+// Same replace-wholesale approach as splits — a receipt has a handful of lines.
+async function writeItems(expenseId, e) {
+  const { error: del } = await supabase.from("expense_items").delete().eq("expense_id", expenseId);
+  if (del) throw del;
+  const rows = (e.items || [])
+    .filter((i) => i && i.name)
+    .map((i, idx) => ({ expense_id: expenseId, name: i.name, amount: Number(i.amount) || 0, sort_order: idx }));
+  if (!rows.length) return;
+  const { error } = await supabase.from("expense_items").insert(rows);
+  if (error) throw error;
+}
+
 async function writeSplits(expenseId, e) {
   const { error: del } = await supabase.from("expense_splits").delete().eq("expense_id", expenseId);
   if (del) throw del;
@@ -142,6 +159,7 @@ export async function insertExpense(e, ledgerId) {
     .from("expenses").insert({ ...toRowExpense(e), ledger_id: ledgerId }).select("id").single();
   if (error) throw error;
   await writeSplits(data.id, e);
+  await writeItems(data.id, e);
 }
 // The personal half of a split receipt, landing in whichever ledger was chosen.
 // That ledger has its own categories and members, so the category is left unset
@@ -151,7 +169,7 @@ export async function insertPersonalExpense(spec, payerName) {
   const members = await fetchMembers(spec.ledgerId);
   const payer = members.find((m) => m.name.toLowerCase() === (payerName || "").toLowerCase()) || members[0];
   if (!payer) throw new Error("that ledger has no members yet");
-  const { error } = await supabase.from("expenses").insert({
+  const { data, error } = await supabase.from("expenses").insert({
     ledger_id: spec.ledgerId,
     description: spec.description,
     amount: Number(spec.amount),
@@ -160,14 +178,16 @@ export async function insertPersonalExpense(spec, payerName) {
     paid_by_id: payer.id,
     split_type: "personal",
     category_id: null,
-  });
+  }).select("id").single();
   if (error) throw error;
+  await writeItems(data.id, spec); // it keeps its own share of the breakdown
 }
 
 export async function updateExpense(id, e) {
   const { error } = await supabase.from("expenses").update(toRowExpense(e)).eq("id", id);
   if (error) throw error;
   await writeSplits(id, e);
+  await writeItems(id, e);
 }
 export async function setExpenseCategory(id, categoryId) {
   const { error } = await supabase.from("expenses").update({ category_id: categoryId }).eq("id", id);
