@@ -63,6 +63,11 @@ const STRINGS = {
     budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
     splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
+    items: "Receipt items", itemSplit: "Split", itemPersonal: "Personal", itemDrop: "Not mine",
+    itemsHint: "Tax is shared out across whatever you keep, in proportion to price.",
+    itemsPersonalNote: "{n} personal · {amount} — saved as a second, unsplit expense",
+    itemsDropped: "{n} removed",
+    itemsClear: "Clear items", itemsTotalsOff: "Items add up to {sum}, receipt says {total}",
     splitNobody: "Tick at least one person to split between.",
     sharedAmong: "Split between {names}",
     stores: "Saved shops", editStores: "Edit saved shops", rememberStore: 'Remember "{name}"',
@@ -120,6 +125,11 @@ const STRINGS = {
     budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
+    items: "收據明細", itemSplit: "分帳", itemPersonal: "私人", itemDrop: "唔計",
+    itemsHint: "稅款會按價錢比例攤分落你保留嘅項目。",
+    itemsPersonalNote: "{n} 件私人 · {amount} — 會另存一張唔分帳嘅支出",
+    itemsDropped: "已剔走 {n} 件",
+    itemsClear: "清除明細", itemsTotalsOff: "明細加埋係 {sum}，收據寫住 {total}",
     splitNobody: "至少要剔一個人先分到帳。",
     sharedAmong: "由 {names} 平分",
     stores: "已記住嘅店家", editStores: "編輯店家", rememberStore: "記住「{name}」",
@@ -399,16 +409,19 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
+  const [allLedgers, setAllLedgers] = useState([]);
 
   const refresh = useCallback(async () => {
     try {
       setError("");
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
-      const [cats, exps, mems, buds, shops] = await Promise.all([
+      const [cats, exps, mems, buds, shops, leds] = await Promise.all([
         db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id),
         db.fetchMembers(ledger.id), db.fetchBudgets(ledger.id), db.fetchMerchants(ledger.id),
+        db.fetchLedgers(), // for sending personal receipt items elsewhere
       ]);
+      setAllLedgers(leds);
       setMembers(mems);
       setBudgets(buds);
       setMerchants(shops);
@@ -443,11 +456,12 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
     } catch (e) { setError(e.message); }
   };
 
-  const upsertExpense = async (draft, rememberName) => {
+  const upsertExpense = async (draft, rememberName, personal) => {
     try {
       if (rememberName) await db.rememberMerchant(ledger.id, rememberName);
       if (draft.id) await db.updateExpense(draft.id, draft);
       else await db.insertExpense(draft, ledger.id);
+      if (personal) await db.insertPersonalExpense(personal, memberById(members, draft.paidById)?.name);
       setEditing(null);
       refresh();
     } catch (e) { setError(e.message); }
@@ -587,7 +601,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
       )}
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members}
-          merchants={merchants} lang={lang} t={t}
+          merchants={merchants} ledgers={allLedgers} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense}
           onEditCategories={() => setManagingCats(true)} onEditMembers={() => setManagingMembers(true)}
           onEditStores={() => setManagingStores(true)} defaultMonth={month} />
@@ -750,7 +764,7 @@ async function toScaledJpegBase64(file, max = 2000) {
   });
 }
 
-function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose, onSave, onEditCategories, onEditMembers, onEditStores, defaultMonth }) {
+function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditCategories, onEditMembers, onEditStores, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
@@ -762,6 +776,9 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
   const [scanErr, setScanErr] = useState("");
   const [remember, setRemember] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [items, setItems] = useState([]);          // { name, price, mode: split|personal|drop }
+  const [scanTotal, setScanTotal] = useState(null); // receipt total, tax included
+  const [personalLedgerId, setPersonalLedgerId] = useState(ledgers[0]?.id || null);
 
   // Scanning only prefills the form — you still review and save it yourself.
   const scanReceipt = async (file) => {
@@ -789,12 +806,39 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
         categoryId: categories.find((c) => c.name === out.category)?.id ?? prev.categoryId,
       }));
       setAddHst(false); // a receipt total already includes tax
+      setScanTotal(out.amount ?? null);
+      setItems((out.items || []).map((i) => ({ name: i.name, price: Number(i.price) || 0, mode: "split" })));
     } catch (e) {
       setScanErr(e.message);
     } finally {
       setScanning(false);
     }
   };
+
+  // Line items are printed pre-tax while the receipt total includes it, so the
+  // total is shared out across whatever you keep, in proportion to price. Keep
+  // everything and the parts add back up to the printed total.
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const itemsSum = items.reduce((s, i) => s + i.price, 0);
+  const taxRatio = items.length && itemsSum > 0 && scanTotal ? scanTotal / itemsSum : 1;
+  const sumOf = (mode) => items.filter((i) => i.mode === mode).reduce((s, i) => s + i.price, 0);
+  const splitItems = items.filter((i) => i.mode === "split");
+  const personalItems = items.filter((i) => i.mode === "personal");
+  const droppedCount = items.filter((i) => i.mode === "drop").length;
+  const personalTotal = round2(sumOf("personal") * taxRatio);
+
+  // With items on screen the amount is theirs to determine; typing over it would
+  // only be undone the next time a row changed.
+  useEffect(() => {
+    if (!items.length) return;
+    setD((prev) => ({
+      ...prev,
+      amount: String(round2(sumOf("split") * taxRatio)),
+      note: splitItems.map((i) => `${i.name} ${money(round2(i.price * taxRatio))}`).join("\n"),
+    }));
+  }, [items, taxRatio]);
+
+  const setItemMode = (idx, mode) => setItems(items.map((it, i) => (i === idx ? { ...it, mode } : it)));
 
   const base = Number(d.amount) || 0;
   const finalAmount = addHst ? Math.round(base * 1.13 * 100) / 100 : base;
@@ -819,7 +863,18 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
   const submit = async () => {
     if (!valid) return;
     setBusy(true);
-    await onSave({ ...d, description: typed, amount: finalAmount }, remember && canRemember ? typed : null);
+    // Items marked personal leave as their own unsplit expense in the ledger you
+    // chose, so they never reach this ledger's settle-up.
+    const personal = personalItems.length && personalLedgerId && personalTotal > 0
+      ? {
+          ledgerId: personalLedgerId,
+          amount: personalTotal,
+          description: typed,
+          date: d.date,
+          note: personalItems.map((i) => `${i.name} ${money(round2(i.price * taxRatio))}`).join("\n"),
+        }
+      : null;
+    await onSave({ ...d, description: typed, amount: finalAmount }, remember && canRemember ? typed : null, personal);
   };
 
   return (
@@ -883,6 +938,41 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
         <input type="checkbox" checked={addHst} onChange={(e) => setAddHst(e.target.checked)} />
         {t("addHst")} {addHst && base > 0 && <span style={{ color: INK, fontWeight: 600 }}>→ {money(finalAmount)}</span>}
       </label>
+      {items.length > 0 && (
+        <Field label={t("items")}>
+          <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden" }}>
+            {items.map((it, idx) => (
+              <div key={idx} style={{ padding: "9px 12px", borderTop: idx === 0 ? "none" : `1px solid ${LINE}`, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", opacity: it.mode === "drop" ? 0.45 : 1 }}>
+                <span style={{ flex: 1, minWidth: 110, fontSize: 13, fontWeight: 600, textDecoration: it.mode === "drop" ? "line-through" : "none" }}>{it.name}</span>
+                <span style={{ fontSize: 13, color: SUB, fontVariantNumeric: "tabular-nums" }}>{money(round2(it.price * taxRatio))}</span>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {[["split", t("itemSplit"), Users], ["personal", t("itemPersonal"), User], ["drop", t("itemDrop"), Trash2]].map(([mode, label, Icon]) => (
+                    <button key={mode} onClick={() => setItemMode(idx, mode)} aria-label={label} title={label}
+                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : "#fff", color: it.mode === mode ? "#fff" : SUB }}>
+                      <Icon size={13} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: SUB, marginTop: 6, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <span>{t("itemsHint")}{droppedCount > 0 && ` · ${t("itemsDropped", { n: droppedCount })}`}</span>
+            <button onClick={() => { setItems([]); setScanTotal(null); }} style={{ ...editCatsPill, padding: "3px 8px", fontSize: 11 }}>{t("itemsClear")}</button>
+          </div>
+          {personalItems.length > 0 && (
+            <div style={{ marginTop: 8, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 6 }}>
+                {t("itemsPersonalNote", { n: personalItems.length, amount: money(personalTotal) })}
+              </div>
+              <select value={personalLedgerId || ""} onChange={(e) => setPersonalLedgerId(e.target.value)} style={{ ...input, padding: "8px 10px", fontSize: 13 }}>
+                {ledgers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </div>
+          )}
+        </Field>
+      )}
+
       <Field label={t("category")}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {categories.map((c) => (
@@ -929,7 +1019,10 @@ function ExpenseForm({ initial, categories, members, merchants, lang, t, onClose
         )}
       </Field>
       <Field label={t("noteLabel")}>
-        <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder={t("notePh")} style={input} />
+        {/* Textarea, not an input: scanned item lists are one line per item. */}
+        <textarea value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder={t("notePh")}
+          rows={items.length ? Math.min(8, splitItems.length + 1) : 2}
+          style={{ ...input, resize: "vertical", lineHeight: 1.5, fontFamily: "inherit" }} />
       </Field>
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>

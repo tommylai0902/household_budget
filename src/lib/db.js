@@ -143,6 +143,27 @@ export async function insertExpense(e, ledgerId) {
   if (error) throw error;
   await writeSplits(data.id, e);
 }
+// The personal half of a split receipt, landing in whichever ledger was chosen.
+// That ledger has its own categories and members, so the category is left unset
+// (it shows as Uncategorised, which is visible rather than a wrong guess) and the
+// payer is matched by name, falling back to the first member.
+export async function insertPersonalExpense(spec, payerName) {
+  const members = await fetchMembers(spec.ledgerId);
+  const payer = members.find((m) => m.name.toLowerCase() === (payerName || "").toLowerCase()) || members[0];
+  if (!payer) throw new Error("that ledger has no members yet");
+  const { error } = await supabase.from("expenses").insert({
+    ledger_id: spec.ledgerId,
+    description: spec.description,
+    amount: Number(spec.amount),
+    transaction_date: spec.date,
+    note: spec.note || null,
+    paid_by_id: payer.id,
+    split_type: "personal",
+    category_id: null,
+  });
+  if (error) throw error;
+}
+
 export async function updateExpense(id, e) {
   const { error } = await supabase.from("expenses").update(toRowExpense(e)).eq("id", id);
   if (error) throw error;

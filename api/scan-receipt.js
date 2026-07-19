@@ -47,11 +47,15 @@ export default async function handler(req, res) {
     const interaction = await client.interactions.create({
       model: "gemini-3.5-flash",
       system_instruction:
-        "You read photos of retail receipts and return the single expense they represent. " +
+        "You read photos of retail receipts. " +
         "Amount is the final total actually paid, including tax and tip. " +
         `If no date is printed on the receipt, use ${today}. ` +
         "Description is the merchant name, or what was bought if the merchant is unclear. " +
-        "Pick the closest category from the allowed list.",
+        "Pick the closest category from the allowed list. " +
+        "Also list the individual line items with their printed prices, in the order they " +
+        "appear. Use the price for that line as printed — do not add tax to it, and do not " +
+        "invent items. Skip subtotal, tax, total, change and payment-method lines. " +
+        "If the line items are not legible, return an empty items list rather than guessing.",
       input: [
         { type: "text", text: "Extract this receipt." },
         { type: "image", data: image, mime_type: mediaType },
@@ -66,8 +70,18 @@ export default async function handler(req, res) {
             amount: { type: "number" },
             date: { type: "string" },
             category: { type: "string", enum: names },
+            // Line items as printed, pre-tax. The client prorates tax across
+            // whichever ones are kept, so these must not already include it.
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { name: { type: "string" }, price: { type: "number" } },
+                required: ["name", "price"],
+              },
+            },
           },
-          required: ["description", "amount", "date", "category"],
+          required: ["description", "amount", "date", "category", "items"],
         },
       },
     });
