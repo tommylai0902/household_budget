@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen,
+  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
@@ -51,6 +51,12 @@ const STRINGS = {
     sharedLine: "Split {n} ways — {amount} each",
     members: "Members", manageMembers: "Edit members", editMembers: "Edit members",
     memberHasExpenses: "That member still has expenses in this ledger. Reassign or delete them first.",
+    budget: "Budget", budgetFor: "Budget for {month}", budgetTotal: "All categories",
+    budgetNone: "No budgets set for {month}. Give any category an amount below.",
+    budgetSpent: "Spent", budgetLeft: "Left", budgetOver: "Over budget",
+    budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget",
+    budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
+    budgetUncat: "Uncategorised spending isn't counted against any category budget.",
     newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
@@ -95,6 +101,12 @@ const STRINGS = {
     sharedLine: "{n} 人平分 — 每人 {amount}",
     members: "成員", manageMembers: "編輯成員", editMembers: "編輯成員",
     memberHasExpenses: "呢位成員喺呢本帳簿仲有支出，要先改咗付款人或者刪走嗰啲支出。",
+    budget: "預算", budgetFor: "{month}預算", budgetTotal: "所有類別",
+    budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
+    budgetSpent: "已用", budgetLeft: "剩餘", budgetOver: "超出預算",
+    budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算",
+    budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
+    budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
@@ -354,16 +366,20 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [detail, setDetail] = useState(null);      // null | expense
   const [managingCats, setManagingCats] = useState(false);
   const [managingMembers, setManagingMembers] = useState(false);
+  const [showBudget, setShowBudget] = useState(false);
+  const [budgets, setBudgets] = useState(new Map());
 
   const refresh = useCallback(async () => {
     try {
       setError("");
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
-      const [cats, exps, mems] = await Promise.all([
-        db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id), db.fetchMembers(ledger.id),
+      const [cats, exps, mems, buds] = await Promise.all([
+        db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id),
+        db.fetchMembers(ledger.id), db.fetchBudgets(ledger.id),
       ]);
       setMembers(mems);
+      setBudgets(buds);
       setCategories(cats);
       setExpenses(exps);
       setReady(true);
@@ -377,6 +393,23 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   useEffect(() => db.subscribeLedger(() => refresh()), [refresh]); // live sync
 
   const catById = (id) => categories.find((c) => c.id === id);
+
+  // Spend per category for the month on screen, for the budget bars.
+  const spentByCategory = useMemo(() => {
+    const m = new Map();
+    for (const e of expenses) {
+      if (monthOf(e.date) !== month || !e.categoryId) continue;
+      m.set(e.categoryId, (m.get(e.categoryId) || 0) + (Number(e.amount) || 0));
+    }
+    return m;
+  }, [expenses, month]);
+
+  const saveBudgets = async (entries) => {
+    try {
+      for (const { categoryId, amount } of entries) await db.setBudget(ledger.id, categoryId, month, amount);
+      setBudgets(await db.fetchBudgets(ledger.id));
+    } catch (e) { setError(e.message); }
+  };
 
   const upsertExpense = async (draft) => {
     try {
@@ -446,7 +479,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} />
           </div>
         </div>
 
@@ -528,6 +561,11 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
       )}
       {managingMembers && (
         <MemberManager members={members} t={t} onChange={commitMembers} onClose={() => setManagingMembers(false)} />
+      )}
+      {showBudget && (
+        <BudgetPanel month={month} monthLabel={label} categories={categories} budgets={budgets}
+          spentByCategory={spentByCategory} spent={summary.total} t={t}
+          onSave={saveBudgets} onClose={() => setShowBudget(false)} />
       )}
     </div>
   );
@@ -831,6 +869,110 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
   );
 }
 
+// Green under 80% of a budget, amber approaching it, red once past. A bar never
+// overflows its track — how far over you are is in the number, not the bar.
+const budgetBarColor = (spent, budget) =>
+  !budget ? LINE : spent > budget ? "#DC2626" : spent / budget > 0.8 ? "#D97706" : TEAL;
+
+function BudgetBar({ spent, budget, height = 8 }) {
+  const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+  return (
+    <div style={{ height, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
+      <div style={{ width: `${budget > 0 ? Math.max(pct, spent > 0 ? 2 : 0) : 0}%`, height: "100%", background: budgetBarColor(spent, budget), borderRadius: 99, transition: "width .25s ease" }} />
+    </div>
+  );
+}
+
+function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, spent, t, onSave, onClose }) {
+  // One draft per category; the month's budget is their sum, not its own field.
+  const [drafts, setDrafts] = useState(() =>
+    Object.fromEntries(categories.map((c) => {
+      const v = budgets.get(db.budgetKey(month, c.id));
+      return [c.id, v == null ? "" : String(v)];
+    })),
+  );
+  const [busy, setBusy] = useState(false);
+
+  const budgetOf = (id) => Number(drafts[id]) || 0;
+  const totalBudget = categories.reduce((sum, c) => sum + budgetOf(c.id), 0);
+  const left = totalBudget - spent;
+  const over = left < 0;
+  const uncategorised = spent - categories.reduce((s, c) => s + (spentByCategory.get(c.id) || 0), 0);
+
+  const save = async () => {
+    setBusy(true);
+    await onSave(categories.map((c) => ({ categoryId: c.id, amount: drafts[c.id].trim() === "" ? null : budgetOf(c.id) })));
+    setBusy(false);
+  };
+
+  return (
+    <Overlay onClose={onClose} title={t("budget")} t={t}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
+
+      {/* Whole-month roll-up */}
+      <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("budgetTotal")}</span>
+          {totalBudget > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: SUB }}>{t("budgetPct", { pct: Math.round((spent / totalBudget) * 100) })}</span>}
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(spent)}</span>
+          {totalBudget > 0 && <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>/ {money(totalBudget)}</span>}
+        </div>
+        <BudgetBar spent={spent} budget={totalBudget} height={12} />
+        {totalBudget > 0 ? (
+          <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>
+              {over ? t("budgetOver") : t("budgetLeft")}
+            </span>
+            <span style={{ fontSize: 22, fontWeight: 800, color: over ? "#DC2626" : TEAL, fontVariantNumeric: "tabular-nums" }}>
+              {money(Math.abs(left))}
+            </span>
+          </div>
+        ) : (
+          <div style={{ marginTop: 12, fontSize: 13, color: SUB }}>{t("budgetNone", { month: monthLabel })}</div>
+        )}
+      </div>
+
+      {/* Per-category */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {categories.map((c) => {
+          const s = spentByCategory.get(c.id) || 0;
+          const b = budgetOf(c.id);
+          return (
+            <div key={c.id}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 99, background: c.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catName(c)}</span>
+                <span style={{ fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                  {money(s)}{b > 0 ? ` / ${money(b)}` : ""}
+                </span>
+                <div style={{ position: "relative", width: 104, flexShrink: 0 }}>
+                  <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>$</span>
+                  <input type="number" inputMode="decimal" value={drafts[c.id] ?? ""}
+                    onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })}
+                    onKeyDown={(e) => e.key === "Enter" && save()}
+                    placeholder="0.00" style={{ ...input, padding: "7px 8px 7px 20px", fontSize: 13 }} />
+                </div>
+              </div>
+              <BudgetBar spent={s} budget={b} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ fontSize: 12, color: SUB }}>
+        {t("budgetClearHint")}
+        {uncategorised > 0.005 && <> · {t("budgetUncat")}</>}
+      </div>
+
+      <button onClick={save} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
+        {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("budgetSave")}
+      </button>
+    </Overlay>
+  );
+}
+
 function MemberManager({ members, t, onChange, onClose }) {
   const [list, setList] = useState(members);
   const [name, setName] = useState("");
@@ -873,7 +1015,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang }) {
+function HeaderMenu({ t, lang, changeLang, onBudget }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -893,6 +1035,10 @@ function HeaderMenu({ t, lang, changeLang }) {
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
+          <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
+            <PieChart size={15} /> {t("budget")}
+          </button>
+          <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
           <div style={{ padding: "6px 10px 4px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: SUB }}>{t("language")}</div>
           <div style={{ padding: "0 10px 8px" }}><LangToggle lang={lang} changeLang={changeLang} /></div>
           <div style={{ borderTop: `1px solid ${LINE}`, margin: "2px 0 4px" }} />

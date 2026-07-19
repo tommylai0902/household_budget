@@ -66,7 +66,9 @@ create table if not exists expenses (
 create index if not exists idx_expenses_date     on expenses (transaction_date desc);
 create index if not exists idx_expenses_category on expenses (category_id);
 
-create table if not exists budgets (                -- Step 3
+-- A budget per category per month; the month's overall budget is their sum.
+-- `month` is stored as the first day of that month.
+create table if not exists budgets (
   id          uuid primary key default gen_random_uuid(),
   ledger_id   uuid not null references ledgers(id) on delete cascade,
   category_id uuid not null references categories(id) on delete cascade,

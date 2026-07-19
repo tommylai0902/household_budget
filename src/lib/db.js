@@ -207,6 +207,35 @@ export async function persistCategories(newList, oldList, ledgerId) {
   return fetchCategories(ledgerId);
 }
 
+/* ---- budgets: one figure per category per month ---- */
+// `month` is the app's "YYYY-MM"; the column stores the first of that month.
+const monthToDate = (month) => `${month}-01`;
+export const budgetKey = (month, categoryId) => `${month}|${categoryId}`;
+
+export async function fetchBudgets(ledgerId) {
+  const { data, error } = await supabase
+    .from("budgets").select("month, amount, category_id").eq("ledger_id", ledgerId);
+  if (error) throw error;
+  return new Map(data.map((r) => [budgetKey(String(r.month).slice(0, 7), r.category_id), Number(r.amount)]));
+}
+
+// Clearing the field removes the row rather than storing a 0 budget, so
+// "no budget set" and "budget of nothing" stay distinguishable.
+export async function setBudget(ledgerId, categoryId, month, amount) {
+  if (amount == null || amount === "") {
+    const { error } = await supabase
+      .from("budgets").delete()
+      .eq("ledger_id", ledgerId).eq("category_id", categoryId).eq("month", monthToDate(month));
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase.from("budgets").upsert(
+    { ledger_id: ledgerId, category_id: categoryId, month: monthToDate(month), amount: Number(amount) },
+    { onConflict: "category_id,month" },
+  );
+  if (error) throw error;
+}
+
 /* ---- realtime ---- */
 // Postgres filters can't be applied to DELETEs (the old row isn't sent), so this
 // stays unfiltered and the caller refetches its own ledger. Cheap at this scale.
@@ -216,6 +245,7 @@ export function subscribeLedger(onChange) {
     .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "ledger_members" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "budgets" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
