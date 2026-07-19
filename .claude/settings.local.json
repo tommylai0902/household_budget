@@ -8,7 +8,10 @@
       "PowerShell(git config --global user.email)",
       "PowerShell(vercel whoami 2>&1)",
       "PowerShell(git init -b main)",
-      "PowerShell(git add -A)"
+      "PowerShell(git add -A)",
+      "PowerShell(git remote add origin https://github.com/tommylai0902/household_budget.git 2>&1)",
+      "PowerShell(git ls-remote origin 2>&1)",
+      "PowerShell(git push -u origin main 2>&1)"
     ]
   }
 }

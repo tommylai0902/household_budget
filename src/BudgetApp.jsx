@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, Receipt, ChevronRight, LogOut, Loader2,
+  Users, User, ArrowRight, Receipt, ChevronRight, LogOut, Loader2, Camera,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
@@ -53,6 +53,8 @@ const STRINGS = {
     owesLine: "{debtor} owes {creditor} {amount}", personalLine: "Personal expense — not split",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
+    scanReceipt: "Scan receipt", scanning: "Reading receipt…",
+    scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
   },
   zh: {
     eyebrow: "家庭帳簿",
@@ -80,6 +82,8 @@ const STRINGS = {
     owesLine: "{debtor} 欠 {creditor} {amount}", personalLine: "個人支出，不分帳",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
+    scanReceipt: "掃描收據", scanning: "讀取收據中…",
+    scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
   },
 };
 const interpolate = (str, vars) =>
@@ -457,6 +461,24 @@ function FieldRow({ label, children, last }) {
   );
 }
 
+// Phone photos run ~5MB; Vercel caps request bodies at 4.5MB and large images
+// cost more vision tokens. 2000px on the long edge still reads receipt text fine.
+async function toScaledJpegBase64(file, max = 2000) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result.split(",")[1]);
+    fr.onerror = () => reject(new Error("could not read file"));
+    fr.readAsDataURL(blob);
+  });
+}
+
 function ExpenseForm({ initial, categories, lang, t, onClose, onSave, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
@@ -464,6 +486,41 @@ function ExpenseForm({ initial, categories, lang, t, onClose, onSave, defaultMon
   });
   const [addHst, setAddHst] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanErr, setScanErr] = useState("");
+
+  // Scanning only prefills the form — you still review and save it yourself.
+  const scanReceipt = async (file) => {
+    setScanErr(""); setScanning(true);
+    try {
+      const image = await toScaledJpegBase64(file);
+      const { data } = await supabase.auth.getSession();
+      const res = await fetch("/api/scan-receipt", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          image,
+          mediaType: "image/jpeg",
+          categories: categories.map((c) => c.name),
+          token: data.session?.access_token,
+        }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || res.statusText);
+      setD((prev) => ({
+        ...prev,
+        description: out.description || prev.description,
+        amount: out.amount != null ? String(out.amount) : prev.amount,
+        date: out.date || prev.date,
+        categoryId: categories.find((c) => c.name === out.category)?.id ?? prev.categoryId,
+      }));
+      setAddHst(false); // a receipt total already includes tax
+    } catch (e) {
+      setScanErr(e.message);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const base = Number(d.amount) || 0;
   const finalAmount = addHst ? Math.round(base * 1.13 * 100) / 100 : base;
@@ -477,6 +534,15 @@ function ExpenseForm({ initial, categories, lang, t, onClose, onSave, defaultMon
 
   return (
     <Overlay onClose={onClose} title={initial ? t("editExpense") : t("addExpense")} t={t}>
+      <label style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+        {scanning ? <Loader2 size={18} className="spin" /> : <Camera size={18} />}
+        {scanning ? t("scanning") : t("scanReceipt")}
+        <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
+      </label>
+      {scanErr && <div style={{ color: "#DC2626", fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
+      <div style={{ textAlign: "center", color: SUB, fontSize: 12, margin: "-2px 0 2px" }}>{t("scanHint")}</div>
+
       <Field label={t("formWhat")}>
         <input autoFocus value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder={t("formWhatPh")} style={input} />
       </Field>
