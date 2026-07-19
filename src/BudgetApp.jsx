@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart, Store,
+  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart, Store, Languages,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
@@ -618,6 +618,8 @@ function Stat({ label, value, big, dot }) {
 function SettlementBar({ transfers, members, t }) {
   const settled = transfers.length === 0;
   const first = transfers[0];
+  // The transfer list is a grid rather than flex rows so every line shares column
+  // widths — otherwise the arrows and amounts shift with the length of each name.
   const tint = settled || !first
     ? "#334155"
     : `linear-gradient(90deg, ${memberById(members, first.fromId)?.color || TEAL}, ${memberById(members, first.toId)?.color || TEAL})`;
@@ -627,14 +629,14 @@ function SettlementBar({ transfers, members, t }) {
       {settled ? (
         <div style={{ fontWeight: 700 }}>{t("allSquare")}</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "auto auto auto auto", columnGap: 10, rowGap: 6, alignItems: "center", fontWeight: 700 }}>
           {transfers.map((x, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, flexWrap: "wrap" }}>
+            <Fragment key={i}>
               <span>{memberById(members, x.fromId)?.name || "—"}</span>
               <ArrowRight size={16} />
               <span>{memberById(members, x.toId)?.name || "—"}</span>
               <span style={{ marginLeft: 4, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>{money(x.amount)}</span>
-            </div>
+            </Fragment>
           ))}
         </div>
       )}
@@ -1152,9 +1154,15 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onStores }) {
             <Store size={15} /> {t("stores")}
           </button>
           <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
-          <div style={{ padding: "6px 10px 4px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: SUB }}>{t("language")}</div>
-          <div style={{ padding: "0 10px 8px" }}><LangToggle lang={lang} changeLang={changeLang} /></div>
-          <div style={{ borderTop: `1px solid ${LINE}`, margin: "2px 0 4px" }} />
+          {/* Plain rows like every other entry — a segmented toggle in here read as
+              a different kind of control and sat oddly among them. */}
+          {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
+            <button key={code} role="menuitem" onClick={() => { setOpen(false); changeLang(code); }} style={menuItem}>
+              <Languages size={15} /> <span style={{ flex: 1 }}>{label}</span>
+              {lang === code && <Check size={14} style={{ color: TEAL }} />}
+            </button>
+          ))}
+          <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
           <button role="menuitem" onClick={() => { setOpen(false); supabase.auth.signOut(); }} style={menuItem}>
             <LogOut size={15} /> {t("signOut")}
           </button>
