@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, Receipt, ChevronRight, LogOut, Loader2, Camera,
+  Users, User, ArrowRight, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
@@ -55,6 +55,7 @@ const STRINGS = {
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
     scanReceipt: "Scan receipt", scanning: "Reading receipt…",
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
+    editCategories: "Edit categories", menu: "Menu",
   },
   zh: {
     eyebrow: "家庭帳簿",
@@ -84,6 +85,7 @@ const STRINGS = {
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
     scanReceipt: "掃描收據", scanning: "讀取收據中…",
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
+    editCategories: "編輯類別", menu: "選單",
   },
 };
 const interpolate = (str, vars) =>
@@ -271,12 +273,7 @@ function Ledger({ lang, changeLang, t }) {
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <button onClick={() => setManagingCats(true)} style={ghostBtn} aria-label={t("manageCats")}>
-              <SlidersHorizontal size={15} /> {t("categories")}
-            </button>
-            <button onClick={() => supabase.auth.signOut()} style={iconBtn} aria-label={t("signOut")} title={t("signOut")}>
-              <LogOut size={16} />
-            </button>
+            <HeaderMenu t={t} />
           </div>
         </div>
 
@@ -344,11 +341,13 @@ function Ledger({ lang, changeLang, t }) {
           onReassign={(cid) => { reassign(detail.id, cid); setDetail({ ...detail, categoryId: cid }); }}
           onEdit={() => { setEditing(detail); setDetail(null); }}
           onDelete={() => { if (confirm(t("deleteConfirm", { name: detail.description }))) { removeExpense(detail.id); setDetail(null); } }}
+          onEditCategories={() => setManagingCats(true)}
           onClose={() => setDetail(null)} />
       )}
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} lang={lang} t={t}
-          onClose={() => setEditing(null)} onSave={upsertExpense} defaultMonth={month} />
+          onClose={() => setEditing(null)} onSave={upsertExpense}
+          onEditCategories={() => setManagingCats(true)} defaultMonth={month} />
       )}
       {managingCats && (
         <CategoryManager categories={categories} lang={lang} t={t} onChange={commitCategories} onClose={() => setManagingCats(false)} />
@@ -401,7 +400,7 @@ function SettlementBar({ balance, t }) {
   );
 }
 
-function ExpenseDetail({ expense, categories, lang, t, onReassign, onEdit, onDelete, onClose }) {
+function ExpenseDetail({ expense, categories, lang, t, onReassign, onEdit, onDelete, onEditCategories, onClose }) {
   const payer = personById(expense.paidBy);
   const other = otherPerson(expense.paidBy);
   const amt = Number(expense.amount) || 0;
@@ -422,6 +421,7 @@ function ExpenseDetail({ expense, categories, lang, t, onReassign, onEdit, onDel
           {categories.map((c) => (
             <button key={c.id} onClick={() => onReassign(c.id)} style={selectablePill(c.color, c.id === expense.categoryId)}>{catName(c, lang)}</button>
           ))}
+          <button onClick={onEditCategories} style={editCatsPill}><SlidersHorizontal size={13} /> {t("editCategories")}</button>
         </div>
       </div>
 
@@ -482,7 +482,7 @@ async function toScaledJpegBase64(file, max = 2000) {
   });
 }
 
-function ExpenseForm({ initial, categories, lang, t, onClose, onSave, defaultMonth }) {
+function ExpenseForm({ initial, categories, lang, t, onClose, onSave, onEditCategories, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: `${defaultMonth}-15`, note: "", paidBy: "tommy", split: "shared",
@@ -569,6 +569,7 @@ function ExpenseForm({ initial, categories, lang, t, onClose, onSave, defaultMon
           {categories.map((c) => (
             <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={selectablePill(c.color, d.categoryId === c.id)}>{catName(c, lang)}</button>
           ))}
+          <button onClick={onEditCategories} style={editCatsPill}><SlidersHorizontal size={13} /> {t("editCategories")}</button>
         </div>
       </Field>
       <Field label={t("whoPaid")}>
@@ -643,6 +644,38 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
   );
 }
 
+// Header overflow menu. Editing categories moved into the category lists themselves,
+// so this is the slot for account actions and the features still to come
+// (budgets, reports) rather than a one-off button per feature.
+function HeaderMenu({ t }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", (e) => e.key === "Escape" && close());
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  return (
+    <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+      <button onClick={() => setOpen((o) => !o)} style={iconBtn} aria-label={t("menu")} aria-haspopup="menu" aria-expanded={open}>
+        <Menu size={16} />
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 170, zIndex: 60 }}>
+          <button role="menuitem" onClick={() => { setOpen(false); supabase.auth.signOut(); }} style={menuItem}>
+            <LogOut size={15} /> {t("signOut")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Overlay({ title, onClose, t, children }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,26,32,0.4)", display: "flex", justifyContent: "flex-end", zIndex: 50 }} onClick={onClose}>
@@ -676,6 +709,9 @@ const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "
 const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: "#fff", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid #F3C4C4`, background: "#fff", color: "#DC2626", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: "#fff", color: SUB, cursor: "pointer" };
+const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
+// Dashed outline sets it apart from the coloured category pills — it's an action, not a category.
+const editCatsPill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 999, border: `1px dashed ${SUB}`, background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const errorBox = { fontSize: 13, color: "#B42318", background: "#FEF3F2", border: "1px solid #FDA29B", borderRadius: 10, padding: "10px 12px", marginBottom: 12 };
 const backdrop = { position: "fixed", inset: 0, zIndex: 20 };
 
