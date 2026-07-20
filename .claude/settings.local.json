@@ -11,7 +11,32 @@
       "PowerShell(git add -A)",
       "PowerShell(git remote add origin https://github.com/tommylai0902/household_budget.git 2>&1)",
       "PowerShell(git ls-remote origin 2>&1)",
-      "PowerShell(git push -u origin main 2>&1)"
+      "PowerShell(git push -u origin main 2>&1)",
+      "WebFetch(domain:ai.google.dev)",
+      "PowerShell($d = \"node_modules\\\\@google\\\\genai\\\\dist\\\\genai.d.ts\"; Select-String -Path $d -Pattern \"response_format|responseFormat|system_instruction|systemInstruction\" | Select-Object -First 15 | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "PowerShell($d = \"node_modules\\\\@google\\\\genai\\\\dist\\\\genai.d.ts\"; Get-Content $d | Select-Object -Skip 2110 -First 60 | ForEach-Object { $_.TrimEnd\\(\\) })",
+      "PowerShell(npm uninstall @anthropic-ai/sdk 2>&1 | Select-Object -Last 2; Write-Output \"=== deps ===\"; \\(Get-Content package.json | ConvertFrom-Json\\).dependencies | ConvertTo-Json)",
+      "PowerShell($p = \"D:\\\\Wing project\\\\.env.local\"; \\(Get-Content $p\\) -replace '^GEMINI_API_KEY=$','GEMINI_API_KEY=dummy-for-guard-test' | Set-Content $p -Encoding utf8; Get-Content $p | Select-Object -First 3)",
+      "PowerShell(node src/lib/settle.test.js)",
+      "PowerShell(git add src/BudgetApp.jsx src/lib/db.js src/lib/settle.js src/lib/settle.test.js supabase-schema.sql migrations/002-ledger-members.sql)",
+      "PowerShell(git push origin main 2>&1)",
+      "PowerShell(git checkout src/BudgetApp.jsx; $c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"restored. suspicious ?? sequences: $\\(\\([regex]::Matches\\($c,'\\\\?\\\\?'\\)\\).Count\\)\"; git status --short src/BudgetApp.jsx; npm run build 2>&1 | Select-Object -Last 2)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell($c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"chinese chars: $\\(\\([regex]::Matches\\($c,'[一-鿿]'\\)\\).Count\\) \\(was 529, +4 expected for 繁體中文\\)\"; git status --short)",
+      "PowerShell(git add src/BudgetApp.jsx)",
+      "PowerShell(git commit -m 'Line up the settle-up rows and the language options' -m 'Two settle-up transfers were separate flex rows, so the arrows and amounts shifted with the length of each name. A grid makes every row share column widths.' -m 'Language was a segmented toggle under a heading, which read as a different kind of control than the plain rows around it. It is now two ordinary menu options with a tick on the active one.' -m 'Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>' 2>&1)",
+      "PowerShell($c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"chinese chars: $\\(\\([regex]::Matches\\($c,'[一-鿿]'\\)\\).Count\\)\"; node src/lib/settle.test.js; Write-Output \"=== build ===\"; npm run build 2>&1 | Select-Object -Last 2)",
+      "PowerShell($c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"chinese chars: $\\(\\([regex]::Matches\\($c,'[一-鿿]'\\)\\).Count\\) \\(expect 555\\)\"; node src/lib/settle.test.js; git status --short)",
+      "PowerShell(git add src/BudgetApp.jsx src/lib/db.js src/lib/settle.js src/lib/settle.test.js supabase-schema.sql migrations/004-expense-splits.sql)",
+      "PowerShell(Select-String -Path \"src\\\\BudgetApp.jsx\",\"src\\\\lib\\\\db.js\" -Pattern \"renameLedger\\\\\\(\" | ForEach-Object { \"$\\($_.Filename\\):$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" }; Write-Output \"^ should only be the i18n aria-label key\"; npm run build 2>&1 | Select-Object -Last 2)",
+      "PowerShell(git add src/BudgetApp.jsx src/lib/db.js supabase-schema.sql migrations/005-ledger-icon.sql)",
+      "PowerShell(git commit -m 'Give each ledger its own mark, and the picker the same menu' -m 'The picker showed a book against every ledger and carried a lone sign-out button. It now uses the same overflow menu as the rest of the app - minus Budget and Saved shops, which need a ledger to mean anything - and the Tommy & Wing eyebrow is gone.' -m 'Ledgers get a house, plane, people or book from the template they were made with. That template was previously used to seed categories and then thrown away, so it needed a column; ledgers created before this default to household and the icon is editable from rename, otherwise they would be stuck with the wrong one.' -m 'Changing the icon only touches the ledger row - it does not re-seed categories over a ledger already in use.' -m 'Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>' 2>&1)",
+      "PowerShell($c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"chinese chars: $\\(\\([regex]::Matches\\($c,'[一-鿿]'\\)\\).Count\\) \\(expect 613\\)\"; node src/lib/settle.test.js; git status --short)",
+      "PowerShell($c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"chinese chars: $\\(\\([regex]::Matches\\($c,'[一-鿿]'\\)\\).Count\\)\"; npm run build 2>&1 | Select-Object -Last 2)",
+      "PowerShell($c = Get-Content \"src\\\\BudgetApp.jsx\" -Raw -Encoding utf8; Write-Output \"chinese chars: $\\(\\([regex]::Matches\\($c,'[一-鿿]'\\)\\).Count\\) \\(expect 613\\)\"; git status --short)",
+      "PowerShell(npm run build 2>&1 | Select-Object -Last 2; Write-Output \"=== unused eyebrow key? ===\"; Select-String -Path \"src\\\\BudgetApp.jsx\" -Pattern 'eyebrow' | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "PowerShell(git commit -m 'Drop the household name above each ledger title' -m 'The ledger name is the heading now, with no Tommy & Wing line above it. The heading centres against the controls beside it rather than sitting on their baseline, and truncates instead of forcing the row wider than a phone.' -m 'The string stays in use on the sign-in screen.' -m 'Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>' 2>&1)",
+      "PowerShell(git commit -m 'Hold the ledger controls against the right edge on a phone' -m 'Exit, the month picker and the menu wrap to their own line on a narrow screen, and space-between leaves a lone item on that line sitting left. An auto left margin pins them right instead.' -m 'The title also needed a minimum width: with the ellipsis added earlier, flexbox preferred squeezing the name to a stub over wrapping, so the row stayed cramped on one line rather than splitting cleanly in two.' -m 'Checked at 375px and on desktop, where the row still reads as one line.' -m 'Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>' 2>&1)"
     ]
   }
 }

@@ -62,6 +62,9 @@ const STRINGS = {
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget",
     budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
+    monthlyReport: "Monthly Report", reportFor: "Spending in {month}",
+    reportTotal: "Total spending", reportCategories: "By category",
+    reportEmpty: "No spending recorded for this month yet.", reportUncategorised: "Uncategorised",
     splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
     items: "Receipt items", itemSplit: "Split", itemPersonal: "Personal", itemDrop: "Not mine",
     itemsHint: "Tax is shared out across whatever you keep, in proportion to price.",
@@ -124,6 +127,8 @@ const STRINGS = {
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算",
     budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
+    monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
+    reportEmpty: "這個月尚未有支出紀錄。", reportUncategorised: "未分類",
     splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
     items: "收據明細", itemSplit: "分帳", itemPersonal: "私人", itemDrop: "唔計",
     itemsHint: "稅款會按價錢比例攤分落你保留嘅項目。",
@@ -406,6 +411,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [managingCats, setManagingCats] = useState(false);
   const [managingMembers, setManagingMembers] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -527,7 +533,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onStores={() => setManagingStores(true)} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)} onStores={() => setManagingStores(true)} />
           </div>
         </div>
 
@@ -619,6 +625,10 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         <BudgetPanel month={month} monthLabel={label} categories={categories} budgets={budgets}
           spentByCategory={spentByCategory} spent={summary.total} t={t}
           onSave={saveBudgets} onClose={() => setShowBudget(false)} />
+      )}
+      {showReport && (
+        <MonthlyReport month={month} months={monthsAvailable} expenses={expenses} categories={categories}
+          lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)} />
       )}
     </div>
   );
@@ -1201,6 +1211,79 @@ function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, 
   );
 }
 
+function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthChange, onClose }) {
+  const breakdown = useMemo(() => {
+    const totals = new Map();
+    for (const expense of expenses) {
+      if (monthOf(expense.date) !== month) continue;
+      const key = expense.categoryId || "uncategorised";
+      totals.set(key, (totals.get(key) || 0) + (Number(expense.amount) || 0));
+    }
+    return [...totals.entries()].map(([id, amount]) => {
+      const category = categories.find((c) => c.id === id);
+      return {
+        id,
+        amount,
+        name: category ? catName(category, lang) : t("reportUncategorised"),
+        color: category?.color || "#94A3B8",
+      };
+    }).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount);
+  }, [expenses, month, categories, lang, t]);
+
+  const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+  let offset = 0;
+  const slices = breakdown.map((item) => {
+    const start = offset;
+    offset += item.amount / total;
+    const end = offset;
+    const point = (fraction) => {
+      const angle = fraction * Math.PI * 2 - Math.PI / 2;
+      return [50 + 42 * Math.cos(angle), 50 + 42 * Math.sin(angle)];
+    };
+    const [x1, y1] = point(start);
+    const [x2, y2] = point(end);
+    const large = end - start > 0.5 ? 1 : 0;
+    return { ...item, path: end - start >= 0.999 ? "M 50 8 A 42 42 0 1 1 49.99 8 Z" : `M 50 50 L ${x1} ${y1} A 42 42 0 ${large} 1 ${x2} ${y2} Z` };
+  });
+
+  return (
+    <Overlay onClose={onClose} title={t("monthlyReport")} t={t}>
+      <select value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label={t("selectMonth")} style={selectStyle}>
+        {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
+      </select>
+      <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("reportTotal")}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
+        <div style={{ fontSize: 13, color: SUB, marginTop: 2 }}>{t("reportFor", { month: monthName(month, lang) })}</div>
+      </div>
+      {breakdown.length === 0 ? (
+        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "28px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("reportEmpty")}</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", padding: "8px 0" }}>
+            <svg viewBox="0 0 100 100" width="230" height="230" role="img" aria-label={t("reportCategories")}>
+              {slices.map((slice) => <path key={slice.id} d={slice.path} fill={slice.color} stroke="#fff" strokeWidth="1.5" />)}
+              <circle cx="50" cy="50" r="26" fill="#fff" />
+              <text x="50" y="48" textAnchor="middle" fontSize="7" fontWeight="700" fill={SUB}>{t("reportTotal")}</text>
+              <text x="50" y="57" textAnchor="middle" fontSize="7" fontWeight="800" fill={INK}>{money(total)}</text>
+            </svg>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {breakdown.map((item) => (
+              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 99, background: item.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{item.name}</span>
+                <span style={{ color: SUB, fontSize: 12 }}>{Math.round((item.amount / total) * 100)}%</span>
+                <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", minWidth: 76, textAlign: "right" }}>{money(item.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Overlay>
+  );
+}
+
 function StoreManager({ merchants, t, onChange, onClose }) {
   const [list, setList] = useState(merchants);
   const [name, setName] = useState("");
@@ -1287,7 +1370,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang, onBudget, onStores }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -1313,12 +1396,17 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onStores }) {
               <PieChart size={15} /> {t("budget")}
             </button>
           )}
+          {onReport && (
+            <button role="menuitem" onClick={() => { setOpen(false); onReport(); }} style={menuItem}>
+              <PieChart size={15} /> {t("monthlyReport")}
+            </button>
+          )}
           {onStores && (
             <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
               <Store size={15} /> {t("stores")}
             </button>
           )}
-          {(onBudget || onStores) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onBudget || onReport || onStores) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
