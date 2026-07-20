@@ -65,6 +65,7 @@ const STRINGS = {
     monthlyReport: "Monthly Report", reportFor: "Spending in {month}",
     reportTotal: "Total spending", reportCategories: "By category",
     reportEmpty: "No spending recorded for this month yet.", reportUncategorised: "Uncategorised",
+    categoryExpenses: "Expenses in {category}", categoryExpensesEmpty: "No expenses in this category for this month.",
     splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
     items: "Receipt items", itemSplit: "Split", itemPersonal: "Personal", itemDrop: "Not mine",
     itemsHint: "Tax is shared out across whatever you keep, in proportion to price.",
@@ -129,6 +130,7 @@ const STRINGS = {
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
     reportEmpty: "這個月尚未有支出紀錄。", reportUncategorised: "未分類",
+    categoryExpenses: "{category}支出", categoryExpensesEmpty: "這個月此類別尚未有支出。",
     splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
     items: "收據明細", itemSplit: "分帳", itemPersonal: "私人", itemDrop: "唔計",
     itemsHint: "稅款會按價錢比例攤分落你保留嘅項目。",
@@ -622,7 +624,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         <MemberManager members={members} t={t} onChange={commitMembers} onClose={() => setManagingMembers(false)} />
       )}
       {showBudget && (
-        <BudgetPanel month={month} monthLabel={label} categories={categories} budgets={budgets}
+        <BudgetPanel month={month} monthLabel={label} categories={categories} expenses={expenses} budgets={budgets} lang={lang}
           spentByCategory={spentByCategory} spent={summary.total} t={t}
           onSave={saveBudgets} onClose={() => setShowBudget(false)} />
       )}
@@ -1120,7 +1122,7 @@ function BudgetBar({ spent, budget, height = 8 }) {
   );
 }
 
-function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, spent, t, onSave, onClose }) {
+function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onSave, onClose }) {
   // One draft per category; the month's budget is their sum, not its own field.
   const [drafts, setDrafts] = useState(() =>
     Object.fromEntries(categories.map((c) => {
@@ -1129,6 +1131,7 @@ function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, 
     })),
   );
   const [busy, setBusy] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   const budgetOf = (id) => Number(drafts[id]) || 0;
   const totalBudget = categories.reduce((sum, c) => sum + budgetOf(c.id), 0);
@@ -1180,7 +1183,7 @@ function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, 
             <div key={c.id}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 99, background: c.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 700, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catName(c)}</span>
+                <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0 }}>{catName(c)}</button>
                 {/* Just what's been spent — the budget itself is in the field alongside. */}
                 <span style={{ fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                   {money(s)}
@@ -1207,11 +1210,13 @@ function BudgetPanel({ month, monthLabel, categories, budgets, spentByCategory, 
       <button onClick={save} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
         {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("budgetSave")}
       </button>
+      {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
     </Overlay>
   );
 }
 
 function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthChange, onClose }) {
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const breakdown = useMemo(() => {
     const totals = new Map();
     for (const expense of expenses) {
@@ -1272,13 +1277,40 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
             {breakdown.map((item) => (
               <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 10, height: 10, borderRadius: 99, background: item.color, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{item.name}</span>
+                <button onClick={() => setSelectedCategory(item)} style={{ ...categoryLink, flex: 1 }}>{item.name}</button>
                 <span style={{ color: SUB, fontSize: 12 }}>{Math.round((item.amount / total) * 100)}%</span>
                 <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", minWidth: 76, textAlign: "right" }}>{money(item.amount)}</span>
               </div>
             ))}
           </div>
         </>
+      )}
+      {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
+    </Overlay>
+  );
+}
+
+function CategoryExpenseList({ category, month, expenses, lang, t, onClose }) {
+  const rows = expenses.filter((expense) => monthOf(expense.date) === month && (expense.categoryId || "uncategorised") === category.id)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+  return (
+    <Overlay title={t("categoryExpenses", { category: category.name })} t={t} onClose={onClose}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{monthName(month, lang)}</div>
+      {rows.length === 0 ? (
+        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "28px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("categoryExpensesEmpty")}</div>
+      ) : (
+        <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden" }}>
+          {rows.map((expense, index) => (
+            <div key={expense.id} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderTop: index ? `1px solid ${LINE}` : "none" }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{expense.description}</div>
+                <div style={{ color: SUB, fontSize: 12, marginTop: 2 }}>{expense.date}</div>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{money(expense.amount)}</div>
+            </div>
+          ))}
+        </div>
       )}
     </Overlay>
   );
@@ -1456,6 +1488,7 @@ const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", bo
 const selectStyle = { ...input, width: "auto", padding: "8px 10px", cursor: "pointer", fontWeight: 600 };
 const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: "#fff", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid #F3C4C4`, background: "#fff", color: "#DC2626", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: "#fff", color: SUB, cursor: "pointer" };
 const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
