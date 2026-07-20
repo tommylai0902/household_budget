@@ -513,9 +513,12 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
       <div style={{ maxWidth: 880, margin: "0 auto" }}>
 
         {/* Header */}
+        {/* minWidth keeps the title from shrinking to a stub, so on a narrow screen
+            the controls wrap to their own line; marginLeft:auto then holds them
+            against the right edge instead of falling back to the left. */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ledger.name}</h1>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 150, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ledger.name}</h1>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
             <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
               <ArrowLeft size={15} /> {t("exit")}
             </button>
