@@ -513,11 +513,8 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
       <div style={{ maxWidth: 880, margin: "0 auto" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>Tommy &amp; Wing</div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, margin: "4px 0 0", letterSpacing: -0.4 }}>{ledger.name}</h1>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ledger.name}</h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
               <ArrowLeft size={15} /> {t("exit")}
