@@ -179,6 +179,8 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
 const monthName = (m, lang) =>
   new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
+const shortDate = (iso, lang) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric" });
 
 const getLang = () => {
   try { const l = localStorage.getItem("lang"); if (l === "en" || l === "zh") return l; } catch {}
@@ -530,11 +532,10 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   return (
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <style>{`
-        .exp-row { display:grid !important; grid-template-columns:auto minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:3px; transition:background .12s ease; }
-        .exp-category { grid-column:1; grid-row:1 / 3; align-self:center; }
-        .exp-main { grid-column:2; grid-row:1; min-width:0; }
-        .exp-meta { grid-column:2; grid-row:2; min-width:0; }
-        .exp-total { grid-column:3; grid-row:1 / 3; align-self:center; }
+        .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; transition:background .12s ease; }
+        .exp-main { grid-column:1; grid-row:1; min-width:0; }
+        .exp-meta { grid-column:1 / -1; grid-row:2; min-width:0; }
+        .exp-total { grid-column:2; grid-row:1; align-self:center; }
         .exp-row:hover { background: #FAFBFC; }
         .exp-row:focus-visible { background: #F1F5F4; box-shadow: inset 3px 0 0 ${TEAL}; }
         @media (max-width: 560px) {
@@ -542,11 +543,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           .ledger-controls { width:100%; justify-content:space-between; margin-left:0 !important; }
           .summary-grid { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; }
           .stat-total { grid-column:1 / -1; }
-          .exp-row { grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto auto; row-gap:7px; padding:14px !important; }
-          .exp-main { grid-column:1; grid-row:1; }
-          .exp-total { grid-column:2; grid-row:1; }
-          .exp-category { grid-column:1; grid-row:2; justify-self:start; }
-          .exp-meta { grid-column:1 / -1; grid-row:3; }
+          .exp-row { padding:14px !important; }
         }
         .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
@@ -601,9 +598,6 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                   onClick={() => setDetail(e)}
                   onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
                   style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
-                  <span className="exp-category" style={{ ...pill(cat?.color || "#94A3B8"), cursor: "inherit" }}>
-                    {cat ? catName(cat, lang) : t("uncategorised")}
-                  </span>
                   <div className="exp-main">
                     <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.description}</div>
                   </div>
@@ -612,12 +606,19 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                     <ChevronRight size={17} style={{ color: "#B7BEC6" }} />
                   </div>
                   <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span>{e.date}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 700, color: INK }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 99, background: cat?.color || "#94A3B8" }} />
+                      {cat ? catName(cat, lang) : t("uncategorised")}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>{shortDate(e.date, lang)}</span>
+                    <span aria-hidden="true">·</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
-                      {t("paidByRow", { name: payer?.name || "—" })}
+                      {payer?.name || "—"}
                     </span>
-                    <span style={splitBadge(e.split)}>
+                    <span aria-hidden="true">·</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: e.split === "shared" ? TEAL : SUB }}>
                       {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
                       {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
                     </span>
