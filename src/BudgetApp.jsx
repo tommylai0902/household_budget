@@ -530,9 +530,24 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   return (
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <style>{`
-        .exp-row { transition: background .12s ease; }
+        .exp-row { display:grid !important; grid-template-columns:auto minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:3px; transition:background .12s ease; }
+        .exp-category { grid-column:1; grid-row:1 / 3; align-self:center; }
+        .exp-main { grid-column:2; grid-row:1; min-width:0; }
+        .exp-meta { grid-column:2; grid-row:2; min-width:0; }
+        .exp-total { grid-column:3; grid-row:1 / 3; align-self:center; }
         .exp-row:hover { background: #FAFBFC; }
         .exp-row:focus-visible { background: #F1F5F4; box-shadow: inset 3px 0 0 ${TEAL}; }
+        @media (max-width: 560px) {
+          .ledger-header > h1 { flex-basis:100%; }
+          .ledger-controls { width:100%; justify-content:space-between; margin-left:0 !important; }
+          .summary-grid { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; }
+          .stat-total { grid-column:1 / -1; }
+          .exp-row { grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto auto; row-gap:7px; padding:14px !important; }
+          .exp-main { grid-column:1; grid-row:1; }
+          .exp-total { grid-column:2; grid-row:1; }
+          .exp-category { grid-column:1; grid-row:2; justify-self:start; }
+          .exp-meta { grid-column:1 / -1; grid-row:3; }
+        }
         .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
       <div style={{ maxWidth: 880, margin: "0 auto" }}>
@@ -541,9 +556,9 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         {/* minWidth keeps the title from shrinking to a stub, so on a narrow screen
             the controls wrap to their own line; marginLeft:auto then holds them
             against the right edge instead of falling back to the left. */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+        <div className="ledger-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 150, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ledger.name}</h1>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
+          <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
             <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
               <ArrowLeft size={15} /> {t("exit")}
             </button>
@@ -559,7 +574,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
         {/* Summary / settlement */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 14 }}>
+        <div className="summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 14 }}>
           <Stat label={t("spentIn", { month: label })} value={money(summary.total)} big />
           {members.map((m) => (
             <Stat key={m.id} label={t("paidSuffix", { name: m.name })} value={money(summary.paid.get(m.id) || 0)} dot={m.color} />
@@ -585,27 +600,27 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                 <div key={e.id} className="exp-row" role="button" tabIndex={0}
                   onClick={() => setDetail(e)}
                   onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
-                  <span style={{ ...pill(cat?.color || "#94A3B8"), cursor: "inherit" }}>
+                  style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
+                  <span className="exp-category" style={{ ...pill(cat?.color || "#94A3B8"), cursor: "inherit" }}>
                     {cat ? catName(cat, lang) : t("uncategorised")}
                   </span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="exp-main">
                     <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.description}</div>
-                    <div style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span>{e.date}</span>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
-                        {t("paidByRow", { name: payer?.name || "—" })}
-                      </span>
-                      <span style={splitBadge(e.split)}>
-                        {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
-                        {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
-                      </span>
-                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <div className="exp-total" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{money(e.amount)}</div>
                     <ChevronRight size={17} style={{ color: "#B7BEC6" }} />
+                  </div>
+                  <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span>{e.date}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
+                      {t("paidByRow", { name: payer?.name || "—" })}
+                    </span>
+                    <span style={splitBadge(e.split)}>
+                      {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
+                      {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
+                    </span>
                   </div>
                 </div>
               );
@@ -667,7 +682,7 @@ function LangToggle({ lang, changeLang }) {
 
 function Stat({ label, value, big, dot }) {
   return (
-    <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px" }}>
+    <div className={big ? "stat-total" : ""} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px" }}>
       <div style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 6 }}>
         {dot && <span style={{ width: 8, height: 8, borderRadius: 99, background: dot }} />}
         {label}
