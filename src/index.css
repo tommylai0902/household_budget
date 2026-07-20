@@ -1,1 +1,24 @@
 html, body, #root { margin: 0; height: 100%; }
+
+/* Padding must count inside a declared width, or anything using
+   `width: 100%` plus padding — the side panel, the full-width buttons —
+   ends up wider than the screen and bleeds off both edges on a phone. */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* A stray overflow shouldn't let the whole page slide sideways. */
+body { overflow-x: hidden; }
+
+/* iOS Safari zooms the page in when you focus a field under 16px and does
+   not zoom back out. Keep form text at 16 so tapping a field stays put. */
+input, textarea, select, button { font-size: 16px; }
+
+/* Chrome on Android leaves room for a spinner on number fields, which
+   squeezes the amount box; the value is typed, not stepped. */
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Give tapping a fair target on touch screens without changing the desktop look. */
+@media (pointer: coarse) {
+  button, [role="button"], [role="menuitem"] { touch-action: manipulation; }
+}

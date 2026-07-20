@@ -940,14 +940,16 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           </button>
         </div>
       </Field>
+      {/* minWidth:0 lets both shrink — a date input has a wide intrinsic minimum
+          and would otherwise push the row past the edge of a phone screen. */}
       <div style={{ display: "flex", gap: 10 }}>
-        <Field label={t("amount")}>
+        <Field label={t("amount")} style={{ flex: 1, minWidth: 0 }}>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 12, top: 11, color: SUB }}>$</span>
+            <span style={{ position: "absolute", left: 12, top: 12, color: SUB }}>$</span>
             <input type="number" inputMode="decimal" value={d.amount} onChange={(e) => setD({ ...d, amount: e.target.value })} placeholder="0.00" style={{ ...input, paddingLeft: 24 }} />
           </div>
         </Field>
-        <Field label={t("date")}>
+        <Field label={t("date")} style={{ flex: 1, minWidth: 0 }}>
           <input type="date" value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} style={input} />
         </Field>
       </div>
@@ -1350,9 +1352,9 @@ function Overlay({ title, onClose, t, children }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, children, style }) {
   return (
-    <label style={{ display: "block" }}>
+    <label style={{ display: "block", ...style }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{label}</div>
       {children}
     </label>
