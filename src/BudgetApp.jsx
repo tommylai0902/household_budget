@@ -8,6 +8,8 @@ import {
 // Each starter template gets its own mark in the ledger list.
 const LEDGER_ICONS = { household: Home, travel: Plane, personal: Users, blank: BookOpen };
 const ledgerIcon = (tpl) => LEDGER_ICONS[tpl] || BookOpen;
+const MEMBER_ICONS = { user: User, people: Users, home: Home, plane: Plane, book: BookOpen, tag: Tag };
+const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
 import { settlements } from "./lib/settle";
@@ -298,6 +300,7 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
   const [draftTpl, setDraftTpl] = useState("household");
+  const [memberEdit, setMemberEdit] = useState(null);
   const startRename = (l) => { setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template); };
   const cancelRename = () => { setEditingId(null); setDraft(""); };
   const saveRename = async (l) => {
@@ -306,6 +309,16 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
     if (trimmed === l.name && draftTpl === l.template) return cancelRename();
     try { await db.updateLedger(l.id, { name: trimmed, template: draftTpl }); cancelRename(); load(); }
     catch (e) { setError(e.message || String(e)); cancelRename(); }
+  };
+  const editSplitters = async (l) => {
+    try { setError(""); setMemberEdit({ ledger: l, members: await db.fetchMembers(l.id) }); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+  const saveSplitters = async (list) => {
+    try {
+      await db.persistMembers(list, memberEdit.members, memberEdit.ledger.id);
+      setMemberEdit(null);
+    } catch (e) { setError(e.message || String(e)); }
   };
 
   if (ledgers === null) return <Centered>{t("connecting")}</Centered>;
@@ -353,6 +366,9 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
                       );
                     })}
                   </div>
+                  <button onClick={() => editSplitters(l)} style={{ ...ghostBtn, marginTop: 10, width: "100%", justifyContent: "center" }}>
+                    <Users size={15} /> {t("manageMembers")}
+                  </button>
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -395,6 +411,7 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
         </div>
         <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
+      {memberEdit && <MemberManager members={memberEdit.members} t={t} onChange={saveSplitters} onClose={() => setMemberEdit(null)} />}
     </div>
   );
 }
@@ -1016,7 +1033,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {members.map((m) => (
             <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={segBtn(d.paidById === m.id, m.color)}>
-              <span style={{ width: 8, height: 8, borderRadius: 99, background: m.color }} />{m.name}
+              {(() => { const Icon = memberIcon(m.icon); return <Icon size={14} />; })()} {m.name}
             </button>
           ))}
           <button onClick={onEditMembers} style={editCatsPill}><Users size={13} /> {t("editMembers")}</button>
@@ -1038,7 +1055,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
                   <button key={m.id}
                     onClick={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
                     style={selectablePill(m.color, on)}>
-                    {on ? <Check size={12} /> : null} {m.name}
+                    {on ? <Check size={12} /> : null} {(() => { const Icon = memberIcon(m.icon); return <Icon size={12} />; })()} {m.name}
                   </button>
                 );
               })}
@@ -1367,7 +1384,7 @@ function MemberManager({ members, t, onChange, onClose }) {
   const nextColor = () => db.MEMBER_COLORS[list.length % db.MEMBER_COLORS.length];
   const add = () => {
     if (!name.trim()) return;
-    setList([...list, { id: uid(), name: name.trim(), color: nextColor() }]);
+    setList([...list, { id: uid(), name: name.trim(), color: nextColor(), icon: "user" }]);
     setName("");
   };
   const patch = (id, key, val) => setList(list.map((m) => (m.id === id ? { ...m, [key]: val } : m)));
@@ -1375,7 +1392,7 @@ function MemberManager({ members, t, onChange, onClose }) {
   // Same as the category manager: a name typed but not yet added still counts.
   const done = () => {
     const pending = name.trim();
-    onChange(pending ? [...list, { id: uid(), name: pending, color: nextColor() }] : list);
+    onChange(pending ? [...list, { id: uid(), name: pending, color: nextColor(), icon: "user" }] : list);
     onClose();
   };
 
@@ -1383,11 +1400,21 @@ function MemberManager({ members, t, onChange, onClose }) {
     <Overlay onClose={onClose} title={t("members")} t={t}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {list.map((m) => (
-          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input type="color" value={m.color} onChange={(e) => patch(m.id, "color", e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
-            <input value={m.name} onChange={(e) => patch(m.id, "name", e.target.value)} style={{ ...input, flex: 1 }} />
-            <button onClick={() => del(m.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteMember")}><Trash2 size={15} /></button>
-          </div>
+          <Fragment key={m.id}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="color" value={m.color} onChange={(e) => patch(m.id, "color", e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
+              <input value={m.name} onChange={(e) => patch(m.id, "name", e.target.value)} style={{ ...input, flex: 1 }} />
+              <button onClick={() => del(m.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteMember")}><Trash2 size={15} /></button>
+            </div>
+            <div style={{ display: "flex", gap: 6, margin: "-2px 0 4px 42px" }}>
+              {Object.entries(MEMBER_ICONS).map(([key, Icon]) => (
+                <button key={key} onClick={() => patch(m.id, "icon", key)} aria-label={key}
+                  style={{ ...iconBtn, width: 30, height: 30, borderColor: (m.icon || "user") === key ? m.color : LINE, background: (m.icon || "user") === key ? m.color : "#fff", color: (m.icon || "user") === key ? "#fff" : SUB }}>
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+          </Fragment>
         ))}
       </div>
       <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 12, paddingTop: 12, display: "flex", gap: 8, alignItems: "center" }}>

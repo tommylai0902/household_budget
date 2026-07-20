@@ -32,6 +32,7 @@ create table if not exists ledger_members (
   ledger_id  uuid not null references ledgers(id) on delete cascade,
   name       text not null,
   color      text not null default '#0E9384',
+  icon       text not null default 'user',
   sort_order int  not null default 0,
   created_at timestamptz not null default now(),
   unique (ledger_id, name)

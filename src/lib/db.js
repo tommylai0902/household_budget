@@ -31,10 +31,11 @@ const toRowExpense = (e) => ({
   paid_by_id: e.paidById,
   split_type: e.split === "shared" ? "shared_50" : "personal",
 });
-const toAppMember = (r) => ({ id: r.id, name: r.name, color: r.color });
+const toAppMember = (r) => ({ id: r.id, name: r.name, color: r.color, icon: r.icon || "user" });
 const toRowMember = (m, sortOrder) => ({
   name: m.name,
   color: m.color,
+  icon: m.icon || "user",
   ...(sortOrder != null ? { sort_order: sortOrder } : {}),
 });
 const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id);
