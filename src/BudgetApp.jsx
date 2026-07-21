@@ -968,20 +968,20 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   return (
     <Overlay onClose={onClose} title={initial ? t("editExpense") : t("addExpense")} t={t}>
       {scanning ? (
-        <div style={{ ...softBtn, width: "100%", cursor: "wait", opacity: 0.7 }}>
+        <div style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: "wait", opacity: 0.6 }}>
           <Loader2 size={18} className="spin" /> {t("scanning")}
         </div>
       ) : (
         // Two entry points share one handler: Scan forces the camera (capture,
         // image only); Upload takes a screenshot, image or PDF from the files.
         <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
-          <label style={{ ...softBtn, cursor: "pointer" }}>
-            <Camera size={17} /> {t("scanReceipt")}
+          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+            <Camera size={18} /> {t("scanReceipt")}
             <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
           </label>
-          <label style={{ ...softBtn, cursor: "pointer" }}>
-            <Upload size={17} /> {t("uploadReceipt")}
+          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+            <Upload size={18} /> {t("uploadReceipt")}
             <input type="file" accept="image/*,application/pdf,.pdf" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
           </label>
@@ -1579,9 +1579,6 @@ const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", bo
 const selectStyle = { ...input, width: "auto", padding: "8px 10px", cursor: "pointer", fontWeight: 600 };
 const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: "#fff", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
-// Secondary action: soft green fill, no heavy solid-teal weight. Used for the
-// receipt entry points so they don't dominate the top of the form.
-const softBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flex: 1, padding: "11px 14px", borderRadius: 10, border: "none", background: "#E3F5F2", color: "#0F5E55", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid #F3C4C4`, background: "#fff", color: "#DC2626", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: "#fff", color: SUB, cursor: "pointer" };
