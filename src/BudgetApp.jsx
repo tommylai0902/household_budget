@@ -644,7 +644,6 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           onReassign={(cid) => { reassign(detail.id, cid); setDetail({ ...detail, categoryId: cid }); }}
           onEdit={() => { setEditing(detail); setDetail(null); }}
           onDelete={() => { if (confirm(t("deleteConfirm", { name: detail.description }))) { removeExpense(detail.id); setDetail(null); } }}
-          onEditCategories={() => setManagingCats(true)}
           onClose={() => setDetail(null)} />
       )}
       {editing !== null && (
@@ -732,7 +731,7 @@ function SettlementDetails({ members, summary, t, onClose }) {
   );
 }
 
-function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEdit, onDelete, onEditCategories, onClose }) {
+function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEdit, onDelete, onClose }) {
   const payer = memberById(members, expense.paidById);
   const amt = Number(expense.amount) || 0;
   const shared = expense.split === "shared";
@@ -752,9 +751,8 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("category")}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {categories.map((c) => (
-            <button key={c.id} onClick={() => onReassign(c.id)} style={selectablePill(c.color, c.id === expense.categoryId)}>{catName(c, lang)}</button>
+            <button key={c.id} onClick={() => onReassign(c.id)} style={chip(c.id === expense.categoryId)}>{catName(c, lang)}</button>
           ))}
-          <button onClick={onEditCategories} style={editCatsPill}><SlidersHorizontal size={13} /> {t("editCategories")}</button>
         </div>
       </div>
 
