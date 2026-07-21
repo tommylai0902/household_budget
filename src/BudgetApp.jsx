@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
+  Users, User, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane,
 } from "lucide-react";
 
@@ -550,7 +550,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         .exp-row:focus-visible { background: #F1F5F4; box-shadow: inset 3px 0 0 ${TEAL}; }
         @media (max-width: 560px) {
           .ledger-header > h1 { flex-basis:100%; }
-          .ledger-controls { width:100%; justify-content:space-between; margin-left:0 !important; }
+          .ledger-controls { width:100%; justify-content:flex-end; margin-left:0 !important; }
           .exp-row { padding:14px !important; }
         }
         .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
@@ -580,9 +580,9 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
         {/* Summary / settlement */}
-        <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: SUB }}>{t("spentIn", { month: label })}</div>
-          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 3, fontVariantNumeric: "tabular-nums" }}>{money(summary.total)}</div>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+          <span style={{ fontSize: 13, color: SUB, fontWeight: 600 }}>{t("spentIn", { month: label })}</span>
+          <span style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(summary.total)}</span>
         </div>
 
         <SettlementBar transfers={summary.transfers} members={members} t={t} onClick={() => setShowSettlement(true)} />
@@ -687,27 +687,18 @@ function LangToggle({ lang, changeLang }) {
   );
 }
 
-// With three or more members there can be several transfers, so this renders a
-// list rather than a single "A owes B" line.
+// Shows the single largest transfer as plain "X owes Y $n"; the full list (there
+// can be several with 3+ members) lives in the SettlementDetails panel this opens.
 function SettlementBar({ transfers, members, t, onClick }) {
   const settled = transfers.length === 0;
   const first = transfers[0];
-  const tint = settled || !first
-    ? "#334155"
-    : `linear-gradient(90deg, ${memberById(members, first.fromId)?.color || TEAL}, ${memberById(members, first.toId)?.color || TEAL})`;
   return (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "14px 16px", marginBottom: 14, border: "none", borderRadius: 12, color: "#fff", background: tint, cursor: "pointer", fontFamily: "inherit", textAlign: "left", flexWrap: "wrap" }}>
-      <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, opacity: 0.85, fontWeight: 700 }}>{t("settleUp")}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        {settled ? (
-          <span style={{ fontWeight: 700 }}>{t("allSquare")}</span>
-        ) : (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, whiteSpace: "nowrap" }}>
-            {memberById(members, first.fromId)?.name || "—"} <ArrowRight size={16} /> {memberById(members, first.toId)?.name || "—"} {money(first.amount)}
-          </span>
-        )}
-        <ChevronRight size={17} style={{ opacity: 0.8 }} />
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", marginBottom: 14, border: `1px solid ${settled ? LINE : "#B8E4DD"}`, borderRadius: 12, background: settled ? "#F1F3F5" : "#E3F5F2", color: INK, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+      <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 800, color: settled ? SUB : "#0F5E55", background: settled ? "#E4E7EB" : "#C7EBE4", padding: "3px 8px", borderRadius: 6, flexShrink: 0 }}>{t("settleUp")}</span>
+      <span style={{ flex: 1, fontWeight: 700, minWidth: 0 }}>
+        {settled ? t("allSquare") : t("owesLine", { debtor: memberById(members, first.fromId)?.name || "—", creditor: memberById(members, first.toId)?.name || "—", amount: money(first.amount) })}
       </span>
+      <ChevronRight size={18} style={{ color: settled ? SUB : "#0F5E55", flexShrink: 0 }} />
     </button>
   );
 }
