@@ -39,7 +39,7 @@ const STRINGS = {
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
     addExpense: "Add expense",
-    spentIn: "Spent in {month}", paidSuffix: "{name} paid",
+    spentIn: "Spent in {month}",
     settleUp: "Settle up", allSquare: "All square this month 🎉",
     emptyState: "No expenses in {month} yet. Add your first one above.",
     paidByRow: "{name} paid", split5050: "Split 50/50", personal: "Personal",
@@ -107,7 +107,7 @@ const STRINGS = {
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
     addExpense: "新增支出",
-    spentIn: "{month}支出", paidSuffix: "{name} 已付",
+    spentIn: "{month}支出",
     settleUp: "結算", allSquare: "本月已結清 🎉",
     emptyState: "{month}還沒有支出，先在上方新增一筆。",
     paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "個人",
@@ -551,8 +551,6 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         @media (max-width: 560px) {
           .ledger-header > h1 { flex-basis:100%; }
           .ledger-controls { width:100%; justify-content:space-between; margin-left:0 !important; }
-          .summary-grid { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; }
-          .stat-total { grid-column:1 / -1; }
           .exp-row { padding:14px !important; }
         }
         .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
@@ -581,14 +579,12 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
         {/* Summary / settlement */}
-        <div className="summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 14 }}>
-          <Stat label={t("spentIn", { month: label })} value={money(summary.total)} big />
-          {members.map((m) => (
-            <Stat key={m.id} label={t("paidSuffix", { name: m.name })} value={money(summary.paid.get(m.id) || 0)} dot={m.color} />
-          ))}
+        <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: SUB }}>{t("spentIn", { month: label })}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 3, fontVariantNumeric: "tabular-nums" }}>{money(summary.total)}</div>
         </div>
 
-        <SettlementBar transfers={summary.transfers} paid={summary.paid} members={members} t={t} onClick={() => setShowSettlement(true)} />
+        <SettlementBar transfers={summary.transfers} members={members} t={t} onClick={() => setShowSettlement(true)} />
 
         <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
 
@@ -692,42 +688,27 @@ function LangToggle({ lang, changeLang }) {
   );
 }
 
-function Stat({ label, value, big, dot }) {
-  return (
-    <div className={big ? "stat-total" : ""} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px" }}>
-      <div style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 6 }}>
-        {dot && <span style={{ width: 8, height: 8, borderRadius: 99, background: dot }} />}
-        {label}
-      </div>
-      <div style={{ fontSize: big ? 24 : 19, fontWeight: 800, marginTop: 3, fontVariantNumeric: "tabular-nums" }}>{value}</div>
-    </div>
-  );
-}
-
 // With three or more members there can be several transfers, so this renders a
 // list rather than a single "A owes B" line.
-function SettlementBar({ transfers, paid, members, t, onClick }) {
+function SettlementBar({ transfers, members, t, onClick }) {
   const settled = transfers.length === 0;
   const first = transfers[0];
-  // The transfer list is a grid rather than flex rows so every line shares column
-  // widths — otherwise the arrows and amounts shift with the length of each name.
   const tint = settled || !first
     ? "#334155"
     : `linear-gradient(90deg, ${memberById(members, first.fromId)?.color || TEAL}, ${memberById(members, first.toId)?.color || TEAL})`;
   return (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 16px", marginBottom: 14, border: "none", borderRadius: 12, color: "#fff", background: tint, cursor: "pointer", fontFamily: "inherit", textAlign: "left", flexWrap: "wrap" }}>
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "14px 16px", marginBottom: 14, border: "none", borderRadius: 12, color: "#fff", background: tint, cursor: "pointer", fontFamily: "inherit", textAlign: "left", flexWrap: "wrap" }}>
       <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, opacity: 0.85, fontWeight: 700 }}>{t("settleUp")}</span>
-      <span style={{ display: "flex", gap: 10, flexWrap: "wrap", flex: 1 }}>
-        {members.map((member) => <span key={member.id} style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{member.name} <strong style={{ fontVariantNumeric: "tabular-nums" }}>{money(paid.get(member.id) || 0)}</strong></span>)}
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        {settled ? (
+          <span style={{ fontWeight: 700 }}>{t("allSquare")}</span>
+        ) : (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, whiteSpace: "nowrap" }}>
+            {memberById(members, first.fromId)?.name || "—"} <ArrowRight size={16} /> {memberById(members, first.toId)?.name || "—"} {money(first.amount)}
+          </span>
+        )}
+        <ChevronRight size={17} style={{ opacity: 0.8 }} />
       </span>
-      {settled ? (
-        <span style={{ fontWeight: 700 }}>{t("allSquare")}</span>
-      ) : (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, whiteSpace: "nowrap" }}>
-          {memberById(members, first.fromId)?.name || "—"} <ArrowRight size={16} /> {memberById(members, first.toId)?.name || "—"} {money(first.amount)}
-        </span>
-      )}
-      <ChevronRight size={17} style={{ opacity: 0.8 }} />
     </button>
   );
 }
