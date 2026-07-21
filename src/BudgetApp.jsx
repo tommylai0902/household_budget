@@ -613,7 +613,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                     <ChevronRight size={17} style={{ color: "#B7BEC6" }} />
                   </div>
                   <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 8px", borderRadius: 99, background: "#F1F3F5", color: "#374151", fontSize: 11, fontWeight: 600 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 8px", borderRadius: 99, background: "#E3F5F2", color: "#0F5E55", fontSize: 11, fontWeight: 700 }}>
                       {cat ? catName(cat, lang) : t("uncategorised")}
                     </span>
                     <span aria-hidden="true">·</span>
