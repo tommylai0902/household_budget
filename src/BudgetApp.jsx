@@ -58,7 +58,7 @@ const STRINGS = {
     settlementDetails: "Settlement details", paidThisMonth: "Paid this month", sharedShare: "Shared-bill share",
     shouldReceive: "Should receive", shouldPay: "Should pay", noSharedBills: "No shared bills to settle this month.",
     sharedLine: "Split {n} ways — {amount} each",
-    members: "Members", manageMembers: "Edit members", editMembers: "Edit members",
+    members: "Members", manageMembers: "Edit members",
     memberHasExpenses: "That member still has expenses in this ledger. Reassign or delete them first.",
     budget: "Budget", budgetFor: "Budget for {month}", budgetTotal: "All categories",
     budgetNone: "No budgets set for {month}. Give any category an amount below.",
@@ -78,7 +78,7 @@ const STRINGS = {
     itemsClear: "Clear items", itemsTotalsOff: "Items add up to {sum}, receipt says {total}",
     splitNobody: "Tick at least one person to split between.",
     sharedAmong: "Split between {names}",
-    stores: "Saved shops", editStores: "Edit saved shops", rememberStore: 'Remember "{name}"',
+    stores: "Saved shops", rememberStore: 'Remember "{name}"',
     rememberHint: "Saved shops are suggested as you type. Nothing is saved unless you tick this.",
     newStorePh: "New shop name", saveStores: "Save shops", deleteStore: "Remove shop",
     noStores: "No saved shops yet. Tick the box when adding an expense to keep one.",
@@ -126,7 +126,7 @@ const STRINGS = {
     settlementDetails: "結算明細", paidThisMonth: "本月已付", sharedShare: "分帳應付",
     shouldReceive: "應收", shouldPay: "應付", noSharedBills: "這個月沒有需要結算的分帳支出。",
     sharedLine: "{n} 人平分 — 每人 {amount}",
-    members: "成員", manageMembers: "編輯成員", editMembers: "編輯成員",
+    members: "成員", manageMembers: "編輯成員",
     memberHasExpenses: "呢位成員喺呢本帳簿仲有支出，要先改咗付款人或者刪走嗰啲支出。",
     budget: "預算", budgetFor: "{month}預算", budgetTotal: "所有類別",
     budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
@@ -145,7 +145,7 @@ const STRINGS = {
     itemsClear: "清除明細", itemsTotalsOff: "明細加埋係 {sum}，收據寫住 {total}",
     splitNobody: "至少要剔一個人先分到帳。",
     sharedAmong: "由 {names} 平分",
-    stores: "已記住嘅店家", editStores: "編輯店家", rememberStore: "記住「{name}」",
+    stores: "已記住嘅店家", rememberStore: "記住「{name}」",
     rememberHint: "記住咗嘅店家打頭幾個字就會彈出。唔剔呢格就唔會記。",
     newStorePh: "新店家名稱", saveStores: "儲存店家", deleteStore: "移除店家",
     noStores: "仲未記低任何店家。入數時剔個格就會記住。",
@@ -572,7 +572,8 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)} onStores={() => setManagingStores(true)} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
+              onCats={() => setManagingCats(true)} onMembers={() => setManagingMembers(true)} onStores={() => setManagingStores(true)} />
           </div>
         </div>
 
@@ -649,9 +650,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members}
           merchants={merchants} ledgers={allLedgers} lang={lang} t={t}
-          onClose={() => setEditing(null)} onSave={upsertExpense}
-          onEditCategories={() => setManagingCats(true)} onEditMembers={() => setManagingMembers(true)}
-          onEditStores={() => setManagingStores(true)} defaultMonth={month} />
+          onClose={() => setEditing(null)} onSave={upsertExpense} defaultMonth={month} />
       )}
       {managingStores && (
         <StoreManager merchants={merchants} t={t} onChange={commitStores} onClose={() => setManagingStores(false)} />
@@ -847,7 +846,7 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditCategories, onEditMembers, onEditStores, defaultMonth }) {
+function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
@@ -969,20 +968,20 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   return (
     <Overlay onClose={onClose} title={initial ? t("editExpense") : t("addExpense")} t={t}>
       {scanning ? (
-        <div style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: "wait", opacity: 0.6 }}>
+        <div style={{ ...softBtn, width: "100%", cursor: "wait", opacity: 0.7 }}>
           <Loader2 size={18} className="spin" /> {t("scanning")}
         </div>
       ) : (
         // Two entry points share one handler: Scan forces the camera (capture,
         // image only); Upload takes a screenshot, image or PDF from the files.
         <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
-          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
-            <Camera size={18} /> {t("scanReceipt")}
+          <label style={{ ...softBtn, cursor: "pointer" }}>
+            <Camera size={17} /> {t("scanReceipt")}
             <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
           </label>
-          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
-            <Upload size={18} /> {t("uploadReceipt")}
+          <label style={{ ...softBtn, cursor: "pointer" }}>
+            <Upload size={17} /> {t("uploadReceipt")}
             <input type="file" accept="image/*,application/pdf,.pdf" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
           </label>
@@ -1019,12 +1018,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
             <span>{t("rememberStore", { name: typed })}</span>
           </label>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginTop: 6 }}>
-          <span style={{ fontSize: 12, color: SUB }}>{t("rememberHint")}</span>
-          <button onClick={onEditStores} style={{ ...editCatsPill, flexShrink: 0, padding: "5px 9px", fontSize: 12 }}>
-            <Store size={12} /> {t("editStores")}
-          </button>
-        </div>
+        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("rememberHint")}</div>
       </Field>
       {/* minWidth:0 lets both shrink — a date input has a wide intrinsic minimum
           and would otherwise push the row past the edge of a phone screen. */}
@@ -1081,39 +1075,42 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       <Field label={t("category")}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {categories.map((c) => (
-            <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={selectablePill(c.color, d.categoryId === c.id)}>{catName(c, lang)}</button>
+            <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
           ))}
-          <button onClick={onEditCategories} style={editCatsPill}><SlidersHorizontal size={13} /> {t("editCategories")}</button>
         </div>
       </Field>
       <Field label={t("whoPaid")}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {members.map((m) => (
-            <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={segBtn(d.paidById === m.id, m.color)}>
-              {(() => { const Icon = memberIcon(m.icon); return <Icon size={14} />; })()} {m.name}
-            </button>
-          ))}
-          <button onClick={onEditMembers} style={editCatsPill}><Users size={13} /> {t("editMembers")}</button>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {members.map((m) => {
+            const Icon = memberIcon(m.icon);
+            return (
+              <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={chip(d.paidById === m.id)}>
+                <Icon size={13} /> {m.name}
+              </button>
+            );
+          })}
         </div>
       </Field>
       <Field label={t("split")}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setD({ ...d, split: "personal" })} style={segBtn(d.split === "personal", TEAL)}><User size={14} /> {t("personal")}</button>
-          <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segBtn(d.split === "shared", TEAL)}>
+        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+          <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
+          <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
             <Users size={14} /> {t("splitBetween")}
           </button>
         </div>
         {d.split === "shared" && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {members.map((m) => {
                 const on = (d.sharedWith || []).includes(m.id);
+                const Icon = memberIcon(m.icon);
                 return (
-                  <button key={m.id}
-                    onClick={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
-                    style={selectablePill(m.color, on)}>
-                    {on ? <Check size={12} /> : null} {(() => { const Icon = memberIcon(m.icon); return <Icon size={12} />; })()} {m.name}
-                  </button>
+                  <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                    <input type="checkbox" checked={on}
+                      onChange={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
+                      style={{ width: 17, height: 17, accentColor: TEAL, flexShrink: 0 }} />
+                    <Icon size={14} style={{ color: SUB }} /> {m.name}
+                  </label>
                 );
               })}
             </div>
@@ -1486,7 +1483,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers, onStores }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -1517,12 +1514,22 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores }) {
               <PieChart size={15} /> {t("monthlyReport")}
             </button>
           )}
+          {onCats && (
+            <button role="menuitem" onClick={() => { setOpen(false); onCats(); }} style={menuItem}>
+              <SlidersHorizontal size={15} /> {t("categories")}
+            </button>
+          )}
+          {onMembers && (
+            <button role="menuitem" onClick={() => { setOpen(false); onMembers(); }} style={menuItem}>
+              <Users size={15} /> {t("members")}
+            </button>
+          )}
           {onStores && (
             <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
               <Store size={15} /> {t("stores")}
             </button>
           )}
-          {(onBudget || onReport || onStores) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onBudget || onReport || onCats || onMembers || onStores) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
@@ -1572,6 +1579,9 @@ const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", bo
 const selectStyle = { ...input, width: "auto", padding: "8px 10px", cursor: "pointer", fontWeight: 600 };
 const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: "#fff", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+// Secondary action: soft green fill, no heavy solid-teal weight. Used for the
+// receipt entry points so they don't dominate the top of the form.
+const softBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flex: 1, padding: "11px 14px", borderRadius: 10, border: "none", background: "#E3F5F2", color: "#0F5E55", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid #F3C4C4`, background: "#fff", color: "#DC2626", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: "#fff", color: SUB, cursor: "pointer" };
@@ -1588,8 +1598,15 @@ function pill(color) {
 function selectablePill(color, active) {
   return { padding: "6px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: active ? "#fff" : color, background: active ? color : "transparent", border: `1.5px solid ${color}`, fontFamily: "inherit" };
 }
-function segBtn(active, color) {
-  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 9, fontSize: 14, fontWeight: 600, cursor: "pointer", color: active ? "#fff" : INK, background: active ? color : "#fff", border: `1.5px solid ${active ? color : LINE}`, fontFamily: "inherit" };
+// Unified selectable chip: neutral grey when off, brand green when on. Category
+// and member tags share it, so the form reads as one system rather than a row of
+// clashing coloured outlines.
+function chip(active) {
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", color: active ? "#fff" : "#374151", background: active ? TEAL : "#EEF0F2" };
+}
+// One grey track, the active half lifts to green — a proper segmented control.
+function segItem(active) {
+  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", color: active ? "#fff" : SUB, background: active ? TEAL : "transparent" };
 }
 function splitBadge(split) {
   const shared = split === "shared";
