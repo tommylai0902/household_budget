@@ -924,11 +924,15 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   // plenty of entries are one-offs that shouldn't clutter the suggestions.
   const typed = d.description.trim();
   const canRemember = typed.length > 1 && !merchants.some((m) => m.name.toLowerCase() === typed.toLowerCase());
-  // Substring, not prefix — "frills" should still find "No Frills". An exact
-  // match is dropped so the list doesn't hang around once you've picked one.
-  const suggestions = merchants
-    .filter((m) => m.name.toLowerCase().includes(typed.toLowerCase()) && m.name.toLowerCase() !== typed.toLowerCase())
-    .slice(0, 6);
+  // Nothing shows until something is typed — an empty box would otherwise match
+  // every shop (includes("") is always true) and dump the whole list on focus.
+  // Substring, not prefix, so "frills" still finds "No Frills"; an exact match is
+  // dropped so the list doesn't hang around once you've picked one.
+  const suggestions = typed
+    ? merchants
+        .filter((m) => m.name.toLowerCase().includes(typed.toLowerCase()) && m.name.toLowerCase() !== typed.toLowerCase())
+        .slice(0, 6)
+    : [];
   // Every distinct name gets its own unticked ask. Without this, ticking for one
   // shop and then retyping a different name would silently keep the second one.
   useEffect(() => { setRemember(false); }, [typed]);
