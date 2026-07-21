@@ -63,7 +63,7 @@ const STRINGS = {
     budget: "Budget", budgetFor: "Budget for {month}", budgetTotal: "All categories",
     budgetNone: "No budgets set for {month}. Give any category an amount below.",
     budgetSpent: "Spent", budgetLeft: "Left", budgetOver: "Over budget",
-    budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget",
+    budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget", setBudgetPh: "Set budget",
     budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
     monthlyReport: "Monthly Report", reportFor: "Spending in {month}",
@@ -131,7 +131,7 @@ const STRINGS = {
     budget: "預算", budgetFor: "{month}預算", budgetTotal: "所有類別",
     budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
     budgetSpent: "已用", budgetLeft: "剩餘", budgetOver: "超出預算",
-    budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算",
+    budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算", setBudgetPh: "設定預算",
     budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
@@ -1240,24 +1240,33 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
 
       {/* Per-category */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Column headers, aligned to the spent value and the budget field below. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>{t("category")}</span>
+          <span style={{ width: 72, textAlign: "right" }}>{t("budgetSpent")}</span>
+          <span style={{ width: 104, textAlign: "left", paddingLeft: 2 }}>{t("budget")}</span>
+        </div>
         {categories.map((c) => {
           const s = spentByCategory.get(c.id) || 0;
           const b = budgetOf(c.id);
+          const hasBudget = drafts[c.id] != null && drafts[c.id] !== "";
           return (
             <div key={c.id}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 99, background: c.color, flexShrink: 0 }} />
                 <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0 }}>{catName(c)}</button>
                 {/* Just what's been spent — the budget itself is in the field alongside. */}
-                <span style={{ fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                <span style={{ width: 72, textAlign: "right", fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                   {money(s)}
                 </span>
                 <div style={{ position: "relative", width: 104, flexShrink: 0 }}>
-                  <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>$</span>
+                  {/* Dollar sign only once there's a value, so an unset field reads as
+                      "Set budget" rather than a misleading "$ 0.00". */}
+                  {hasBudget && <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>$</span>}
                   <input type="number" inputMode="decimal" value={drafts[c.id] ?? ""}
                     onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })}
                     onKeyDown={(e) => e.key === "Enter" && save()}
-                    placeholder="0.00" style={{ ...input, padding: "7px 8px 7px 20px", fontSize: 13 }} />
+                    placeholder={t("setBudgetPh")} style={{ ...input, padding: hasBudget ? "7px 8px 7px 20px" : "7px 8px", fontSize: 13 }} />
                 </div>
               </div>
               <BudgetBar spent={s} budget={b} />
