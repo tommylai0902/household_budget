@@ -1252,7 +1252,6 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
           return (
             <div key={c.id}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <span style={{ width: 9, height: 9, borderRadius: 99, background: c.color, flexShrink: 0 }} />
                 <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0 }}>{catName(c)}</button>
                 {/* Just what's been spent — the budget itself is in the field alongside. */}
                 <span style={{ width: 72, textAlign: "right", fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
