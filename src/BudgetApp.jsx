@@ -983,7 +983,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           </label>
           <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
             <Upload size={18} /> {t("uploadReceipt")}
-            <input type="file" accept="image/*,application/pdf" style={{ display: "none" }}
+            <input type="file" accept="image/*,application/pdf,.pdf" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
           </label>
         </div>
