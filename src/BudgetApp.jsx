@@ -12,7 +12,7 @@ const MEMBER_ICONS = { user: User, people: Users, home: Home, plane: Plane, book
 const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
-import { settlements } from "./lib/settle";
+import { settlements, netBalances } from "./lib/settle";
 
 /* ------------------------------------------------------------------ *
  * Household Budget — Step 2: shared, live-synced ledger (Supabase).
@@ -55,6 +55,8 @@ const STRINGS = {
     newCatPh: "New category name", saveCategories: "Save categories", deleteCategory: "Delete category",
     close: "Close",
     owesLine: "{debtor} owes {creditor} {amount}", personalLine: "Personal expense — not split",
+    settlementDetails: "Settlement details", paidThisMonth: "Paid this month", sharedShare: "Shared-bill share",
+    shouldReceive: "Should receive", shouldPay: "Should pay", noSharedBills: "No shared bills to settle this month.",
     sharedLine: "Split {n} ways — {amount} each",
     members: "Members", manageMembers: "Edit members", editMembers: "Edit members",
     memberHasExpenses: "That member still has expenses in this ledger. Reassign or delete them first.",
@@ -121,6 +123,8 @@ const STRINGS = {
     newCatPh: "新類別名稱", saveCategories: "儲存類別", deleteCategory: "刪除類別",
     close: "關閉",
     owesLine: "{debtor} 欠 {creditor} {amount}", personalLine: "個人支出，不分帳",
+    settlementDetails: "結算明細", paidThisMonth: "本月已付", sharedShare: "分帳應付",
+    shouldReceive: "應收", shouldPay: "應付", noSharedBills: "這個月沒有需要結算的分帳支出。",
     sharedLine: "{n} 人平分 — 每人 {amount}",
     members: "成員", manageMembers: "編輯成員", editMembers: "編輯成員",
     memberHasExpenses: "呢位成員喺呢本帳簿仲有支出，要先改咗付款人或者刪走嗰啲支出。",
@@ -433,6 +437,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [managingMembers, setManagingMembers] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showSettlement, setShowSettlement] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -518,12 +523,17 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const summary = useMemo(() => {
     let total = 0;
     const paid = new Map(members.map((m) => [m.id, 0]));
+    const sharedShare = new Map(members.map((m) => [m.id, 0]));
     for (const e of rows) {
       const amt = Number(e.amount) || 0;
       total += amt;
       if (paid.has(e.paidById)) paid.set(e.paidById, paid.get(e.paidById) + amt);
+      if (e.split === "shared") {
+        const sharers = (e.sharedWith || []).filter((id) => sharedShare.has(id));
+        if (sharers.length) for (const id of sharers) sharedShare.set(id, sharedShare.get(id) + amt / sharers.length);
+      }
     }
-    return { total, paid, transfers: settlements(rows, members) };
+    return { total, paid, sharedShare, balances: netBalances(rows, members), transfers: settlements(rows, members) };
   }, [rows, members]);
 
   if (!ready) return <Centered>{t("connecting")}</Centered>;
@@ -578,7 +588,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           ))}
         </div>
 
-        <SettlementBar transfers={summary.transfers} members={members} t={t} />
+        <SettlementBar transfers={summary.transfers} paid={summary.paid} members={members} t={t} onClick={() => setShowSettlement(true)} />
 
         <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
 
@@ -665,6 +675,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
         <MonthlyReport month={month} months={monthsAvailable} expenses={expenses} categories={categories}
           lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)} />
       )}
+      {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
     </div>
   );
 }
@@ -695,7 +706,7 @@ function Stat({ label, value, big, dot }) {
 
 // With three or more members there can be several transfers, so this renders a
 // list rather than a single "A owes B" line.
-function SettlementBar({ transfers, members, t }) {
+function SettlementBar({ transfers, paid, members, t, onClick }) {
   const settled = transfers.length === 0;
   const first = transfers[0];
   // The transfer list is a grid rather than flex rows so every line shares column
@@ -704,23 +715,49 @@ function SettlementBar({ transfers, members, t }) {
     ? "#334155"
     : `linear-gradient(90deg, ${memberById(members, first.fromId)?.color || TEAL}, ${memberById(members, first.toId)?.color || TEAL})`;
   return (
-    <div style={{ display: "flex", alignItems: transfers.length > 1 ? "flex-start" : "center", gap: 12, padding: "14px 16px", marginBottom: 14, borderRadius: 12, color: "#fff", background: tint, flexWrap: "wrap" }}>
-      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, opacity: 0.85, fontWeight: 700, paddingTop: transfers.length > 1 ? 3 : 0 }}>{t("settleUp")}</div>
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 16px", marginBottom: 14, border: "none", borderRadius: 12, color: "#fff", background: tint, cursor: "pointer", fontFamily: "inherit", textAlign: "left", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, opacity: 0.85, fontWeight: 700 }}>{t("settleUp")}</span>
+      <span style={{ display: "flex", gap: 10, flexWrap: "wrap", flex: 1 }}>
+        {members.map((member) => <span key={member.id} style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{member.name} <strong style={{ fontVariantNumeric: "tabular-nums" }}>{money(paid.get(member.id) || 0)}</strong></span>)}
+      </span>
       {settled ? (
-        <div style={{ fontWeight: 700 }}>{t("allSquare")}</div>
+        <span style={{ fontWeight: 700 }}>{t("allSquare")}</span>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "auto auto auto auto", columnGap: 10, rowGap: 6, alignItems: "center", fontWeight: 700 }}>
-          {transfers.map((x, i) => (
-            <Fragment key={i}>
-              <span>{memberById(members, x.fromId)?.name || "—"}</span>
-              <ArrowRight size={16} />
-              <span>{memberById(members, x.toId)?.name || "—"}</span>
-              <span style={{ marginLeft: 4, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>{money(x.amount)}</span>
-            </Fragment>
-          ))}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, whiteSpace: "nowrap" }}>
+          {memberById(members, first.fromId)?.name || "—"} <ArrowRight size={16} /> {memberById(members, first.toId)?.name || "—"} {money(first.amount)}
+        </span>
+      )}
+      <ChevronRight size={17} style={{ opacity: 0.8 }} />
+    </button>
+  );
+}
+
+function SettlementDetails({ members, summary, t, onClose }) {
+  return (
+    <Overlay title={t("settlementDetails")} t={t} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {members.map((member) => {
+          const balance = summary.balances.get(member.id) || 0;
+          const receiving = balance > 0.005;
+          const paying = balance < -0.005;
+          return (
+            <div key={member.id} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 800 }}><span style={{ width: 9, height: 9, borderRadius: 99, background: member.color }} /> {member.name}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                <div><div style={{ fontSize: 11, color: SUB, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{t("paidThisMonth")}</div><div style={{ fontWeight: 800, marginTop: 3 }}>{money(summary.paid.get(member.id) || 0)}</div></div>
+                <div><div style={{ fontSize: 11, color: SUB, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{t("sharedShare")}</div><div style={{ fontWeight: 800, marginTop: 3 }}>{money(summary.sharedShare.get(member.id) || 0)}</div></div>
+              </div>
+              {(receiving || paying) && <div style={{ marginTop: 12, borderTop: `1px solid ${LINE}`, paddingTop: 10, fontSize: 13, fontWeight: 700, color: receiving ? TEAL : "#C2410C" }}>{receiving ? t("shouldReceive") : t("shouldPay")}: {money(Math.abs(balance))}</div>}
+            </div>
+          );
+        })}
+      </div>
+      {summary.transfers.length === 0 ? <div style={{ color: SUB, fontSize: 13 }}>{t("noSharedBills")}</div> : (
+        <div style={{ background: "#E3F5F2", color: "#0F5E55", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700 }}>
+          {summary.transfers.map((transfer, index) => <div key={index}>{t("owesLine", { debtor: memberById(members, transfer.fromId)?.name || "—", creditor: memberById(members, transfer.toId)?.name || "—", amount: money(transfer.amount) })}</div>)}
         </div>
       )}
-    </div>
+    </Overlay>
   );
 }
 
