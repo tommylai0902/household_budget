@@ -4,8 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 // Runs server-side only — GEMINI_API_KEY never reaches the browser.
 // (A VITE_ prefixed key would be bundled into the client JS and readable by anyone.)
 
-const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const MAX_B64 = 5_000_000; // ~3.7MB decoded; Vercel caps the request body at 4.5MB
+// ponytail: a multi-page PDF invoice can exceed this — send one such doc and it 413s.
+// Chunk/paginate only if real invoices actually run long; household receipts don't.
 
 // Vercel pre-parses JSON into req.body; the Vite dev middleware does not.
 async function readBody(req) {
@@ -47,7 +49,7 @@ export default async function handler(req, res) {
     const interaction = await client.interactions.create({
       model: "gemini-3.5-flash",
       system_instruction:
-        "You read photos of retail receipts. " +
+        "You read photos or PDFs of retail receipts and invoices. " +
         "Amount is the final total actually paid, including tax and tip. " +
         `If no date is printed on the receipt, use ${today}. ` +
         "Description is the merchant name, or what was bought if the merchant is unclear. " +
@@ -58,7 +60,9 @@ export default async function handler(req, res) {
         "If the line items are not legible, return an empty items list rather than guessing.",
       input: [
         { type: "text", text: "Extract this receipt." },
-        { type: "image", data: image, mime_type: mediaType },
+        mediaType === "application/pdf"
+          ? { type: "document", data: image, mime_type: mediaType }
+          : { type: "image", data: image, mime_type: mediaType },
       ],
       response_format: {
         type: "text",

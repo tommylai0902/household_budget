@@ -820,6 +820,13 @@ function FieldRow({ label, children, last }) {
   );
 }
 
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+  const fr = new FileReader();
+  fr.onload = () => resolve(fr.result.split(",")[1]);
+  fr.onerror = () => reject(new Error("could not read file"));
+  fr.readAsDataURL(blob);
+});
+
 // Phone photos run ~5MB; Vercel caps request bodies at 4.5MB and large images
 // cost more vision tokens. 2000px on the long edge still reads receipt text fine.
 async function toScaledJpegBase64(file, max = 2000) {
@@ -830,12 +837,14 @@ async function toScaledJpegBase64(file, max = 2000) {
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result.split(",")[1]);
-    fr.onerror = () => reject(new Error("could not read file"));
-    fr.readAsDataURL(blob);
-  });
+  return blobToBase64(blob);
+}
+
+// Images get downscaled to keep the body small; PDFs go as-is — the model reads
+// them natively, and there's no canvas path to rescale a PDF without a renderer.
+async function fileToUpload(file) {
+  if (file.type === "application/pdf") return { image: await blobToBase64(file), mediaType: "application/pdf" };
+  return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
 function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditCategories, onEditMembers, onEditStores, defaultMonth }) {
@@ -861,14 +870,14 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   const scanReceipt = async (file) => {
     setScanErr(""); setScanning(true);
     try {
-      const image = await toScaledJpegBase64(file);
+      const { image, mediaType } = await fileToUpload(file);
       const { data } = await supabase.auth.getSession();
       const res = await fetch("/api/scan-receipt", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           image,
-          mediaType: "image/jpeg",
+          mediaType,
           categories: categories.map((c) => c.name),
           token: data.session?.access_token,
         }),
@@ -962,7 +971,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       <label style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
         {scanning ? <Loader2 size={18} className="spin" /> : <Camera size={18} />}
         {scanning ? t("scanning") : t("scanReceipt")}
-        <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+        <input type="file" accept="image/*,application/pdf" disabled={scanning} style={{ display: "none" }}
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
       </label>
       {scanErr && <div style={{ color: "#DC2626", fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
