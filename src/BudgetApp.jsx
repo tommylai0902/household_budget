@@ -1131,14 +1131,16 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
 function CategoryManager({ categories, lang, t, onChange, onClose }) {
   const [list, setList] = useState(categories);
   const [name, setName] = useState("");
-  const [color, setColor] = useState("#0E9384");
+  // Colours are auto-assigned from the shared palette (the report chart shows them);
+  // this UI manages names only, so there's no picker to fuss with. Cycling by length
+  // spreads new categories across the palette the same way members are coloured.
+  const nextColor = () => db.MEMBER_COLORS[list.length % db.MEMBER_COLORS.length];
 
   const add = () => {
     if (!name.trim()) return;
-    setList([...list, { id: uid(), name: name.trim(), nameZh: name.trim(), color, budget: null }]);
+    setList([...list, { id: uid(), name: name.trim(), nameZh: name.trim(), color: nextColor(), budget: null }]);
     setName("");
   };
-  const patch = (id, key, val) => setList(list.map((c) => (c.id === id ? { ...c, [key]: val } : c)));
   // Write both name fields together so the EN and 繁中 names can never drift apart.
   const patchName = (id, val) => setList(list.map((c) => (c.id === id ? { ...c, name: val, nameZh: val } : c)));
   const del = (id) => setList(list.filter((c) => c.id !== id));
@@ -1147,7 +1149,7 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
   // not a required step.
   const done = () => {
     const pending = name.trim();
-    onChange(pending ? [...list, { id: uid(), name: pending, nameZh: pending, color, budget: null }] : list);
+    onChange(pending ? [...list, { id: uid(), name: pending, nameZh: pending, color: nextColor(), budget: null }] : list);
     onClose();
   };
 
@@ -1156,14 +1158,12 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {list.map((c) => (
           <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input type="color" value={c.color} onChange={(e) => patch(c.id, "color", e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
             <input value={catName(c)} onChange={(e) => patchName(c.id, e.target.value)} style={{ ...input, flex: 1 }} />
             <button onClick={() => del(c.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteCategory")}><Trash2 size={15} /></button>
           </div>
         ))}
       </div>
       <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 12, paddingTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={t("newCatPh")} style={{ ...input, flex: 1 }} />
         <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
       </div>
