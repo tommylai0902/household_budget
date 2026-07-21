@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Menu, BookOpen, PieChart, Store, Languages,
+  Users, User, ArrowRight, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane,
 } from "lucide-react";
 
@@ -85,7 +85,7 @@ const STRINGS = {
     newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
-    scanReceipt: "Scan receipt", scanning: "Reading receipt…",
+    scanReceipt: "Scan receipt", uploadReceipt: "Upload receipt", scanning: "Reading receipt…",
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
     editCategories: "Edit categories", menu: "Menu",
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
@@ -152,7 +152,7 @@ const STRINGS = {
     newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
-    scanReceipt: "掃描收據", scanning: "讀取收據中…",
+    scanReceipt: "掃描收據", uploadReceipt: "上載收據", scanning: "讀取收據中…",
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
     editCategories: "編輯類別", menu: "選單",
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
@@ -968,12 +968,26 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
 
   return (
     <Overlay onClose={onClose} title={initial ? t("editExpense") : t("addExpense")} t={t}>
-      <label style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
-        {scanning ? <Loader2 size={18} className="spin" /> : <Camera size={18} />}
-        {scanning ? t("scanning") : t("scanReceipt")}
-        <input type="file" accept="image/*,application/pdf" disabled={scanning} style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
-      </label>
+      {scanning ? (
+        <div style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: "wait", opacity: 0.6 }}>
+          <Loader2 size={18} className="spin" /> {t("scanning")}
+        </div>
+      ) : (
+        // Two entry points share one handler: Scan forces the camera (capture,
+        // image only); Upload takes a screenshot, image or PDF from the files.
+        <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
+          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+            <Camera size={18} /> {t("scanReceipt")}
+            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
+          </label>
+          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+            <Upload size={18} /> {t("uploadReceipt")}
+            <input type="file" accept="image/*,application/pdf" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
+          </label>
+        </div>
+      )}
       {scanErr && <div style={{ color: "#DC2626", fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
       <div style={{ textAlign: "center", color: SUB, fontSize: 12, margin: "-2px 0 2px" }}>{t("scanHint")}</div>
 
