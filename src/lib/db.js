@@ -50,16 +50,19 @@ export async function fetchLedgers() {
 // template stays blank instead of being backfilled with defaults.
 export async function createLedger(name, template = "household") {
   // owner_id is required and RLS pins it to the caller; the creator becomes OWNER
-  // (my_role() derives OWNER from owner_id, so no separate role row is needed to
-  // create/seed). getSession reads the cached session — no extra network round trip.
+  // (my_role() derives OWNER from owner_id). getSession reads the cached session.
   const { data: { session } } = await supabase.auth.getSession();
   const ownerId = session?.user?.id;
   if (!ownerId) throw new Error("not signed in");
-  const { data, error } = await supabase
-    .from("ledgers").insert({ name, template, owner_id: ownerId }).select().single();
+  // Generate the id client-side and DON'T use .select(): the ledgers SELECT policy
+  // checks ownership by re-querying ledgers, which can't see this row mid-INSERT, so
+  // an INSERT..RETURNING (what .select() does) trips its own RLS and 403s even though
+  // the plain insert is allowed. We already know the id, so no round-trip is needed.
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from("ledgers").insert({ id, name, template, owner_id: ownerId });
   if (error) throw error;
-  await Promise.all([seedCategories(data.id, template), seedMembers(data.id)]);
-  return { id: data.id, name: data.name, template: data.template };
+  await Promise.all([seedCategories(id, template), seedMembers(id)]);
+  return { id, name, template };
 }
 // Only touches the ledger row itself — changing the template here swaps the icon,
 // it does not re-seed categories on a ledger already in use.
