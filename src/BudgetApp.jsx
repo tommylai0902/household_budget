@@ -250,7 +250,7 @@ export default function App() {
 
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} />;
-  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger}
+  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger} currentUserId={session.user.id}
     inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
   return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t} />;
 }
@@ -338,7 +338,7 @@ function Login({ lang, changeLang, t }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite }) {
+function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -423,7 +423,9 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite 
               <div style={{ marginTop: 8 }}>{t("noLedgers")}</div>
             </div>
           )}
-          {ledgers.map((l) => (
+          {ledgers.map((l) => {
+            const isOwner = l.ownerId === currentUserId; // only the owner may rename/delete/manage members
+            return (
             <div key={l.id}>
               {editingId === l.id ? (
                 <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 12 }}>
@@ -459,12 +461,13 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite 
                     <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
                     <ChevronRight size={17} style={{ color: SUB }} />
                   </button>
-                  <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>
-                  <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
+                  {isOwner && <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>}
+                  {isOwner && <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>}
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
