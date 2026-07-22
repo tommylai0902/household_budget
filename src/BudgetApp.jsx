@@ -35,6 +35,10 @@ const STRINGS = {
     eyebrow: "Household Ledger",
     signInTitle: "Sign in",
     signInHint: "Use the account set up for your household.",
+    signUpTitle: "Create account", signUpHint: "Sign up, then create or join a ledger.",
+    nameLabel: "Name", namePh: "How you'll show up in a ledger",
+    signUpBtn: "Create account", toSignUp: "New here? Create an account", toSignIn: "Already have an account? Sign in",
+    checkEmail: "Almost there — check your email to confirm, then sign in.",
     email: "Email", password: "Password", signInBtn: "Sign in", signOut: "Sign out",
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
@@ -112,6 +116,10 @@ const STRINGS = {
     eyebrow: "家庭帳簿",
     signInTitle: "登入",
     signInHint: "使用為你們家庭設定的帳戶登入。",
+    signUpTitle: "建立帳戶", signUpHint: "註冊後，建立或加入帳簿。",
+    nameLabel: "名稱", namePh: "你喺帳簿入面顯示嘅名",
+    signUpBtn: "建立帳戶", toSignUp: "未有帳戶？建立一個", toSignIn: "已經有帳戶？登入",
+    checkEmail: "就快好 — 去電郵確認帳戶，然後再登入。",
     email: "電郵", password: "密碼", signInBtn: "登入", signOut: "登出",
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
@@ -259,18 +267,33 @@ function Centered({ children }) {
 
 /* ============================ Login =============================== */
 function Login({ lang, changeLang, t }) {
+  const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(""); // e.g. "check your email"
+  const signup = mode === "signup";
 
   const submit = async () => {
-    if (!email || !pw) return;
-    setBusy(true); setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
-    if (error) { setError(error.message); setBusy(false); }
-    // on success, onAuthStateChange in App swaps the view
+    if (!email || !pw || busy) return;
+    setBusy(true); setError(""); setNotice("");
+    if (signup) {
+      // The DB trigger mirrors the new auth user into app_user; name rides along as
+      // metadata. If the project requires email confirmation, no session comes back
+      // yet — tell them to confirm rather than leaving them on a dead screen.
+      const { data, error } = await supabase.auth.signUp({ email, password: pw, options: { data: { name: name.trim() || null } } });
+      if (error) { setError(error.message); setBusy(false); return; }
+      if (!data.session) { setNotice(t("checkEmail")); setBusy(false); return; }
+      // otherwise onAuthStateChange swaps the view
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+      if (error) { setError(error.message); setBusy(false); }
+    }
   };
+
+  const swap = () => { setMode(signup ? "signin" : "signup"); setError(""); setNotice(""); };
 
   return (
     <div style={{ background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
@@ -279,23 +302,34 @@ function Login({ lang, changeLang, t }) {
           <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("eyebrow")}</div>
           <LangToggle lang={lang} changeLang={changeLang} />
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>{t("signInTitle")}</h1>
-        <p style={{ fontSize: 13, color: SUB, margin: "0 0 16px" }}>{t("signInHint")}</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>{signup ? t("signUpTitle") : t("signInTitle")}</h1>
+        <p style={{ fontSize: 13, color: SUB, margin: "0 0 16px" }}>{signup ? t("signUpHint") : t("signInHint")}</p>
 
+        {signup && (
+          <Field label={t("nameLabel")}>
+            <input type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={t("namePh")} style={input} />
+          </Field>
+        )}
         <Field label={t("email")}>
           <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()} style={input} />
         </Field>
         <Field label={t("password")}>
-          <input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)}
+          <input type="password" autoComplete={signup ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()} style={input} />
         </Field>
 
         {error && <div style={{ ...errorBox, marginTop: 4 }}>{error}</div>}
+        {notice && <div style={{ background: "#E3F5F2", border: "1px solid #B8E4DD", color: "#0F5E55", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 4, fontWeight: 600 }}>{notice}</div>}
 
         <button onClick={submit} disabled={busy || !email || !pw}
           style={{ ...addBtn, opacity: busy || !email || !pw ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
-          {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {t("signInBtn")}
+          {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {signup ? t("signUpBtn") : t("signInBtn")}
+        </button>
+
+        <button onClick={swap} style={{ display: "block", width: "100%", marginTop: 12, padding: 4, border: "none", background: "none", color: TEAL, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          {signup ? t("toSignIn") : t("toSignUp")}
         </button>
         <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
