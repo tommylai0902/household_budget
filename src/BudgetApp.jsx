@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
-  Users, User, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
+  Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane,
 } from "lucide-react";
 
@@ -252,7 +252,7 @@ export default function App() {
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} />;
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger}
     inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
-  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} lang={lang} changeLang={changeLang} t={t} />;
+  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t} />;
 }
 
 function Centered({ children }) {
@@ -497,8 +497,65 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite 
   );
 }
 
+// Loads every ledger the signed-in user can open (RLS already scopes this to
+// owned + shared — no client-side filtering needed) and owns the dropdown's
+// open/close state, so the header component below just renders.
+function useLedgerSwitcher(currentId) {
+  const [ledgers, setLedgers] = useState([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { db.fetchLedgers().then(setLedgers).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onKey = (e) => e.key === "Escape" && close();
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+  return { ledgers, currentId, open, setOpen };
+}
+
+// Replaces the static ledger-name heading: click it to switch ledgers in place,
+// no exit-to-picker round trip. "+ Create ledger" still hands off to the picker,
+// which already has the template chooser — no need to duplicate that here.
+function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
+  const { ledgers, open, setOpen } = useLedgerSwitcher(ledger.id);
+  const select = (l) => { setOpen(false); if (l.id !== ledger.id) onSwitch(l); };
+  return (
+    <div className="ledger-switcher" style={{ position: "relative", minWidth: 150, flex: "1 1 auto" }} onClick={(e) => e.stopPropagation()}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 0, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: INK }}>
+          {ledger.name}
+        </h1>
+        <ChevronDown size={20} style={{ color: SUB, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, maxWidth: 320, zIndex: 60 }}>
+          {ledgers.map((l) => {
+            const Icon = ledgerIcon(l.template);
+            const active = l.id === ledger.id;
+            return (
+              <button key={l.id} role="menuitem" onClick={() => select(l)}
+                style={{ ...menuItem, background: active ? "#E3F5F2" : "none", color: active ? "#0F5E55" : INK }}>
+                <Icon size={15} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+                {active && <Check size={14} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+          <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
+          <button role="menuitem" onClick={() => { setOpen(false); onCreateNew(); }} style={{ ...menuItem, color: TEAL }}>
+            <Plus size={15} /> {t("createLedger")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, currentUserId, onExit, lang, changeLang, t }) {
+function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t }) {
   const isOwner = ledger.ownerId === currentUserId; // only owners may invite
   const [categories, setCategories] = useState([]);
   const [members, setMembers] = useState([]);
@@ -626,7 +683,7 @@ function Ledger({ ledger, currentUserId, onExit, lang, changeLang, t }) {
         .exp-row:hover { background: #FAFBFC; }
         .exp-row:focus-visible { background: #F1F5F4; box-shadow: inset 3px 0 0 ${TEAL}; }
         @media (max-width: 560px) {
-          .ledger-header > h1 { flex-basis:100%; }
+          .ledger-switcher { flex-basis:100%; }
           .ledger-controls { width:100%; justify-content:flex-end; margin-left:0 !important; }
           .exp-row { padding:14px !important; }
         }
@@ -639,7 +696,7 @@ function Ledger({ ledger, currentUserId, onExit, lang, changeLang, t }) {
             the controls wrap to their own line; marginLeft:auto then holds them
             against the right edge instead of falling back to the left. */}
         <div className="ledger-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 150, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ledger.name}</h1>
+          <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
           <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
             <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
               <ArrowLeft size={15} /> {t("exit")}
