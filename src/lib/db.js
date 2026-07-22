@@ -49,7 +49,14 @@ export async function fetchLedgers() {
 // Seeds at creation time rather than lazily on first open, so the "blank"
 // template stays blank instead of being backfilled with defaults.
 export async function createLedger(name, template = "household") {
-  const { data, error } = await supabase.from("ledgers").insert({ name, template }).select().single();
+  // owner_id is required and RLS pins it to the caller; the creator becomes OWNER
+  // (my_role() derives OWNER from owner_id, so no separate role row is needed to
+  // create/seed). getSession reads the cached session — no extra network round trip.
+  const { data: { session } } = await supabase.auth.getSession();
+  const ownerId = session?.user?.id;
+  if (!ownerId) throw new Error("not signed in");
+  const { data, error } = await supabase
+    .from("ledgers").insert({ name, template, owner_id: ownerId }).select().single();
   if (error) throw error;
   await Promise.all([seedCategories(data.id, template), seedMembers(data.id)]);
   return { id: data.id, name: data.name, template: data.template };
