@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
   Users, User, ArrowLeft, Receipt, ChevronRight, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
@@ -90,6 +90,15 @@ const STRINGS = {
     editCategories: "Edit categories", menu: "Menu",
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
+    invitePeople: "Invite people", inviteAccess: "Their access",
+    roleEditor: "Editor", roleViewer: "Viewer",
+    roleEditorHint: "Can view and add or change expenses, budgets and members.",
+    roleViewerHint: "Can view everything, but not make changes.",
+    inviteEmailLabel: "Email (optional)",
+    inviteEmailHint: "Leave blank for an open link; set it to lock the invite to one account.",
+    generateInvite: "Generate invite link", inviteLinkReady: "Share this link — valid 7 days:",
+    copyLink: "Copy", copiedLink: "Copied",
+    inviteJoined: "You've joined the ledger.", inviteFailed: "Couldn't accept the invite: {msg}",
     noLedgers: "No ledgers yet. Create your first one below.",
     exit: "Exit", language: "Language", openLedger: "Open {name}",
     startWith: "Start with", tplHousehold: "Household", tplTravel: "Travel",
@@ -157,6 +166,15 @@ const STRINGS = {
     editCategories: "編輯類別", menu: "選單",
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
+    invitePeople: "邀請成員", inviteAccess: "權限",
+    roleEditor: "可編輯", roleViewer: "只可查看",
+    roleEditorHint: "可以睇同埋新增/修改支出、預算、成員。",
+    roleViewerHint: "可以睇晒所有嘢，但唔可以改。",
+    inviteEmailLabel: "電郵（可選）",
+    inviteEmailHint: "留空＝任何人有連結都可以加入；填咗＝只限嗰個電郵嘅帳號接受。",
+    generateInvite: "產生邀請連結", inviteLinkReady: "分享呢條連結 — 7 日有效：",
+    copyLink: "複製", copiedLink: "已複製",
+    inviteJoined: "你已加入帳簿。", inviteFailed: "接受邀請失敗：{msg}",
     noLedgers: "仲未有帳簿。喺下面建立第一本。",
     exit: "離開", language: "語言", openLedger: "開啟{name}",
     startWith: "起始類別", tplHousehold: "家用", tplTravel: "旅行",
@@ -207,10 +225,26 @@ export default function App() {
   // No ledger picked = the picker is home. Exiting a ledger comes back here.
   const [ledger, setLedger] = useState(null);
 
+  // An invite link lands as /?invite=<token>. Grab it once, redeem after sign-in,
+  // then strip it from the URL so a refresh can't try to re-accept a used token.
+  const inviteToken = useRef(new URLSearchParams(window.location.search).get("invite"));
+  const [inviteMsg, setInviteMsg] = useState(null); // { ok, text }
+  useEffect(() => {
+    if (!session || !inviteToken.current) return;
+    const token = inviteToken.current;
+    inviteToken.current = null;
+    (async () => {
+      try { await db.acceptInvite(token); setInviteMsg({ ok: true, text: t("inviteJoined") }); }
+      catch (e) { setInviteMsg({ ok: false, text: t("inviteFailed", { msg: e.message || String(e) }) }); }
+      finally { window.history.replaceState({}, "", window.location.pathname); }
+    })();
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} />;
-  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger} />;
-  return <Ledger ledger={ledger} onExit={() => setLedger(null)} lang={lang} changeLang={changeLang} t={t} />;
+  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger}
+    inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
+  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} lang={lang} changeLang={changeLang} t={t} />;
 }
 
 function Centered({ children }) {
@@ -270,7 +304,7 @@ function Login({ lang, changeLang, t }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, onOpen }) {
+function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -338,6 +372,13 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
           <HeaderMenu t={t} lang={lang} changeLang={changeLang} />
         </div>
         <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
+
+        {inviteMsg && (
+          <div onClick={onDismissInvite} style={{ cursor: "pointer", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12,
+            background: inviteMsg.ok ? "#E3F5F2" : "#FEF2F2", border: `1px solid ${inviteMsg.ok ? "#B8E4DD" : "#FECACA"}`, color: inviteMsg.ok ? "#0F5E55" : "#B91C1C", fontWeight: 600 }}>
+            {inviteMsg.text}
+          </div>
+        )}
 
         {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
@@ -423,7 +464,8 @@ function LedgerPicker({ lang, changeLang, t, onOpen }) {
 }
 
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, onExit, lang, changeLang, t }) {
+function Ledger({ ledger, currentUserId, onExit, lang, changeLang, t }) {
+  const isOwner = ledger.ownerId === currentUserId; // only owners may invite
   const [categories, setCategories] = useState([]);
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -438,6 +480,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
   const [showBudget, setShowBudget] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -573,7 +616,8 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
               ))}
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-              onCats={() => setManagingCats(true)} onMembers={() => setManagingMembers(true)} onStores={() => setManagingStores(true)} />
+              onCats={() => setManagingCats(true)} onMembers={() => setManagingMembers(true)} onStores={() => setManagingStores(true)}
+              onInvite={isOwner ? () => setShowInvite(true) : undefined} />
           </div>
         </div>
 
@@ -669,6 +713,7 @@ function Ledger({ ledger, onExit, lang, changeLang, t }) {
           lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)} />
       )}
       {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
+      {showInvite && <InvitePanel ledger={ledger} t={t} onClose={() => setShowInvite(false)} />}
     </div>
   );
 }
@@ -724,6 +769,57 @@ function SettlementDetails({ members, summary, t, onClose }) {
       {summary.transfers.length === 0 ? <div style={{ color: SUB, fontSize: 13 }}>{t("noSharedBills")}</div> : (
         <div style={{ background: "#E3F5F2", color: "#0F5E55", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700 }}>
           {summary.transfers.map((transfer, index) => <div key={index}>{t("owesLine", { debtor: memberById(members, transfer.fromId)?.name || "—", creditor: memberById(members, transfer.toId)?.name || "—", amount: money(transfer.amount) })}</div>)}
+        </div>
+      )}
+    </Overlay>
+  );
+}
+
+// Owner-only. Mints a share link (or email-locked invite) granting Editor/Viewer.
+// Only the token's hash is stored server-side; RLS lets just the owner create these.
+function InvitePanel({ ledger, t, onClose }) {
+  const [role, setRole] = useState("EDITOR");
+  const [email, setEmail] = useState("");
+  const [link, setLink] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    setBusy(true); setErr("");
+    try { setLink(await db.createInvite(ledger.id, role, email.trim() || null)); }
+    catch (e) { setErr(e.message || String(e)); }
+    finally { setBusy(false); }
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked; the field is selectable */ }
+  };
+
+  return (
+    <Overlay title={t("invitePeople")} t={t} onClose={onClose}>
+      <Field label={t("inviteAccess")}>
+        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+          <button onClick={() => { setRole("EDITOR"); setLink(""); }} style={segItem(role === "EDITOR")}>{t("roleEditor")}</button>
+          <button onClick={() => { setRole("VIEWER"); setLink(""); }} style={segItem(role === "VIEWER")}>{t("roleViewer")}</button>
+        </div>
+        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{role === "EDITOR" ? t("roleEditorHint") : t("roleViewerHint")}</div>
+      </Field>
+      <Field label={t("inviteEmailLabel")}>
+        <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setLink(""); }} placeholder="name@example.com" style={input} />
+        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("inviteEmailHint")}</div>
+      </Field>
+      {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
+      {!link ? (
+        <button onClick={generate} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+          {busy ? <Loader2 size={18} className="spin" /> : <Users size={18} />} {t("generateInvite")}
+        </button>
+      ) : (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("inviteLinkReady")}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...input, flex: 1, minWidth: 0, fontSize: 13 }} />
+            <button onClick={copy} style={{ ...ghostBtn, padding: "10px 14px", whiteSpace: "nowrap" }}>{copied ? <Check size={15} /> : null} {copied ? t("copiedLink") : t("copyLink")}</button>
+          </div>
         </div>
       )}
     </Overlay>
@@ -1483,7 +1579,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers, onStores }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers, onStores, onInvite }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -1529,7 +1625,12 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers
               <Store size={15} /> {t("stores")}
             </button>
           )}
-          {(onBudget || onReport || onCats || onMembers || onStores) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {onInvite && (
+            <button role="menuitem" onClick={() => { setOpen(false); onInvite(); }} style={menuItem}>
+              <Users size={15} /> {t("invitePeople")}
+            </button>
+          )}
+          {(onBudget || onReport || onCats || onMembers || onStores || onInvite) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (

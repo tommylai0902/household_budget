@@ -44,7 +44,7 @@ const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.
 export async function fetchLedgers() {
   const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household" }));
+  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id }));
 }
 // Seeds at creation time rather than lazily on first open, so the "blank"
 // template stays blank instead of being backfilled with defaults.
@@ -75,6 +75,44 @@ export async function updateLedger(id, fields) {
 export async function deleteLedger(id) {
   const { error } = await supabase.from("ledgers").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ---- invites (RBAC) ---- */
+// A random secret goes in the link; only its SHA-256 hash is stored, so the DB
+// never holds anything that can be replayed. crypto.subtle needs a secure context
+// (https or localhost) — both the dev server and prod qualify.
+const randomToken = () => {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+const sha256Hex = async (s) => {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map((x) => x.toString(16).padStart(2, "0")).join("");
+};
+
+// Owner-only (RLS `invite_owner` rejects anyone else). The hash we store here must
+// match the server's encode(digest(token,'sha256'),'hex') so accept_invite lines up.
+export async function createInvite(ledgerId, role, email) {
+  const token = randomToken();
+  const token_hash = await sha256Hex(token);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) throw new Error("not signed in");
+  const expires_at = new Date(Date.now() + 7 * 864e5).toISOString(); // 7 days
+  const { error } = await supabase.from("ledger_invite").insert({
+    ledger_id: ledgerId, role, email: email || null,
+    token_hash, created_by: session.user.id, expires_at,
+  });
+  if (error) throw error;
+  return `${window.location.origin}/?invite=${token}`;
+}
+
+// Redeems a token via the SECURITY DEFINER RPC, which validates expiry / single-use
+// / email-lock and grants the role. Returns the joined ledger id.
+export async function acceptInvite(token) {
+  const { data, error } = await supabase.rpc("accept_invite", { p_token: token });
+  if (error) throw error;
+  return data;
 }
 
 /* ---- ledger members ---- */
