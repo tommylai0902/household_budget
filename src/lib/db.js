@@ -107,6 +107,14 @@ export async function createInvite(ledgerId, role, email) {
   return `${window.location.origin}/?invite=${token}`;
 }
 
+// Reads an invite's ledger name + role without consuming it, for the confirmation
+// screen. Returns { status: 'ok'|'invalid'|'expired'|'used', ledgerName?, role? }.
+export async function previewInvite(token) {
+  const { data, error } = await supabase.rpc("preview_invite", { p_token: token });
+  if (error) throw error;
+  return data;
+}
+
 // Redeems a token via the SECURITY DEFINER RPC, which validates expiry / single-use
 // / email-lock and grants the role. Returns the joined ledger id.
 export async function acceptInvite(token) {

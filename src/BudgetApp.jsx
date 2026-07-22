@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
@@ -103,6 +103,12 @@ const STRINGS = {
     generateInvite: "Generate invite link", inviteLinkReady: "Share this link — valid 7 days:",
     copyLink: "Copy", copiedLink: "Copied",
     inviteJoined: "You've joined the ledger.", inviteFailed: "Couldn't accept the invite: {msg}",
+    inviteTitle: "Ledger invitation",
+    invitePromptNamed: "You've been invited to join {ledger} as {role}.",
+    invitePrompt: "You've been invited to join a ledger.",
+    inviteAcceptBtn: "Accept & join", inviteDecline: "Not now",
+    inviteInvalid: "This invite link isn't valid.", inviteExpired: "This invite has expired.",
+    inviteUsed: "This invite has already been used.",
     noLedgers: "No ledgers yet. Create your first one below.",
     exit: "Exit", language: "Language", openLedger: "Open {name}",
     startWith: "Start with", tplHousehold: "Household", tplTravel: "Travel",
@@ -183,6 +189,12 @@ const STRINGS = {
     generateInvite: "產生邀請連結", inviteLinkReady: "分享呢條連結 — 7 日有效：",
     copyLink: "複製", copiedLink: "已複製",
     inviteJoined: "你已加入帳簿。", inviteFailed: "接受邀請失敗：{msg}",
+    inviteTitle: "帳簿邀請",
+    invitePromptNamed: "你被邀請以「{role}」身份加入「{ledger}」。",
+    invitePrompt: "你被邀請加入一本帳簿。",
+    inviteAcceptBtn: "接受並加入", inviteDecline: "暫時唔要",
+    inviteInvalid: "呢條邀請連結無效。", inviteExpired: "呢個邀請已過期。",
+    inviteUsed: "呢個邀請已經用咗。",
     noLedgers: "仲未有帳簿。喺下面建立第一本。",
     exit: "離開", language: "語言", openLedger: "開啟{name}",
     startWith: "起始類別", tplHousehold: "家用", tplTravel: "旅行",
@@ -233,23 +245,19 @@ export default function App() {
   // No ledger picked = the picker is home. Exiting a ledger comes back here.
   const [ledger, setLedger] = useState(null);
 
-  // An invite link lands as /?invite=<token>. Grab it once, redeem after sign-in,
-  // then strip it from the URL so a refresh can't try to re-accept a used token.
-  const inviteToken = useRef(new URLSearchParams(window.location.search).get("invite"));
-  const [inviteMsg, setInviteMsg] = useState(null); // { ok, text }
-  useEffect(() => {
-    if (!session || !inviteToken.current) return;
-    const token = inviteToken.current;
-    inviteToken.current = null;
-    (async () => {
-      try { await db.acceptInvite(token); setInviteMsg({ ok: true, text: t("inviteJoined") }); }
-      catch (e) { setInviteMsg({ ok: false, text: t("inviteFailed", { msg: e.message || String(e) }) }); }
-      finally { window.history.replaceState({}, "", window.location.pathname); }
-    })();
-  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  // An invite link lands as /?invite=<token>. Held in state (not consumed) so that,
+  // once signed in, we show a confirmation screen and only redeem on an explicit tap.
+  const [inviteToken, setInviteToken] = useState(() => new URLSearchParams(window.location.search).get("invite"));
+  const [inviteMsg, setInviteMsg] = useState(null); // banner shown on the picker afterwards
+  const finishInvite = (msg) => {
+    setInviteToken(null);
+    setInviteMsg(msg); // null when declined
+    window.history.replaceState({}, "", window.location.pathname); // don't re-prompt on refresh
+  };
 
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} />;
+  if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger} currentUserId={session.user.id}
     inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
   return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t} />;
@@ -331,6 +339,75 @@ function Login({ lang, changeLang, t }) {
         <button onClick={swap} style={{ display: "block", width: "100%", marginTop: 12, padding: 4, border: "none", background: "none", color: TEAL, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
           {signup ? t("toSignIn") : t("toSignUp")}
         </button>
+        <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Accept-invite screen ====================== */
+// Shown after sign-in when the URL carried an invite token, so joining is an
+// explicit choice rather than an automatic side effect of logging in. Previews
+// the ledger/role first; if the preview RPC isn't available it degrades to a
+// generic prompt, so the accept still works before migration 010 is applied.
+function AcceptInvite({ token, lang, changeLang, t, onResult }) {
+  const [preview, setPreview] = useState(null); // null=loading; {status, ledgerName?, role?}
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    db.previewInvite(token)
+      .then((p) => live && setPreview(p || { status: "ok" }))
+      .catch(() => live && setPreview({ status: "ok" })); // degrade to a generic prompt
+    return () => { live = false; };
+  }, [token]);
+
+  const accept = async () => {
+    setBusy(true);
+    try { await db.acceptInvite(token); onResult({ ok: true, text: t("inviteJoined") }); }
+    catch (e) { onResult({ ok: false, text: t("inviteFailed", { msg: e.message || String(e) }) }); }
+  };
+
+  const roleName = preview?.role === "VIEWER" ? t("roleViewer") : t("roleEditor");
+  const badStatus = preview && preview.status !== "ok"
+    ? { invalid: t("inviteInvalid"), expired: t("inviteExpired"), used: t("inviteUsed") }[preview.status] || t("inviteInvalid")
+    : null;
+
+  return (
+    <div style={{ background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
+      <div style={{ width: "min(380px, 100%)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("inviteTitle")}</div>
+          <LangToggle lang={lang} changeLang={changeLang} />
+        </div>
+
+        {!preview ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, color: SUB, padding: "16px 0" }}>
+            <Loader2 size={18} className="spin" /> {t("connecting")}
+          </div>
+        ) : badStatus ? (
+          <>
+            <p style={{ fontSize: 15, margin: "6px 0 18px", color: INK }}>{badStatus}</p>
+            <button onClick={() => onResult(null)} style={{ ...ghostBtn, width: "100%", justifyContent: "center", padding: 12 }}>{t("inviteDecline")}</button>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0 18px" }}>
+              <span style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, background: "#E3F5F2", color: "#0F5E55", flexShrink: 0 }}><Users size={20} /></span>
+              <p style={{ fontSize: 15, margin: 0, color: INK, lineHeight: 1.45 }}>
+                {preview.ledgerName
+                  ? t("invitePromptNamed", { ledger: preview.ledgerName, role: roleName })
+                  : t("invitePrompt")}
+              </p>
+            </div>
+            <button onClick={accept} disabled={busy} style={{ ...addBtn, marginTop: 0, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+              {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {t("inviteAcceptBtn")}
+            </button>
+            <button onClick={() => onResult(null)} disabled={busy} style={{ display: "block", width: "100%", marginTop: 10, padding: 8, border: "none", background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {t("inviteDecline")}
+            </button>
+          </>
+        )}
         <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
