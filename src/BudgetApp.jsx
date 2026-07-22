@@ -524,11 +524,13 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
   return (
     <div className="ledger-switcher" style={{ position: "relative", minWidth: 150, flex: "1 1 auto" }} onClick={(e) => e.stopPropagation()}>
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
-        style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 0, flex: "1 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: INK }}>
+        style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 0, flex: "0 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: INK }}>
           {ledger.name}
         </h1>
-        <ChevronDown size={20} style={{ color: SUB, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+        {/* Caret hugs the title (title is flex:0 1 auto so it doesn't stretch and
+            shove the arrow to the far edge) — a clear "this opens" cue. */}
+        <ChevronDown size={20} strokeWidth={2.5} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, maxWidth: 320, zIndex: 60 }}>
