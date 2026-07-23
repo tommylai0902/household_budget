@@ -41,6 +41,7 @@ const STRINGS = {
     checkEmail: "Almost there — check your email to confirm, then sign in.",
     usernameRequiredHint: "Required to accept the invite — this is the name others will see.",
     usernameRequiredErr: "Please enter a name before continuing.",
+    usernameSameAsEmailErr: "Your display name can't be the same as your email.",
     email: "Email", password: "Password", signInBtn: "Sign in", signOut: "Sign out",
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
@@ -133,6 +134,7 @@ const STRINGS = {
     checkEmail: "就快好 — 去電郵確認帳戶，然後再登入。",
     usernameRequiredHint: "接受邀請一定要填 — 呢個名其他人會見到。",
     usernameRequiredErr: "請先填個名先可以繼續。",
+    usernameSameAsEmailErr: "顯示名稱唔可以同電郵一樣。",
     email: "電郵", password: "密碼", signInBtn: "登入", signOut: "登出",
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
@@ -299,10 +301,16 @@ function Login({ lang, changeLang, t, hasInvite }) {
   // invite — the roster and settle-up screens need a name, not a bare email, to
   // mean anything once a second household's worth of people can join a ledger.
   const nameRequired = signup && hasInvite;
+  // A display name of your own email defeats the point of having one — it's what
+  // migration 009's backfill did for pre-existing accounts, which is exactly the
+  // duplicated name/email display this is meant to stop happening again.
+  const nameEqualsEmail = signup && name.trim() && email.trim()
+    && name.trim().toLowerCase() === email.trim().toLowerCase();
 
   const submit = async () => {
     if (!email || !pw || busy) return;
     if (nameRequired && !name.trim()) { setError(t("usernameRequiredErr")); return; }
+    if (nameEqualsEmail) { setError(t("usernameSameAsEmailErr")); return; }
     setBusy(true); setError(""); setNotice("");
     if (signup) {
       // The DB trigger mirrors the new auth user into app_user; name rides along as
@@ -335,7 +343,11 @@ function Login({ lang, changeLang, t, hasInvite }) {
           <Field label={nameRequired ? `${t("nameLabel")} *` : t("nameLabel")}>
             <input type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={t("namePh")} style={input} />
-            {nameRequired && <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("usernameRequiredHint")}</div>}
+            {nameEqualsEmail ? (
+              <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("usernameSameAsEmailErr")}</div>
+            ) : nameRequired ? (
+              <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("usernameRequiredHint")}</div>
+            ) : null}
           </Field>
         )}
         <Field label={t("email")}>
@@ -350,8 +362,8 @@ function Login({ lang, changeLang, t, hasInvite }) {
         {error && <div style={{ ...errorBox, marginTop: 4 }}>{error}</div>}
         {notice && <div style={{ background: "#E3F5F2", border: "1px solid #B8E4DD", color: "#0F5E55", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 4, fontWeight: 600 }}>{notice}</div>}
 
-        <button onClick={submit} disabled={busy || !email || !pw || (nameRequired && !name.trim())}
-          style={{ ...addBtn, opacity: busy || !email || !pw || (nameRequired && !name.trim()) ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+        <button onClick={submit} disabled={busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail}
+          style={{ ...addBtn, opacity: busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
           {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {signup ? t("signUpBtn") : t("signInBtn")}
         </button>
 
