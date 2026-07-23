@@ -1160,7 +1160,9 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
   }, [ledger.id]);
   useEffect(load, [load]);
 
-  const after = async () => { load(); await onChanged(); };
+  // Generation (in onChanged) advances each rule's cursor, so refetch the rules
+  // AFTER it runs — otherwise the card's "next due" shows the pre-generation value.
+  const after = async () => { await onChanged(); load(); };
   const save = async (rule) => {
     try { await db.upsertRecurringRule(rule, ledger.id); setEditing(null); await after(); }
     catch (e) { setErr(e.message || String(e)); }
