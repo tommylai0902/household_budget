@@ -622,6 +622,12 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
   );
 }
 
+// Per-template feature toggles (db.TEMPLATE_FEATURES) as a hook so call sites
+// read like ledger.features rather than reaching into db directly.
+function useLedgerFeatures(ledger) {
+  return useMemo(() => db.featuresFor(ledger.template), [ledger.template]);
+}
+
 // Loads every ledger the signed-in user can open (RLS already scopes this to
 // owned + shared — no client-side filtering needed) and owns the dropdown's
 // open/close state, so the header component below just renders.
@@ -684,6 +690,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 /* ============================ Ledger ============================== */
 function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t }) {
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
+  const features = useLedgerFeatures(ledger);
   const [categories, setCategories] = useState([]);
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -841,7 +848,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
-              onManageMembers={() => setShowManageMembers(true)} onRecurring={() => setShowRecurring(true)} />
+              onManageMembers={() => setShowManageMembers(true)}
+              onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined} />
           </div>
         </div>
 
@@ -924,7 +932,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
           onCancel={() => setConfirmDeleteExpense(false)} />
       )}
       {editing !== null && (
-        <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members}
+        <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
           merchants={merchants} ledgers={allLedgers} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)}
           onEditCategories={() => setManagingCats(true)} defaultMonth={month} />
@@ -1457,10 +1465,14 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth }) {
+function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, features }) {
+  // Personal-template ledgers (features.showSplit false) have no one to split
+  // with — the payer is just whoever's account this is, silently the first
+  // member, and every expense is personal. Nothing left to ask about.
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
-    date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
+    date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
+    split: features.showSplit ? "shared" : "personal",
     sharedWith: members.map((m) => m.id), // everyone by default; untick who wasn't there
   });
   const [addHst, setAddHst] = useState(false);
@@ -1699,52 +1711,56 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           ))}
         </div>
       </Field>
-      <Field label={
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          {t("whoPaid")}
-          <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("manageMembers")}</button>
-        </span>
-      }>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {members.map((m) => {
-            const Icon = memberIcon(m.icon);
-            return (
-              <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={chip(d.paidById === m.id)}>
-                <Icon size={13} /> {m.name}
-              </button>
-            );
-          })}
-        </div>
-      </Field>
-      <Field label={t("split")}>
-        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
-          <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
-          <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
-            <Users size={14} /> {t("splitBetween")}
-          </button>
-        </div>
-        {d.split === "shared" && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {features.showSplit && (
+        <>
+          <Field label={
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              {t("whoPaid")}
+              <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("manageMembers")}</button>
+            </span>
+          }>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {members.map((m) => {
-                const on = (d.sharedWith || []).includes(m.id);
                 const Icon = memberIcon(m.icon);
                 return (
-                  <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-                    <input type="checkbox" checked={on}
-                      onChange={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
-                      style={{ width: 17, height: 17, accentColor: TEAL, flexShrink: 0 }} />
-                    <Icon size={14} style={{ color: SUB }} /> {m.name}
-                  </label>
+                  <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={chip(d.paidById === m.id)}>
+                    <Icon size={13} /> {m.name}
+                  </button>
                 );
               })}
             </div>
-            <div style={{ fontSize: 12, color: sharerCount ? SUB : "#DC2626", marginTop: 6 }}>
-              {sharerCount ? t("splitWays", { n: sharerCount, amount: money(finalAmount / sharerCount) }) : t("splitNobody")}
+          </Field>
+          <Field label={t("split")}>
+            <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+              <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
+              <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
+                <Users size={14} /> {t("splitBetween")}
+              </button>
             </div>
-          </div>
-        )}
-      </Field>
+            {d.split === "shared" && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {members.map((m) => {
+                    const on = (d.sharedWith || []).includes(m.id);
+                    const Icon = memberIcon(m.icon);
+                    return (
+                      <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                        <input type="checkbox" checked={on}
+                          onChange={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
+                          style={{ width: 17, height: 17, accentColor: TEAL, flexShrink: 0 }} />
+                        <Icon size={14} style={{ color: SUB }} /> {m.name}
+                      </label>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 12, color: sharerCount ? SUB : "#DC2626", marginTop: 6 }}>
+                  {sharerCount ? t("splitWays", { n: sharerCount, amount: money(finalAmount / sharerCount) }) : t("splitNobody")}
+                </div>
+              </div>
+            )}
+          </Field>
+        </>
+      )}
       <Field label={t("noteLabel")}>
         {/* Textarea, not an input: scanned item lists are one line per item. */}
         <textarea value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder={t("notePh")}

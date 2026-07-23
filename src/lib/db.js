@@ -425,6 +425,17 @@ export const TEMPLATES = {
   blank: [],
 };
 
+// Per-template feature toggles. "Family" in the spec is this app's existing
+// "household" template — same concept, already the whole point of the app.
+// blank gets every feature on: it's the freeform starting point, nothing to hide.
+export const TEMPLATE_FEATURES = {
+  household: { showSplit: true, hasRecurring: true, hasBudget: true },
+  personal: { showSplit: false, hasRecurring: true, hasBudget: true },
+  travel: { showSplit: true, hasRecurring: false, hasBudget: true },
+  blank: { showSplit: true, hasRecurring: true, hasBudget: true },
+};
+export const featuresFor = (template) => TEMPLATE_FEATURES[template] || TEMPLATE_FEATURES.blank;
+
 export async function seedCategories(ledgerId, template = "household") {
   const rows = (TEMPLATES[template] ?? TEMPLATES.household)
     .map((c, i) => ({ ...toRowCategory(c, i), ledger_id: ledgerId }));
