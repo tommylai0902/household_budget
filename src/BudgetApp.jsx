@@ -105,8 +105,9 @@ const STRINGS = {
     pendingInvite: "Pending invite", openInviteLink: "Open invite link", revokeInviteBtn: "Revoke invite",
     roleEditorHint: "Can view and add or change expenses, budgets and members.",
     roleViewerHint: "Can view everything, but not make changes.",
-    inviteEmailLabel: "Email (optional)",
-    inviteEmailHint: "Leave blank for an open link; set it to lock the invite to one account.",
+    inviteEmailLabel: "Email",
+    inviteEmailHint: "The invite link will only work for this account.",
+    inviteEmailRequiredErr: "Enter a valid email to generate an invite.",
     generateInvite: "Generate invite link", inviteLinkReady: "Share this link — valid 7 days:",
     copyLink: "Copy", copiedLink: "Copied",
     inviteJoined: "You've joined the ledger.", inviteFailed: "Couldn't accept the invite: {msg}",
@@ -198,8 +199,9 @@ const STRINGS = {
     pendingInvite: "邀請待接受", openInviteLink: "開放邀請連結", revokeInviteBtn: "撤銷邀請",
     roleEditorHint: "可以睇同埋新增/修改支出、預算、成員。",
     roleViewerHint: "可以睇晒所有嘢，但唔可以改。",
-    inviteEmailLabel: "電郵（可選）",
-    inviteEmailHint: "留空＝任何人有連結都可以加入；填咗＝只限嗰個電郵嘅帳號接受。",
+    inviteEmailLabel: "電郵",
+    inviteEmailHint: "呢條邀請連結只限呢個帳號用。",
+    inviteEmailRequiredErr: "填個有效電郵先可以產生邀請。",
     generateInvite: "產生邀請連結", inviteLinkReady: "分享呢條連結 — 7 日有效：",
     copyLink: "複製", copiedLink: "已複製",
     inviteJoined: "你已加入帳簿。", inviteFailed: "接受邀請失敗：{msg}",
@@ -1026,10 +1028,16 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Invites now require an email — the link is locked to that account rather than
+  // being an open link anyone could redeem. Loose regex on purpose: it rejects the
+  // obviously-empty/garbled, the real check is delivery + accept_invite's own match.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const generate = async () => {
     if (!isOwner) { setErr(t("ownerOnlyErr")); return; }
+    if (!emailValid) { setErr(t("inviteEmailRequiredErr")); return; }
     setBusy(true); setErr("");
-    try { setLink(await db.createInvite(ledger.id, role, email.trim() || null)); load(); }
+    try { setLink(await db.createInvite(ledger.id, role, email.trim())); load(); }
     catch (e) { setErr(e.message || String(e)); }
     finally { setBusy(false); }
   };
@@ -1096,7 +1104,7 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
         </Field>
         {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
         {!link ? (
-          <button onClick={generate} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+          <button onClick={generate} disabled={busy || !emailValid} style={{ ...addBtn, justifyContent: "center", opacity: busy || !emailValid ? 0.6 : 1, cursor: busy ? "wait" : !emailValid ? "not-allowed" : "pointer" }}>
             {busy ? <Loader2 size={18} className="spin" /> : <Users size={18} />} {t("generateInvite")}
           </button>
         ) : (
