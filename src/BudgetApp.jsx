@@ -455,7 +455,6 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
   const [draftTpl, setDraftTpl] = useState("household");
-  const [memberEdit, setMemberEdit] = useState(null);
   const startRename = (l) => { setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template); };
   const cancelRename = () => { setEditingId(null); setDraft(""); };
   const saveRename = async (l) => {
@@ -464,16 +463,6 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
     if (trimmed === l.name && draftTpl === l.template) return cancelRename();
     try { await db.updateLedger(l.id, { name: trimmed, template: draftTpl }); cancelRename(); load(); }
     catch (e) { setError(e.message || String(e)); cancelRename(); }
-  };
-  const editSplitters = async (l) => {
-    try { setError(""); setMemberEdit({ ledger: l, members: await db.fetchMembers(l.id) }); }
-    catch (e) { setError(e.message || String(e)); }
-  };
-  const saveSplitters = async (list) => {
-    try {
-      await db.persistMembers(list, memberEdit.members, memberEdit.ledger.id);
-      setMemberEdit(null);
-    } catch (e) { setError(e.message || String(e)); }
   };
 
   if (ledgers === null) return <Centered>{t("connecting")}</Centered>;
@@ -530,9 +519,6 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
                       );
                     })}
                   </div>
-                  <button onClick={() => editSplitters(l)} style={{ ...ghostBtn, marginTop: 10, width: "100%", justifyContent: "center" }}>
-                    <Users size={15} /> {t("manageMembers")}
-                  </button>
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -576,7 +562,6 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
         </div>
         <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
-      {memberEdit && <MemberManager members={memberEdit.members} t={t} onChange={saveSplitters} onClose={() => setMemberEdit(null)} />}
     </div>
   );
 }
