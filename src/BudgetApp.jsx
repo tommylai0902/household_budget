@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
-  Plus, Pencil, Trash2, X, Check, Tag, SlidersHorizontal,
+  Plus, Pencil, Trash2, X, Check, Tag,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane,
 } from "lucide-react";
@@ -793,7 +793,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
               ))}
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-              onCats={() => setManagingCats(true)} onStores={() => setManagingStores(true)}
+              onStores={() => setManagingStores(true)}
               onManageMembers={isOwner ? () => setShowManageMembers(true) : undefined} />
           </div>
         </div>
@@ -869,7 +869,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members}
           merchants={merchants} ledgers={allLedgers} lang={lang} t={t}
-          onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)} defaultMonth={month} />
+          onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)}
+          onEditCategories={() => setManagingCats(true)} defaultMonth={month} />
       )}
       {managingStores && (
         <StoreManager merchants={merchants} t={t} onChange={commitStores} onClose={() => setManagingStores(false)} />
@@ -1160,7 +1161,7 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, defaultMonth }) {
+function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null, split: "shared",
@@ -1390,7 +1391,12 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
         </Field>
       )}
 
-      <Field label={t("category")}>
+      <Field label={
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          {t("category")}
+          <button onClick={onEditCategories} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("editCategories")}</button>
+        </span>
+      }>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {categories.map((c) => (
             <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
@@ -1814,7 +1820,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onStores, onManageMembers }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onManageMembers }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -1845,11 +1851,6 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onStores,
               <PieChart size={15} /> {t("monthlyReport")}
             </button>
           )}
-          {onCats && (
-            <button role="menuitem" onClick={() => { setOpen(false); onCats(); }} style={menuItem}>
-              <SlidersHorizontal size={15} /> {t("categories")}
-            </button>
-          )}
           {onStores && (
             <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
               <Store size={15} /> {t("stores")}
@@ -1860,7 +1861,7 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onStores,
               <Users size={15} /> {t("manageAccess")}
             </button>
           )}
-          {(onBudget || onReport || onCats || onStores || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onBudget || onReport || onStores || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
