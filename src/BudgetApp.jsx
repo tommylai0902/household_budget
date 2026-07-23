@@ -95,7 +95,9 @@ const STRINGS = {
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
-    roleEditor: "Editor", roleViewer: "Viewer",
+    manageAccess: "Manage members", currentMembers: "Who has access",
+    roleOwner: "Owner", roleEditor: "Editor", roleViewer: "Viewer",
+    removeMemberBtn: "Remove", removeMemberConfirm: "Remove {name} from this ledger?",
     roleEditorHint: "Can view and add or change expenses, budgets and members.",
     roleViewerHint: "Can view everything, but not make changes.",
     inviteEmailLabel: "Email (optional)",
@@ -181,7 +183,9 @@ const STRINGS = {
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
-    roleEditor: "可編輯", roleViewer: "只可查看",
+    manageAccess: "管理成員", currentMembers: "邊個有權限",
+    roleOwner: "擁有者", roleEditor: "可編輯", roleViewer: "只可查看",
+    removeMemberBtn: "移除", removeMemberConfirm: "將 {name} 移出呢本帳簿？",
     roleEditorHint: "可以睇同埋新增/修改支出、預算、成員。",
     roleViewerHint: "可以睇晒所有嘢，但唔可以改。",
     inviteEmailLabel: "電郵（可選）",
@@ -638,7 +642,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 
 /* ============================ Ledger ============================== */
 function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t }) {
-  const isOwner = ledger.ownerId === currentUserId; // only owners may invite
+  const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const [categories, setCategories] = useState([]);
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -653,7 +657,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showBudget, setShowBudget] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
-  const [showInvite, setShowInvite] = useState(false);
+  const [showManageMembers, setShowManageMembers] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -790,7 +794,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onCats={() => setManagingCats(true)} onMembers={() => setManagingMembers(true)} onStores={() => setManagingStores(true)}
-              onInvite={isOwner ? () => setShowInvite(true) : undefined} />
+              onManageMembers={isOwner ? () => setShowManageMembers(true) : undefined} />
           </div>
         </div>
 
@@ -886,7 +890,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
           lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)} />
       )}
       {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
-      {showInvite && <InvitePanel ledger={ledger} t={t} onClose={() => setShowInvite(false)} />}
+      {showManageMembers && <ManageMembersModal ledger={ledger} t={t} onClose={() => setShowManageMembers(false)} />}
     </div>
   );
 }
@@ -948,9 +952,36 @@ function SettlementDetails({ members, summary, t, onClose }) {
   );
 }
 
-// Owner-only. Mints a share link (or email-locked invite) granting Editor/Viewer.
-// Only the token's hash is stored server-side; RLS lets just the owner create these.
-function InvitePanel({ ledger, t, onClose }) {
+// Owner-only. Top: the access roster (owner + everyone with a role), each row
+// showing name/email beside their role — Editor/Viewer changeable in place,
+// removable; the owner's own row is fixed (ownership lives on ledgers.owner_id,
+// not this table, so there's nothing here to edit for them). Bottom: the invite
+// form, folded in rather than its own overlay — one panel for "who has access".
+function ManageMembersModal({ ledger, t, onClose }) {
+  const [roster, setRoster] = useState(null); // null = loading
+  const [rosterErr, setRosterErr] = useState("");
+  const [busyUser, setBusyUser] = useState(null); // userId currently being changed/removed
+
+  const load = useCallback(() => {
+    db.fetchRoster(ledger.id).then(setRoster).catch((e) => setRosterErr(e.message || String(e)));
+  }, [ledger.id]);
+  useEffect(load, [load]);
+
+  const changeRole = async (m, role) => {
+    if (m.role === role) return;
+    setBusyUser(m.userId);
+    try { await db.updateMemberRole(ledger.id, m.userId, role); load(); }
+    catch (e) { setRosterErr(e.message || String(e)); }
+    finally { setBusyUser(null); }
+  };
+  const removeOne = async (m) => {
+    if (!confirm(t("removeMemberConfirm", { name: m.name || m.email }))) return;
+    setBusyUser(m.userId);
+    try { await db.removeMember(ledger.id, m.userId); load(); }
+    catch (e) { setRosterErr(e.message || String(e)); }
+    finally { setBusyUser(null); }
+  };
+
   const [role, setRole] = useState("EDITOR");
   const [email, setEmail] = useState("");
   const [link, setLink] = useState("");
@@ -969,32 +1000,58 @@ function InvitePanel({ ledger, t, onClose }) {
   };
 
   return (
-    <Overlay title={t("invitePeople")} t={t} onClose={onClose}>
-      <Field label={t("inviteAccess")}>
-        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
-          <button onClick={() => { setRole("EDITOR"); setLink(""); }} style={segItem(role === "EDITOR")}>{t("roleEditor")}</button>
-          <button onClick={() => { setRole("VIEWER"); setLink(""); }} style={segItem(role === "VIEWER")}>{t("roleViewer")}</button>
-        </div>
-        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{role === "EDITOR" ? t("roleEditorHint") : t("roleViewerHint")}</div>
-      </Field>
-      <Field label={t("inviteEmailLabel")}>
-        <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setLink(""); }} placeholder="name@example.com" style={input} />
-        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("inviteEmailHint")}</div>
-      </Field>
-      {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
-      {!link ? (
-        <button onClick={generate} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
-          {busy ? <Loader2 size={18} className="spin" /> : <Users size={18} />} {t("generateInvite")}
-        </button>
-      ) : (
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("inviteLinkReady")}</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...input, flex: 1, minWidth: 0, fontSize: 13 }} />
-            <button onClick={copy} style={{ ...ghostBtn, padding: "10px 14px", whiteSpace: "nowrap" }}>{copied ? <Check size={15} /> : null} {copied ? t("copiedLink") : t("copyLink")}</button>
+    <Overlay title={t("manageAccess")} t={t} onClose={onClose}>
+      <Field label={t("currentMembers")}>
+        {rosterErr && <div style={{ color: "#DC2626", fontSize: 13, marginBottom: 8 }}>{rosterErr}</div>}
+        {!roster ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: SUB, fontSize: 13, padding: "8px 0" }}><Loader2 size={15} className="spin" /> {t("connecting")}</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {roster.map((m) => (
+              <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyUser === m.userId ? 0.6 : 1 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name || m.email}</span>
+                {m.isOwner ? (
+                  <span style={{ ...pill(TEAL), fontSize: 11 }}>{t("roleOwner")}</span>
+                ) : (
+                  <>
+                    <button disabled={busyUser === m.userId} onClick={() => changeRole(m, "EDITOR")} style={chip(m.role === "EDITOR")}>{t("roleEditor")}</button>
+                    <button disabled={busyUser === m.userId} onClick={() => changeRole(m, "VIEWER")} style={chip(m.role === "VIEWER")}>{t("roleViewer")}</button>
+                    <button disabled={busyUser === m.userId} onClick={() => removeOne(m)} style={{ ...iconBtn, color: "#DC2626", flexShrink: 0 }} aria-label={t("removeMemberBtn")}><Trash2 size={14} /></button>
+                  </>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </Field>
+
+      <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 14 }}>
+        <Field label={t("invitePeople")}>
+          <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+            <button onClick={() => { setRole("EDITOR"); setLink(""); }} style={segItem(role === "EDITOR")}>{t("roleEditor")}</button>
+            <button onClick={() => { setRole("VIEWER"); setLink(""); }} style={segItem(role === "VIEWER")}>{t("roleViewer")}</button>
+          </div>
+          <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{role === "EDITOR" ? t("roleEditorHint") : t("roleViewerHint")}</div>
+        </Field>
+        <Field label={t("inviteEmailLabel")}>
+          <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setLink(""); }} placeholder="name@example.com" style={input} />
+          <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("inviteEmailHint")}</div>
+        </Field>
+        {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
+        {!link ? (
+          <button onClick={generate} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+            {busy ? <Loader2 size={18} className="spin" /> : <Users size={18} />} {t("generateInvite")}
+          </button>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("inviteLinkReady")}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...input, flex: 1, minWidth: 0, fontSize: 13 }} />
+              <button onClick={copy} style={{ ...ghostBtn, padding: "10px 14px", whiteSpace: "nowrap" }}>{copied ? <Check size={15} /> : null} {copied ? t("copiedLink") : t("copyLink")}</button>
+            </div>
+          </div>
+        )}
+      </div>
     </Overlay>
   );
 }
@@ -1752,7 +1809,7 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers, onStores, onInvite }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers, onStores, onManageMembers }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -1798,12 +1855,12 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onCats, onMembers
               <Store size={15} /> {t("stores")}
             </button>
           )}
-          {onInvite && (
-            <button role="menuitem" onClick={() => { setOpen(false); onInvite(); }} style={menuItem}>
-              <Users size={15} /> {t("invitePeople")}
+          {onManageMembers && (
+            <button role="menuitem" onClick={() => { setOpen(false); onManageMembers(); }} style={menuItem}>
+              <Users size={15} /> {t("manageAccess")}
             </button>
           )}
-          {(onBudget || onReport || onCats || onMembers || onStores || onInvite) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onBudget || onReport || onCats || onMembers || onStores || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (

@@ -107,6 +107,27 @@ export async function createInvite(ledgerId, role, email) {
   return `${window.location.origin}/?invite=${token}`;
 }
 
+// Full access roster (owner + every ledger_role row) with name/email, for the
+// "Manage members" panel. A plain client join can't do this — app_user's RLS is
+// self-only, so the RPC (SECURITY DEFINER, gated by has_ledger_role) does it server-side.
+export async function fetchRoster(ledgerId) {
+  const { data, error } = await supabase.rpc("ledger_roster", { p_ledger: ledgerId });
+  if (error) throw error;
+  return data.map((r) => ({ userId: r.user_id, email: r.email, name: r.name, role: r.role, isOwner: r.is_owner }));
+}
+
+// Both already covered by the ledger_role_manage RLS policy (owner-only), so a
+// plain table update/delete works — no RPC needed. Never call these on the owner's
+// own row: changing owner_id is what actually controls ownership, not this table.
+export async function updateMemberRole(ledgerId, userId, role) {
+  const { error } = await supabase.from("ledger_role").update({ role }).eq("ledger_id", ledgerId).eq("user_id", userId);
+  if (error) throw error;
+}
+export async function removeMember(ledgerId, userId) {
+  const { error } = await supabase.from("ledger_role").delete().eq("ledger_id", ledgerId).eq("user_id", userId);
+  if (error) throw error;
+}
+
 // Reads an invite's ledger name + role without consuming it, for the confirmation
 // screen. Returns { status: 'ok'|'invalid'|'expired'|'used', ledgerName?, role? }.
 export async function previewInvite(token) {
