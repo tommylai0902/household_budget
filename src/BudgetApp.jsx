@@ -73,7 +73,7 @@ const STRINGS = {
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget", setBudgetPh: "Set budget",
     budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
-    monthlyReport: "Monthly Report", reportFor: "Spending in {month}",
+    monthlyReport: "Reports", reportFor: "Spending in {month}",
     reportTotal: "Total spending", reportCategories: "By category",
     reportEmpty: "No spending recorded for this month yet.", reportUncategorised: "Uncategorised",
     categoryExpenses: "Expenses in {category}", categoryExpensesEmpty: "No expenses in this category for this month.",
