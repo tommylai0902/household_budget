@@ -39,6 +39,8 @@ const STRINGS = {
     nameLabel: "Name", namePh: "How you'll show up in a ledger",
     signUpBtn: "Create account", toSignUp: "New here? Create an account", toSignIn: "Already have an account? Sign in",
     checkEmail: "Almost there — check your email to confirm, then sign in.",
+    usernameRequiredHint: "Required to accept the invite — this is the name others will see.",
+    usernameRequiredErr: "Please enter a name before continuing.",
     email: "Email", password: "Password", signInBtn: "Sign in", signOut: "Sign out",
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
@@ -98,6 +100,7 @@ const STRINGS = {
     manageAccess: "Manage members", currentMembers: "Who has access",
     roleOwner: "Owner", roleEditor: "Editor", roleViewer: "Viewer",
     removeMemberBtn: "Remove", removeMemberConfirm: "Remove {name} from this ledger?",
+    pendingInvite: "Pending invite", openInviteLink: "Open invite link", revokeInviteBtn: "Revoke invite",
     roleEditorHint: "Can view and add or change expenses, budgets and members.",
     roleViewerHint: "Can view everything, but not make changes.",
     inviteEmailLabel: "Email (optional)",
@@ -128,6 +131,8 @@ const STRINGS = {
     nameLabel: "名稱", namePh: "你喺帳簿入面顯示嘅名",
     signUpBtn: "建立帳戶", toSignUp: "未有帳戶？建立一個", toSignIn: "已經有帳戶？登入",
     checkEmail: "就快好 — 去電郵確認帳戶，然後再登入。",
+    usernameRequiredHint: "接受邀請一定要填 — 呢個名其他人會見到。",
+    usernameRequiredErr: "請先填個名先可以繼續。",
     email: "電郵", password: "密碼", signInBtn: "登入", signOut: "登出",
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
@@ -186,6 +191,7 @@ const STRINGS = {
     manageAccess: "管理成員", currentMembers: "邊個有權限",
     roleOwner: "擁有者", roleEditor: "可編輯", roleViewer: "只可查看",
     removeMemberBtn: "移除", removeMemberConfirm: "將 {name} 移出呢本帳簿？",
+    pendingInvite: "邀請待接受", openInviteLink: "開放邀請連結", revokeInviteBtn: "撤銷邀請",
     roleEditorHint: "可以睇同埋新增/修改支出、預算、成員。",
     roleViewerHint: "可以睇晒所有嘢，但唔可以改。",
     inviteEmailLabel: "電郵（可選）",
@@ -260,7 +266,7 @@ export default function App() {
   };
 
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
-  if (!session) return <Login lang={lang} changeLang={changeLang} t={t} />;
+  if (!session) return <Login lang={lang} changeLang={changeLang} t={t} hasInvite={!!inviteToken} />;
   if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger} currentUserId={session.user.id}
     inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
@@ -278,8 +284,10 @@ function Centered({ children }) {
 }
 
 /* ============================ Login =============================== */
-function Login({ lang, changeLang, t }) {
-  const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
+function Login({ lang, changeLang, t, hasInvite }) {
+  // Arriving via an invite link almost always means a new person — start them on
+  // sign-up rather than making them find the toggle themselves.
+  const [mode, setMode] = useState(hasInvite ? "signup" : "signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -287,9 +295,14 @@ function Login({ lang, changeLang, t }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState(""); // e.g. "check your email"
   const signup = mode === "signup";
+  // A username is optional for a normal sign-up, but mandatory when joining via an
+  // invite — the roster and settle-up screens need a name, not a bare email, to
+  // mean anything once a second household's worth of people can join a ledger.
+  const nameRequired = signup && hasInvite;
 
   const submit = async () => {
     if (!email || !pw || busy) return;
+    if (nameRequired && !name.trim()) { setError(t("usernameRequiredErr")); return; }
     setBusy(true); setError(""); setNotice("");
     if (signup) {
       // The DB trigger mirrors the new auth user into app_user; name rides along as
@@ -298,7 +311,8 @@ function Login({ lang, changeLang, t }) {
       const { data, error } = await supabase.auth.signUp({ email, password: pw, options: { data: { name: name.trim() || null } } });
       if (error) { setError(error.message); setBusy(false); return; }
       if (!data.session) { setNotice(t("checkEmail")); setBusy(false); return; }
-      // otherwise onAuthStateChange swaps the view
+      // otherwise onAuthStateChange swaps the view, then App's inviteToken carries
+      // straight into the accept-invite confirmation screen (see AcceptInvite).
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
       if (error) { setError(error.message); setBusy(false); }
@@ -318,9 +332,10 @@ function Login({ lang, changeLang, t }) {
         <p style={{ fontSize: 13, color: SUB, margin: "0 0 16px" }}>{signup ? t("signUpHint") : t("signInHint")}</p>
 
         {signup && (
-          <Field label={t("nameLabel")}>
+          <Field label={nameRequired ? `${t("nameLabel")} *` : t("nameLabel")}>
             <input type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={t("namePh")} style={input} />
+            {nameRequired && <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("usernameRequiredHint")}</div>}
           </Field>
         )}
         <Field label={t("email")}>
@@ -335,8 +350,8 @@ function Login({ lang, changeLang, t }) {
         {error && <div style={{ ...errorBox, marginTop: 4 }}>{error}</div>}
         {notice && <div style={{ background: "#E3F5F2", border: "1px solid #B8E4DD", color: "#0F5E55", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 4, fontWeight: 600 }}>{notice}</div>}
 
-        <button onClick={submit} disabled={busy || !email || !pw}
-          style={{ ...addBtn, opacity: busy || !email || !pw ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+        <button onClick={submit} disabled={busy || !email || !pw || (nameRequired && !name.trim())}
+          style={{ ...addBtn, opacity: busy || !email || !pw || (nameRequired && !name.trim()) ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
           {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {signup ? t("signUpBtn") : t("signInBtn")}
         </button>
 
@@ -945,11 +960,15 @@ function SettlementDetails({ members, summary, t, onClose }) {
 // form, folded in rather than its own overlay — one panel for "who has access".
 function ManageMembersModal({ ledger, t, onClose }) {
   const [roster, setRoster] = useState(null); // null = loading
+  const [pending, setPending] = useState([]); // invites nobody has redeemed yet
   const [rosterErr, setRosterErr] = useState("");
   const [busyUser, setBusyUser] = useState(null); // userId currently being changed/removed
+  const [busyInvite, setBusyInvite] = useState(null); // invite id being revoked
 
   const load = useCallback(() => {
-    db.fetchRoster(ledger.id).then(setRoster).catch((e) => setRosterErr(e.message || String(e)));
+    Promise.all([db.fetchRoster(ledger.id), db.fetchPendingInvites(ledger.id)])
+      .then(([r, p]) => { setRoster(r); setPending(p); })
+      .catch((e) => setRosterErr(e.message || String(e)));
   }, [ledger.id]);
   useEffect(load, [load]);
 
@@ -967,6 +986,12 @@ function ManageMembersModal({ ledger, t, onClose }) {
     catch (e) { setRosterErr(e.message || String(e)); }
     finally { setBusyUser(null); }
   };
+  const revoke = async (inv) => {
+    setBusyInvite(inv.id);
+    try { await db.revokeInvite(inv.id); load(); }
+    catch (e) { setRosterErr(e.message || String(e)); }
+    finally { setBusyInvite(null); }
+  };
 
   const [role, setRole] = useState("EDITOR");
   const [email, setEmail] = useState("");
@@ -977,7 +1002,7 @@ function ManageMembersModal({ ledger, t, onClose }) {
 
   const generate = async () => {
     setBusy(true); setErr("");
-    try { setLink(await db.createInvite(ledger.id, role, email.trim() || null)); }
+    try { setLink(await db.createInvite(ledger.id, role, email.trim() || null)); load(); }
     catch (e) { setErr(e.message || String(e)); }
     finally { setBusy(false); }
   };
@@ -995,9 +1020,16 @@ function ManageMembersModal({ ledger, t, onClose }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {roster.map((m) => (
               <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyUser === m.userId ? 0.6 : 1 }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name || m.email}</span>
+                {/* Username is the identity people recognise; email rides along
+                    underneath rather than competing with it for the same line. */}
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name || m.email}</div>
+                  {/* Pre-invite-feature accounts got name backfilled to their email
+                      (migration 009's coalesce fallback) — skip the redundant line. */}
+                  {m.name && m.name !== m.email && <div style={{ fontSize: 12, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>}
+                </span>
                 {m.isOwner ? (
-                  <span style={{ ...pill(TEAL), fontSize: 11 }}>{t("roleOwner")}</span>
+                  <span style={{ ...pill(TEAL), fontSize: 11, flexShrink: 0 }}>{t("roleOwner")}</span>
                 ) : (
                   <>
                     <button disabled={busyUser === m.userId} onClick={() => changeRole(m, "EDITOR")} style={chip(m.role === "EDITOR")}>{t("roleEditor")}</button>
@@ -1005,6 +1037,18 @@ function ManageMembersModal({ ledger, t, onClose }) {
                     <button disabled={busyUser === m.userId} onClick={() => removeOne(m)} style={{ ...iconBtn, color: "#DC2626", flexShrink: 0 }} aria-label={t("removeMemberBtn")}><Trash2 size={14} /></button>
                   </>
                 )}
+              </div>
+            ))}
+            {/* Invites nobody has redeemed yet — no user_id exists for these, so
+                there's nothing to change roles on, only revoke. */}
+            {pending.map((inv) => (
+              <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#FAFBFC", border: `1px dashed ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyInvite === inv.id ? 0.6 : 1 }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email || t("openInviteLink")}</div>
+                  <span style={{ ...pill("#D97706"), fontSize: 10, marginTop: 2, display: "inline-block" }}>{t("pendingInvite")}</span>
+                </span>
+                <span style={{ ...pill("#94A3B8"), fontSize: 11, flexShrink: 0 }}>{inv.role === "VIEWER" ? t("roleViewer") : t("roleEditor")}</span>
+                <button disabled={busyInvite === inv.id} onClick={() => revoke(inv)} style={{ ...iconBtn, color: "#DC2626", flexShrink: 0 }} aria-label={t("revokeInviteBtn")}><Trash2 size={14} /></button>
               </div>
             ))}
           </div>

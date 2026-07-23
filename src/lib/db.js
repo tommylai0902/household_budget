@@ -128,6 +128,22 @@ export async function removeMember(ledgerId, userId) {
   if (error) throw error;
 }
 
+// Invites nobody has redeemed yet, for the "Pending invite" rows in Manage
+// members. The invite_owner RLS policy already scopes this to the ledger's
+// owner reading their own ledger's invites — no RPC needed.
+export async function fetchPendingInvites(ledgerId) {
+  const { data, error } = await supabase
+    .from("ledger_invite").select("id, email, role, expires_at")
+    .eq("ledger_id", ledgerId).is("accepted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function revokeInvite(inviteId) {
+  const { error } = await supabase.from("ledger_invite").delete().eq("id", inviteId);
+  if (error) throw error;
+}
+
 // Reads an invite's ledger name + role without consuming it, for the confirmation
 // screen. Returns { status: 'ok'|'invalid'|'expired'|'used', ledgerName?, role? }.
 export async function previewInvite(token) {
