@@ -1849,8 +1849,27 @@ function MemberManager({ members, t, onChange, onClose }) {
 // Header overflow menu. Editing categories moved into the category lists themselves,
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
+// Same name source as the Manage members roster (app_user.name), so "who am I"
+// and "who's on this ledger" never disagree. Fetched once per mount, not per open.
+function useMyProfile() {
+  const [profile, setProfile] = useState(null); // { name, email } | null while loading
+  useEffect(() => {
+    let live = true;
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user;
+      if (!u) return;
+      supabase.from("app_user").select("name, email").eq("id", u.id).single()
+        .then(({ data: row }) => { if (live) setProfile({ name: row?.name || null, email: row?.email || u.email }); })
+        .catch(() => { if (live) setProfile({ name: null, email: u.email }); });
+    });
+    return () => { live = false; };
+  }, []);
+  return profile;
+}
+
 function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onManageMembers }) {
   const [open, setOpen] = useState(false);
+  const profile = useMyProfile();
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
@@ -1869,6 +1888,21 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onManag
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
+          {profile && (
+            // Pre-invite-feature accounts had name backfilled to their email
+            // (migration 009) — show it once, not as a duplicated name+email pair.
+            <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "-6px -6px 6px", padding: "12px 14px", background: PAPER, borderBottom: `1px solid ${LINE}`, borderRadius: "10px 10px 0 0" }}>
+              <span style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 99, background: TEAL, color: "#fff", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                {(profile.name || profile.email || "?").trim().charAt(0).toUpperCase()}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name || profile.email}</div>
+                {profile.name && profile.name !== profile.email && (
+                  <div style={{ fontSize: 11, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.email}</div>
+                )}
+              </div>
+            </div>
+          )}
           {/* Ledger-scoped entries are absent on the picker, which has no ledger. */}
           {onBudget && (
             <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
