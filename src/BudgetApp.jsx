@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
-  Home, Plane,
+  Home, Plane, Repeat, Pause, Play,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -13,6 +13,7 @@ const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
 import { settlements, netBalances } from "./lib/settle";
+import { nextOccurrence } from "./lib/recurring";
 
 /* ------------------------------------------------------------------ *
  * Household Budget — Step 2: shared, live-synced ledger (Supabase).
@@ -89,6 +90,12 @@ const STRINGS = {
     rememberHint: "Saved shops are suggested as you type. Nothing is saved unless you tick this.",
     newStorePh: "New shop name", saveStores: "Save shops", deleteStore: "Remove shop",
     noStores: "No saved shops yet. Tick the box when adding an expense to keep one.",
+    recurring: "Recurring expenses", recurringAdd: "Add new", noRecurring: "No recurring expenses yet.",
+    recurNew: "New recurring expense", recurEdit: "Edit recurring expense",
+    freqWeekly: "Weekly", freqMonthly: "Monthly", freqYearly: "Yearly", frequency: "Frequency",
+    startDate: "Start date", nextDue: "Next due", paused: "Paused",
+    pauseRule: "Pause", resumeRule: "Resume", saveRule: "Save",
+    recurDeleteConfirm: "Delete this recurring rule? Expenses it already created stay.",
     newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
@@ -183,6 +190,12 @@ const STRINGS = {
     rememberHint: "記住咗嘅店家打頭幾個字就會彈出。唔剔呢格就唔會記。",
     newStorePh: "新店家名稱", saveStores: "儲存店家", deleteStore: "移除店家",
     noStores: "仲未記低任何店家。入數時剔個格就會記住。",
+    recurring: "定期支出", recurringAdd: "新增", noRecurring: "仲未有定期支出。",
+    recurNew: "新增定期支出", recurEdit: "編輯定期支出",
+    freqWeekly: "每週", freqMonthly: "每月", freqYearly: "每年", frequency: "頻率",
+    startDate: "開始日期", nextDue: "下次", paused: "已暫停",
+    pauseRule: "暫停", resumeRule: "恢復", saveRule: "儲存",
+    recurDeleteConfirm: "刪除呢條定期規則？佢已經產生嘅支出會保留。",
     newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
@@ -680,6 +693,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showReport, setShowReport] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
+  const [showRecurring, setShowRecurring] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -688,6 +702,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const refresh = useCallback(async () => {
     try {
       setError("");
+      // Materialise any due recurring occurrences before reading expenses, so they
+      // show up in this same load. Best-effort: a viewer can't insert, and a hiccup
+      // here shouldn't block the ledger from opening.
+      await db.generateDueRecurring(ledger.id).catch(() => {});
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
       const [cats, exps, mems, buds, shops, leds] = await Promise.all([
@@ -816,7 +834,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
-              onManageMembers={() => setShowManageMembers(true)} />
+              onManageMembers={() => setShowManageMembers(true)} onRecurring={() => setShowRecurring(true)} />
           </div>
         </div>
 
@@ -871,6 +889,11 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                       {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
                       {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
                     </span>
+                    {e.recurringRuleId && (
+                      <span title={t("recurring")} aria-label={t("recurring")} style={{ display: "inline-flex", alignItems: "center", color: "#94A3B8" }}>
+                        <Repeat size={12} />
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -914,6 +937,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       )}
       {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
       {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
+      {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} lang={lang} t={t}
+        onClose={() => setShowRecurring(false)} onChanged={refresh} />}
     </div>
   );
 }
@@ -1116,6 +1141,186 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
             </div>
           </div>
         )}
+      </div>
+    </Overlay>
+  );
+}
+
+// Lists the ledger's recurring rules and opens the form to add/edit one. Rule
+// changes bubble up via onChanged so the ledger re-runs catch-up generation and
+// the new expenses/badges appear without reopening anything.
+function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChanged }) {
+  const [rules, setRules] = useState(null); // null = loading
+  const [editing, setEditing] = useState(null); // null | "new" | rule
+  const [err, setErr] = useState("");
+  const [busyId, setBusyId] = useState(null);
+
+  const load = useCallback(() => {
+    db.fetchRecurringRules(ledger.id).then(setRules).catch((e) => setErr(e.message || String(e)));
+  }, [ledger.id]);
+  useEffect(load, [load]);
+
+  const after = async () => { load(); await onChanged(); };
+  const save = async (rule) => {
+    try { await db.upsertRecurringRule(rule, ledger.id); setEditing(null); await after(); }
+    catch (e) { setErr(e.message || String(e)); }
+  };
+  const togglePause = async (r) => {
+    setBusyId(r.id);
+    try { await db.setRecurringPaused(r.id, !r.paused); await after(); }
+    catch (e) { setErr(e.message || String(e)); } finally { setBusyId(null); }
+  };
+  const remove = async (r) => {
+    if (!confirm(t("recurDeleteConfirm"))) return;
+    setBusyId(r.id);
+    try { await db.deleteRecurringRule(r.id); await after(); }
+    catch (e) { setErr(e.message || String(e)); } finally { setBusyId(null); }
+  };
+
+  const freqLabel = (f) => ({ weekly: t("freqWeekly"), monthly: t("freqMonthly"), yearly: t("freqYearly") }[f]);
+  const nextDue = (r) => (r.paused ? null : r.lastGeneratedDate ? nextOccurrence(r.lastGeneratedDate, r.frequency) : r.startDate);
+
+  if (editing !== null) {
+    return <RecurringForm initial={editing === "new" ? null : editing} categories={categories} members={members}
+      lang={lang} t={t} onClose={() => setEditing(null)} onSave={save} />;
+  }
+
+  return (
+    <Overlay onClose={onClose} title={t("recurring")} t={t}>
+      <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 0, justifyContent: "center" }}>
+        <Plus size={18} /> {t("recurringAdd")}
+      </button>
+      {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
+      {!rules ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: SUB, fontSize: 13, padding: "8px 0" }}><Loader2 size={15} className="spin" /> {t("connecting")}</div>
+      ) : rules.length === 0 ? (
+        <div style={{ color: SUB, fontSize: 13, textAlign: "center", padding: "18px 0" }}>{t("noRecurring")}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {rules.map((r) => {
+            const cat = categories.find((c) => c.id === r.categoryId);
+            const due = nextDue(r);
+            return (
+              <div key={r.id} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, opacity: busyId === r.id ? 0.6 : 1 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.description}</span>
+                  <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(r.amount)}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, fontSize: 12, color: SUB }}>
+                  {cat && <span style={{ ...pill(cat.color || "#94A3B8"), fontSize: 11 }}>{catName(cat, lang)}</span>}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Repeat size={12} /> {freqLabel(r.frequency)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{r.paused ? t("paused") : `${t("nextDue")}: ${shortDate(due, lang)}`}</span>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                  <button onClick={() => togglePause(r)} disabled={busyId === r.id} style={{ ...ghostBtn, flex: 1, justifyContent: "center" }}>
+                    {r.paused ? <><Play size={14} /> {t("resumeRule")}</> : <><Pause size={14} /> {t("pauseRule")}</>}
+                  </button>
+                  <button onClick={() => setEditing(r)} style={iconBtn} aria-label={t("recurEdit")}><Pencil size={15} /></button>
+                  <button onClick={() => remove(r)} disabled={busyId === r.id} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteStore")}><Trash2 size={15} /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Overlay>
+  );
+}
+
+// Add/edit one rule. Mirrors the who-paid / split controls of the expense form so
+// generated expenses land with a correct payer and sharers — the spec's five
+// fields alone can't produce a valid expense in this split-aware ledger.
+function RecurringForm({ initial, categories, members, lang, t, onClose, onSave }) {
+  const [d, setD] = useState(() => initial || {
+    description: "", amount: "", categoryId: categories[0]?.id || null,
+    paidById: members[0]?.id || null, split: "shared", sharedWith: members.map((m) => m.id),
+    frequency: "monthly", startDate: todayISO(),
+  });
+  const [busy, setBusy] = useState(false);
+
+  const sharerCount = d.split === "shared" ? (d.sharedWith || []).length : 0;
+  const valid = d.description.trim() && Number(d.amount) > 0 && d.startDate && d.paidById
+    && (d.split !== "shared" || sharerCount > 0) && !busy;
+
+  const submit = async () => {
+    if (!valid) return;
+    setBusy(true);
+    await onSave({ ...d, description: d.description.trim(), amount: Number(d.amount) });
+    setBusy(false);
+  };
+
+  return (
+    <Overlay onClose={onClose} title={initial ? t("recurEdit") : t("recurNew")} t={t}>
+      <Field label={t("formWhat")}>
+        <input autoFocus value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder={t("formWhatPh")} style={input} />
+      </Field>
+      <div style={{ display: "flex", gap: 10 }}>
+        <Field label={t("amount")} style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: 12, color: SUB }}>$</span>
+            <input type="number" inputMode="decimal" value={d.amount} onChange={(e) => setD({ ...d, amount: e.target.value })} placeholder="0.00" style={{ ...input, paddingLeft: 24 }} />
+          </div>
+        </Field>
+        <Field label={t("startDate")} style={{ flex: 1, minWidth: 0 }}>
+          <input type="date" value={d.startDate} onChange={(e) => setD({ ...d, startDate: e.target.value })} style={input} />
+        </Field>
+      </div>
+      <Field label={t("frequency")}>
+        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+          {[["weekly", t("freqWeekly")], ["monthly", t("freqMonthly")], ["yearly", t("freqYearly")]].map(([f, label]) => (
+            <button key={f} onClick={() => setD({ ...d, frequency: f })} style={segItem(d.frequency === f)}>{label}</button>
+          ))}
+        </div>
+      </Field>
+      <Field label={t("category")}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {categories.map((c) => (
+            <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
+          ))}
+        </div>
+      </Field>
+      <Field label={t("whoPaid")}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {members.map((m) => {
+            const Icon = memberIcon(m.icon);
+            return (
+              <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={chip(d.paidById === m.id)}>
+                <Icon size={13} /> {m.name}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      <Field label={t("split")}>
+        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+          <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
+          <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
+            <Users size={14} /> {t("splitBetween")}
+          </button>
+        </div>
+        {d.split === "shared" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 10 }}>
+            {members.map((m) => {
+              const on = (d.sharedWith || []).includes(m.id);
+              const Icon = memberIcon(m.icon);
+              return (
+                <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                  <input type="checkbox" checked={on}
+                    onChange={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
+                    style={{ width: 17, height: 17, accentColor: TEAL, flexShrink: 0 }} />
+                  <Icon size={14} style={{ color: SUB }} /> {m.name}
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </Field>
+      <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+        <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
+        <button onClick={submit} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+          {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveRule")}
+        </button>
       </div>
     </Overlay>
   );
@@ -1902,7 +2107,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onManageMembers }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers }) {
   const [open, setOpen] = useState(false);
   const profile = useMyProfile();
   useEffect(() => {
@@ -1954,12 +2159,17 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onManag
               <Store size={15} /> {t("stores")}
             </button>
           )}
+          {onRecurring && (
+            <button role="menuitem" onClick={() => { setOpen(false); onRecurring(); }} style={menuItem}>
+              <Repeat size={15} /> {t("recurring")}
+            </button>
+          )}
           {onManageMembers && (
             <button role="menuitem" onClick={() => { setOpen(false); onManageMembers(); }} style={menuItem}>
               <Users size={15} /> {t("manageAccess")}
             </button>
           )}
-          {(onBudget || onReport || onStores || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onBudget || onReport || onStores || onRecurring || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
