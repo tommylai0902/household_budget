@@ -14,11 +14,15 @@
 -- ledger_role row existing — new ledgers (created after 009) don't get one.
 create or replace function ledger_roster(p_ledger uuid)
 returns table (user_id uuid, email text, name text, role ledger_role_kind, is_owner boolean) as $$
-  select u.id, u.email, u.name, 'OWNER'::ledger_role_kind, true
+  -- ORDER BY on a UNION ALL can only see the first branch's column names, so
+  -- every expression here (including the literals) needs an explicit alias —
+  -- otherwise `true`/the enum cast come out nameless and "is_owner" doesn't exist.
+  select u.id as user_id, u.email as email, u.name as name,
+    'OWNER'::ledger_role_kind as role, true as is_owner
   from ledgers l join app_user u on u.id = l.owner_id
   where l.id = p_ledger and has_ledger_role(p_ledger, 'VIEWER')
   union all
-  select u.id, u.email, u.name, r.role, false
+  select u.id as user_id, u.email as email, u.name as name, r.role as role, false as is_owner
   from ledger_role r
   join ledgers l on l.id = r.ledger_id
   join app_user u on u.id = r.user_id
