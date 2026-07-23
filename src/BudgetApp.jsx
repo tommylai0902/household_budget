@@ -491,9 +491,14 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
   // Rename/delete are shown to everyone now (same menu regardless of role) — the
   // owner check happens on click, so a non-owner gets a clear "you can't do this"
   // instead of either a hidden button or a raw RLS error.
-  const remove = async (l) => {
+  const [confirmDelete, setConfirmDelete] = useState(null); // ledger pending delete confirmation
+  const remove = (l) => {
     if (l.ownerId !== currentUserId) { setError(t("ownerOnlyErr")); return; }
-    if (!confirm(t("deleteLedgerConfirm", { name: l.name }))) return;
+    setConfirmDelete(l);
+  };
+  const doDelete = async () => {
+    const l = confirmDelete;
+    setConfirmDelete(null);
     try { await db.deleteLedger(l.id); load(); }
     catch (e) { setError(e.message || String(e)); }
   };
@@ -612,6 +617,7 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
         </div>
         <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
+      {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
     </div>
   );
 }
@@ -694,6 +700,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showSettlement, setShowSettlement] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
+  const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -908,8 +915,13 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         <ExpenseDetail expense={detail} categories={categories} members={members} lang={lang} t={t}
           onReassign={(cid) => { reassign(detail.id, cid); setDetail({ ...detail, categoryId: cid }); }}
           onEdit={() => { setEditing(detail); setDetail(null); }}
-          onDelete={() => { if (confirm(t("deleteConfirm", { name: detail.description }))) { removeExpense(detail.id); setDetail(null); } }}
+          onDelete={() => setConfirmDeleteExpense(true)}
           onClose={() => setDetail(null)} />
+      )}
+      {confirmDeleteExpense && (
+        <ConfirmDialog t={t} message={t("deleteConfirm", { name: detail.description })}
+          onConfirm={() => { removeExpense(detail.id); setDetail(null); setConfirmDeleteExpense(false); }}
+          onCancel={() => setConfirmDeleteExpense(false)} />
       )}
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members}
@@ -1030,9 +1042,14 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
     catch (e) { setRosterErr(e.message || String(e)); }
     finally { setBusyUser(null); }
   };
-  const removeOne = async (m) => {
+  const [confirmRemove, setConfirmRemove] = useState(null); // roster row pending removal
+  const removeOne = (m) => {
     if (!isOwner) { setRosterErr(t("ownerOnlyErr")); return; }
-    if (!confirm(t("removeMemberConfirm", { name: m.name || m.email }))) return;
+    setConfirmRemove(m);
+  };
+  const doRemove = async () => {
+    const m = confirmRemove;
+    setConfirmRemove(null);
     setBusyUser(m.userId);
     try { await db.removeMember(ledger.id, m.userId); load(); }
     catch (e) { setRosterErr(e.message || String(e)); }
@@ -1142,6 +1159,10 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
           </div>
         )}
       </div>
+      {confirmRemove && (
+        <ConfirmDialog t={t} message={t("removeMemberConfirm", { name: confirmRemove.name || confirmRemove.email })}
+          confirmLabel={t("removeMemberBtn")} onConfirm={doRemove} onCancel={() => setConfirmRemove(null)} />
+      )}
     </Overlay>
   );
 }
@@ -1172,8 +1193,11 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
     try { await db.setRecurringPaused(r.id, !r.paused); await after(); }
     catch (e) { setErr(e.message || String(e)); } finally { setBusyId(null); }
   };
-  const remove = async (r) => {
-    if (!confirm(t("recurDeleteConfirm"))) return;
+  const [confirmDelete, setConfirmDelete] = useState(null); // rule pending delete confirmation
+  const remove = (r) => setConfirmDelete(r);
+  const doDelete = async () => {
+    const r = confirmDelete;
+    setConfirmDelete(null);
     setBusyId(r.id);
     try { await db.deleteRecurringRule(r.id); await after(); }
     catch (e) { setErr(e.message || String(e)); } finally { setBusyId(null); }
@@ -1226,6 +1250,7 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
           })}
         </div>
       )}
+      {confirmDelete && <ConfirmDialog t={t} message={t("recurDeleteConfirm")} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
     </Overlay>
   );
 }
@@ -2200,6 +2225,28 @@ function Overlay({ title, onClose, t, children }) {
           <button onClick={onClose} style={{ ...iconBtn, marginLeft: "auto", flexShrink: 0 }} aria-label={t("close")}><X size={18} /></button>
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+// Replaces window.confirm() for every destructive action in the app. Native
+// confirm() has a real failure mode: after a couple of them, Chrome (and other
+// browsers) offer "Prevent this page from creating additional dialogs" — once a
+// user ticks that, every future confirm() on the page silently returns false with
+// no dialog at all, which reads as "delete does nothing" everywhere at once.
+// zIndex above Overlay's 50 so it can sit on top of a panel that opened it.
+function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,26,32,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={onCancel}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 20, width: "min(360px, 100%)", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontSize: 14, color: INK, lineHeight: 1.5, marginBottom: 18 }}>{message}</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
+          <button onClick={onConfirm} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: 12, borderRadius: 9, border: "none", background: "#DC2626", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            <Trash2 size={16} /> {confirmLabel || t("delete")}
+          </button>
+        </div>
       </div>
     </div>
   );
