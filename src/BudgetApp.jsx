@@ -101,6 +101,7 @@ const STRINGS = {
     manageAccess: "Manage members", currentMembers: "Who has access",
     roleOwner: "Owner", roleEditor: "Editor", roleViewer: "Viewer",
     removeMemberBtn: "Remove", removeMemberConfirm: "Remove {name} from this ledger?",
+    ownerOnlyErr: "Only the ledger owner can do this.",
     pendingInvite: "Pending invite", openInviteLink: "Open invite link", revokeInviteBtn: "Revoke invite",
     roleEditorHint: "Can view and add or change expenses, budgets and members.",
     roleViewerHint: "Can view everything, but not make changes.",
@@ -193,6 +194,7 @@ const STRINGS = {
     manageAccess: "管理成員", currentMembers: "邊個有權限",
     roleOwner: "擁有者", roleEditor: "可編輯", roleViewer: "只可查看",
     removeMemberBtn: "移除", removeMemberConfirm: "將 {name} 移出呢本帳簿？",
+    ownerOnlyErr: "只有帳簿擁有者先可以咁做。",
     pendingInvite: "邀請待接受", openInviteLink: "開放邀請連結", revokeInviteBtn: "撤銷邀請",
     roleEditorHint: "可以睇同埋新增/修改支出、預算、成員。",
     roleViewerHint: "可以睇晒所有嘢，但唔可以改。",
@@ -471,7 +473,11 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
     } catch (e) { setError(e.message || String(e)); setBusy(false); }
   };
 
+  // Rename/delete are shown to everyone now (same menu regardless of role) — the
+  // owner check happens on click, so a non-owner gets a clear "you can't do this"
+  // instead of either a hidden button or a raw RLS error.
   const remove = async (l) => {
+    if (l.ownerId !== currentUserId) { setError(t("ownerOnlyErr")); return; }
     if (!confirm(t("deleteLedgerConfirm", { name: l.name }))) return;
     try { await db.deleteLedger(l.id); load(); }
     catch (e) { setError(e.message || String(e)); }
@@ -482,7 +488,10 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
   const [draftTpl, setDraftTpl] = useState("household");
-  const startRename = (l) => { setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template); };
+  const startRename = (l) => {
+    if (l.ownerId !== currentUserId) { setError(t("ownerOnlyErr")); return; }
+    setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template);
+  };
   const cancelRename = () => { setEditingId(null); setDraft(""); };
   const saveRename = async (l) => {
     const trimmed = draft.trim();
@@ -521,7 +530,6 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
             </div>
           )}
           {ledgers.map((l) => {
-            const isOwner = l.ownerId === currentUserId; // only the owner may rename/delete/manage members
             return (
             <div key={l.id}>
               {editingId === l.id ? (
@@ -555,8 +563,8 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
                     <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
                     <ChevronRight size={17} style={{ color: SUB }} />
                   </button>
-                  {isOwner && <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>}
-                  {isOwner && <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>}
+                  <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>
+                  <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
                 </div>
               )}
             </div>
@@ -806,7 +814,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
-              onManageMembers={isOwner ? () => setShowManageMembers(true) : undefined} />
+              onManageMembers={() => setShowManageMembers(true)} />
           </div>
         </div>
 
@@ -903,7 +911,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
           lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)} />
       )}
       {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
-      {showManageMembers && <ManageMembersModal ledger={ledger} t={t} onClose={() => setShowManageMembers(false)} />}
+      {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
     </div>
   );
 }
@@ -970,7 +978,7 @@ function SettlementDetails({ members, summary, t, onClose }) {
 // removable; the owner's own row is fixed (ownership lives on ledgers.owner_id,
 // not this table, so there's nothing here to edit for them). Bottom: the invite
 // form, folded in rather than its own overlay — one panel for "who has access".
-function ManageMembersModal({ ledger, t, onClose }) {
+function ManageMembersModal({ ledger, isOwner, t, onClose }) {
   const [roster, setRoster] = useState(null); // null = loading
   const [pending, setPending] = useState([]); // invites nobody has redeemed yet
   const [rosterErr, setRosterErr] = useState("");
@@ -984,7 +992,11 @@ function ManageMembersModal({ ledger, t, onClose }) {
   }, [ledger.id]);
   useEffect(load, [load]);
 
+  // Everyone (Editor, Viewer, Owner) sees this same panel now; these writes stay
+  // owner-only. Checking isOwner before the network call means a non-owner gets a
+  // clear "you can't do this" instead of a raw RLS-violation error string.
   const changeRole = async (m, role) => {
+    if (!isOwner) { setRosterErr(t("ownerOnlyErr")); return; }
     if (m.role === role) return;
     setBusyUser(m.userId);
     try { await db.updateMemberRole(ledger.id, m.userId, role); load(); }
@@ -992,6 +1004,7 @@ function ManageMembersModal({ ledger, t, onClose }) {
     finally { setBusyUser(null); }
   };
   const removeOne = async (m) => {
+    if (!isOwner) { setRosterErr(t("ownerOnlyErr")); return; }
     if (!confirm(t("removeMemberConfirm", { name: m.name || m.email }))) return;
     setBusyUser(m.userId);
     try { await db.removeMember(ledger.id, m.userId); load(); }
@@ -999,6 +1012,7 @@ function ManageMembersModal({ ledger, t, onClose }) {
     finally { setBusyUser(null); }
   };
   const revoke = async (inv) => {
+    if (!isOwner) { setRosterErr(t("ownerOnlyErr")); return; }
     setBusyInvite(inv.id);
     try { await db.revokeInvite(inv.id); load(); }
     catch (e) { setRosterErr(e.message || String(e)); }
@@ -1013,6 +1027,7 @@ function ManageMembersModal({ ledger, t, onClose }) {
   const [copied, setCopied] = useState(false);
 
   const generate = async () => {
+    if (!isOwner) { setErr(t("ownerOnlyErr")); return; }
     setBusy(true); setErr("");
     try { setLink(await db.createInvite(ledger.id, role, email.trim() || null)); load(); }
     catch (e) { setErr(e.message || String(e)); }
