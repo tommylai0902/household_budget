@@ -19,7 +19,10 @@ html, body, #root { margin: 0; height: 100%; }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ink: #E8EAED; --sub: #98A2AD; --line: #2E343B; --paper: #14171A; --card: #1D2226;
+  /* --sub sits brighter here than the light theme's equivalent: pale text on a
+     dark background renders visually thinner, so matching the light theme's
+     contrast ratio still reads dimmer. */
+  --ink: #E8EAED; --sub: #B4BCC6; --line: #2E343B; --paper: #14171A; --card: #1D2226;
   --ok-bg: #123833; --ok-ink: #7FD9CA; --ok-line: #1F544C; --ok-strong: #1A4B43;
   --bad-bg: #3A1D1D; --bad-ink: #F19B94; --bad-line: #5E2E2A;
   --track: #2A3137; --muted-bg: #242A2F; --danger: #F1897F; --warn: #F5A97A;
