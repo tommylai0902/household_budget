@@ -77,6 +77,10 @@ const STRINGS = {
     monthlyReport: "Reports", reportFor: "Spending in {month}",
     reportTotal: "Total spending", reportCategories: "By category",
     reportEmpty: "No spending recorded for this month yet.", reportUncategorised: "Uncategorised",
+    compareMonth: "Compare to", compareVs: "This month vs {month}",
+    compareEmpty: "Nothing to compare — no spending in either month.",
+    compareUnchanged: "No change", compareNew: "New this month",
+    compareGoneLabel: "Gone this month",
     categoryExpenses: "Expenses in {category}", categoryExpensesEmpty: "No expenses in this category for this month.",
     splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
     items: "Receipt items", itemSplit: "Split", itemPersonal: "Personal", itemDrop: "Not mine",
@@ -177,6 +181,10 @@ const STRINGS = {
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
     reportEmpty: "這個月尚未有支出紀錄。", reportUncategorised: "未分類",
+    compareMonth: "比較月份", compareVs: "本月 vs {month}",
+    compareEmpty: "兩個月都冇支出，冇嘢好比較。",
+    compareUnchanged: "冇變動", compareNew: "本月新增",
+    compareGoneLabel: "本月冇咗",
     categoryExpenses: "{category}支出", categoryExpensesEmpty: "這個月此類別尚未有支出。",
     splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
     items: "收據明細", itemSplit: "分帳", itemPersonal: "私人", itemDrop: "唔計",
@@ -1935,25 +1943,50 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
   );
 }
 
+// Category totals for one month, shared by the pie chart and both sides of the
+// month-over-month comparison so the two views can never disagree on a number.
+function categoryTotalsFor(targetMonth, expenses, categories, lang, t) {
+  const totals = new Map();
+  for (const expense of expenses) {
+    if (monthOf(expense.date) !== targetMonth) continue;
+    const key = expense.categoryId || "uncategorised";
+    totals.set(key, (totals.get(key) || 0) + (Number(expense.amount) || 0));
+  }
+  return [...totals.entries()].map(([id, amount]) => {
+    const category = categories.find((c) => c.id === id);
+    return {
+      id,
+      amount,
+      name: category ? catName(category, lang) : t("reportUncategorised"),
+      color: category?.color || "#94A3B8",
+    };
+  }).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount);
+}
+
 function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthChange, onClose }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const breakdown = useMemo(() => {
-    const totals = new Map();
-    for (const expense of expenses) {
-      if (monthOf(expense.date) !== month) continue;
-      const key = expense.categoryId || "uncategorised";
-      totals.set(key, (totals.get(key) || 0) + (Number(expense.amount) || 0));
+  const breakdown = useMemo(() => categoryTotalsFor(month, expenses, categories, lang, t), [expenses, month, categories, lang, t]);
+
+  // Defaults to the month right before the one on screen (months is newest-first),
+  // so opening the report already shows a meaningful comparison.
+  const [compareMonth, setCompareMonth] = useState(() => {
+    const i = months.indexOf(month);
+    return months[i + 1] || month;
+  });
+  const compareBreakdown = useMemo(() => categoryTotalsFor(compareMonth, expenses, categories, lang, t), [expenses, compareMonth, categories, lang, t]);
+  // Union of both months' categories, ranked by current-month spend (falling back
+  // to compare-month spend for a category that only existed back then).
+  const comparison = useMemo(() => {
+    const byId = new Map();
+    for (const item of breakdown) byId.set(item.id, { id: item.id, name: item.name, color: item.color, current: item.amount, compare: 0 });
+    for (const item of compareBreakdown) {
+      const row = byId.get(item.id);
+      if (row) row.compare = item.amount;
+      else byId.set(item.id, { id: item.id, name: item.name, color: item.color, current: 0, compare: item.amount });
     }
-    return [...totals.entries()].map(([id, amount]) => {
-      const category = categories.find((c) => c.id === id);
-      return {
-        id,
-        amount,
-        name: category ? catName(category, lang) : t("reportUncategorised"),
-        color: category?.color || "#94A3B8",
-      };
-    }).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount);
-  }, [expenses, month, categories, lang, t]);
+    return [...byId.values()].sort((a, b) => (b.current || b.compare) - (a.current || a.compare));
+  }, [breakdown, compareBreakdown]);
+  const comparisonMax = Math.max(1, ...comparison.map((r) => Math.max(r.current, r.compare)));
 
   const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
   let offset = 0;
@@ -1973,9 +2006,20 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
 
   return (
     <Overlay onClose={onClose} title={t("monthlyReport")} t={t}>
-      <select value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label={t("selectMonth")} style={selectStyle}>
-        {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
-      </select>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 130 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("selectMonth")}</div>
+          <select value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label={t("selectMonth")} style={{ ...selectStyle, width: "100%" }}>
+            {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1, minWidth: 130 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("compareMonth")}</div>
+          <select value={compareMonth} onChange={(e) => setCompareMonth(e.target.value)} aria-label={t("compareMonth")} style={{ ...selectStyle, width: "100%" }}>
+            {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
+          </select>
+        </div>
+      </div>
       <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("reportTotal")}</div>
         <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
@@ -2005,6 +2049,47 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
           </div>
         </>
       )}
+
+      <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{t("compareVs", { month: monthName(compareMonth, lang) })}</div>
+          <div style={{ display: "flex", gap: 12, fontSize: 11, color: SUB }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: TEAL }} /> {monthName(month, lang)}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "#CBD5E1" }} /> {monthName(compareMonth, lang)}</span>
+          </div>
+        </div>
+        {comparison.length === 0 ? (
+          <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "20px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("compareEmpty")}</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {comparison.map((row) => {
+              const delta = row.current - row.compare;
+              const deltaLabel = row.compare === 0 && row.current > 0 ? t("compareNew")
+                : row.current === 0 && row.compare > 0 ? t("compareGoneLabel")
+                : delta === 0 ? t("compareUnchanged")
+                : `${delta > 0 ? "+" : "-"}${money(Math.abs(delta))} (${delta > 0 ? "+" : "-"}${Math.round(Math.abs(delta) / row.compare * 100)}%)`;
+              const deltaColor = delta > 0 ? "#DC2626" : delta < 0 ? TEAL : SUB;
+              return (
+                <div key={row.id} title={`${row.name}: ${money(row.current)} vs ${money(row.compare)}`}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: deltaColor, whiteSpace: "nowrap", marginLeft: 8 }}>{deltaLabel}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <div style={{ height: 7, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
+                      <div style={{ width: `${(row.current / comparisonMax) * 100}%`, height: "100%", background: TEAL, borderRadius: 99 }} />
+                    </div>
+                    <div style={{ height: 7, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
+                      <div style={{ width: `${(row.compare / comparisonMax) * 100}%`, height: "100%", background: "#CBD5E1", borderRadius: 99 }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
     </Overlay>
   );
