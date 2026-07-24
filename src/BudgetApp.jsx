@@ -848,7 +848,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
-              onManageMembers={() => setShowManageMembers(true)}
+              onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
               onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined} />
           </div>
         </div>
