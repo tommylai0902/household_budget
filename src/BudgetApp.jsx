@@ -68,7 +68,7 @@ const STRINGS = {
     sharedLine: "Split {n} ways — {amount} each",
     members: "Members", manageMembers: "Edit members",
     memberHasExpenses: "That member still has expenses in this ledger. Reassign or delete them first.",
-    budget: "Budget", budgetFor: "Budget for {month}", budgetTotal: "All categories",
+    budget: "Budget", tripBudget: "Trip budget", budgetFor: "Budget for {month}", budgetTotal: "All categories",
     budgetNone: "No budgets set for {month}. Give any category an amount below.",
     budgetSpent: "Spent", budgetLeft: "Left", budgetOver: "Over budget",
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget", setBudgetPh: "Set budget",
@@ -169,7 +169,7 @@ const STRINGS = {
     sharedLine: "{n} 人平分 — 每人 {amount}",
     members: "成員", manageMembers: "編輯成員",
     memberHasExpenses: "呢位成員喺呢本帳簿仲有支出，要先改咗付款人或者刪走嗰啲支出。",
-    budget: "預算", budgetFor: "{month}預算", budgetTotal: "所有類別",
+    budget: "預算", tripBudget: "旅程預算", budgetFor: "{month}預算", budgetTotal: "所有類別",
     budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
     budgetSpent: "已用", budgetLeft: "剩餘", budgetOver: "超出預算",
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算", setBudgetPh: "設定預算",
@@ -691,6 +691,9 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t }) {
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
+  // "Monthly" framing doesn't fit a trip — a travel ledger's budget is one lump
+  // sum for the whole trip, not a per-month allowance like every other template.
+  const budgetLabel = ledger.template === "travel" ? t("tripBudget") : t("budget");
   const [categories, setCategories] = useState([]);
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -847,7 +850,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
               ))}
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-              onStores={() => setManagingStores(true)}
+              onStores={() => setManagingStores(true)} budgetLabel={budgetLabel}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
               onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined} />
           </div>
@@ -948,7 +951,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       )}
       {showBudget && (
         <BudgetPanel month={month} monthLabel={label} categories={categories} expenses={expenses} budgets={budgets} lang={lang}
-          spentByCategory={spentByCategory} spent={summary.total} t={t}
+          spentByCategory={spentByCategory} spent={summary.total} t={t} title={budgetLabel}
           onSave={saveBudgets} onClose={() => setShowBudget(false)} />
       )}
       {showReport && (
@@ -1834,7 +1837,7 @@ function BudgetBar({ spent, budget, height = 8 }) {
   );
 }
 
-function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onSave, onClose }) {
+function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onSave, onClose, title }) {
   // One draft per category; the month's budget is their sum, not its own field.
   const [drafts, setDrafts] = useState(() =>
     Object.fromEntries(categories.map((c) => {
@@ -1858,7 +1861,7 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
   };
 
   return (
-    <Overlay onClose={onClose} title={t("budget")} t={t}>
+    <Overlay onClose={onClose} title={title || t("budget")} t={t}>
       <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
 
       {/* Whole-month roll-up */}
@@ -2150,7 +2153,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers, budgetLabel }) {
   const [open, setOpen] = useState(false);
   const profile = useMyProfile();
   useEffect(() => {
@@ -2189,7 +2192,7 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecur
           {/* Ledger-scoped entries are absent on the picker, which has no ledger. */}
           {onBudget && (
             <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
-              <PieChart size={15} /> {t("budget")}
+              <PieChart size={15} /> {budgetLabel || t("budget")}
             </button>
           )}
           {onReport && (
