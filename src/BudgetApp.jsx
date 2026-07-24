@@ -74,7 +74,7 @@ const STRINGS = {
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
     addExpense: "Add expense",
-    spentIn: "Spent in {month}", checkSettleUp: "Check settle up",
+    totalSpending: "Total Spending", balanceFromBudget: "Balance from budget", settleUp: "Settle up",
     emptyState: "No expenses in {month} yet. Add your first one above.",
     emptyStateDay: "No expenses on {date}.", showAll: "Show all",
     paidByRow: "{name} paid", split5050: "Split 50/50", personal: "Personal",
@@ -189,7 +189,7 @@ const STRINGS = {
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
     addExpense: "新增支出",
-    spentIn: "{month}支出", checkSettleUp: "查看結算",
+    totalSpending: "總支出", balanceFromBudget: "預算結餘", settleUp: "結算",
     emptyState: "{month}還沒有支出，先在上方新增一筆。",
     emptyStateDay: "{date} 冇支出記錄。", showAll: "顯示全部",
     paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "個人",
@@ -912,6 +912,13 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
     return m;
   }, [expenses, month]);
 
+  // For the calendar footer's "Balance from budget" — sum of each category's
+  // saved budget for the month on screen (0 if nothing's been set at all).
+  const totalBudget = useMemo(
+    () => categories.reduce((sum, c) => sum + (budgets.get(db.budgetKey(month, c.id)) || 0), 0),
+    [categories, budgets, month]
+  );
+
   const saveBudgets = async (entries) => {
     try {
       for (const { categoryId, amount } of entries) await db.setBudget(ledger.id, categoryId, month, amount);
@@ -1027,7 +1034,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
         <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t}
-          monthLabel={label} total={summary.total} onCheckSettleUp={() => setShowSettlement(true)} />
+          total={summary.total} totalBudget={totalBudget} onCheckSettleUp={() => setShowSettlement(true)} />
 
         <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
 
@@ -1161,7 +1168,7 @@ function LangToggle({ lang, changeLang }) {
 // total and settle-up entry point (formerly two separate bars) live as a
 // footer row on this same card — "Check settle up" is deliberately detail-
 // free, the amounts/who-owes-whom live in SettlementDetails behind it.
-function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, monthLabel, total, onCheckSettleUp }) {
+function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, total, totalBudget, onCheckSettleUp }) {
   const totals = useMemo(() => dailyTotalsFor(month, expenses), [month, expenses]);
   const [year, mo] = month.split("-").map(Number);
   const daysInMonth = new Date(year, mo, 0).getDate();
@@ -1216,12 +1223,30 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, mon
           <button onClick={() => onSelectDay(null)} style={{ ...categoryLink, color: TEAL }}>{t("showAll")}</button>
         </div>
       )}
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${LINE}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>{t("spentIn", { month: monthLabel })}</div>
-          <div style={{ fontSize: 20, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${LINE}` }}>
+        {/* Two stat blocks side by side rather than crammed onto one row with
+            the settle-up button — on a phone-width card there isn't room for
+            both amounts and a button label on the same line without wrapping. */}
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>{t("totalSpending")}</div>
+            <div style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>{t("balanceFromBudget")}</div>
+            <div style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: totalBudget > 0 ? (totalBudget - total < 0 ? DANGER : TEAL) : INK }}>
+              {totalBudget > 0 ? money(totalBudget - total) : "—"}
+            </div>
+          </div>
         </div>
-        <button onClick={onCheckSettleUp} style={{ ...ghostBtn, flexShrink: 0 }}>{t("checkSettleUp")}</button>
+        {/* Full-width tap row (label + chevron), same "goes somewhere further"
+            convention as the expense rows below it, rather than a small button
+            — a bigger touch target and it doesn't compete for space with the
+            stats above on a narrow screen. */}
+        <button onClick={onCheckSettleUp} style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: INK }}>{t("settleUp")}</span>
+          <ChevronRight size={18} style={{ color: SUB }} />
+        </button>
       </div>
     </div>
   );
