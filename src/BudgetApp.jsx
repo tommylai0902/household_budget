@@ -14,6 +14,7 @@ import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
 import { settlements, netBalances } from "./lib/settle";
 import { nextOccurrence } from "./lib/recurring";
+import { parseCsvText, guessCategoryId } from "./lib/csv";
 
 /* ------------------------------------------------------------------ *
  * Household Budget — Step 2: shared, live-synced ledger (Supabase).
@@ -100,6 +101,14 @@ const STRINGS = {
     startDate: "Start date", nextDue: "Next due", paused: "Paused",
     pauseRule: "Pause", resumeRule: "Resume", saveRule: "Save",
     recurDeleteConfirm: "Delete this recurring rule? Expenses it already created stay.",
+    csvImport: "Import CSV", csvImportTitle: "Import expenses",
+    csvChoose: "Choose a CSV file", csvChooseHint: "Card or bank statement export — Date, Description, Amount columns.",
+    csvParseErr: "Couldn't read that file: {msg}", csvNoRows: "No usable rows found in that file.",
+    csvDefaultOwner: "Default card owner / Paid by", csvRowCount: "{n} rows ready to import",
+    csvColDate: "Date", csvColDesc: "Description", csvColAmount: "Amount", csvColCategory: "Category", csvColPaidBy: "Paid by",
+    csvConfirm: "Confirm & import", csvImporting: "Importing…",
+    csvResult: "Imported {ok} of {total}.", csvResultFail: " {fail} failed.",
+    csvRemoveRow: "Remove row", csvChooseAnother: "Choose a different file",
     newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
@@ -204,6 +213,14 @@ const STRINGS = {
     startDate: "開始日期", nextDue: "下次", paused: "已暫停",
     pauseRule: "暫停", resumeRule: "恢復", saveRule: "儲存",
     recurDeleteConfirm: "刪除呢條定期規則？佢已經產生嘅支出會保留。",
+    csvImport: "匯入 CSV", csvImportTitle: "匯入支出",
+    csvChoose: "揀一個 CSV 檔案", csvChooseHint: "信用卡或銀行結單匯出檔 — 要有日期、描述、金額欄。",
+    csvParseErr: "讀唔到個檔案：{msg}", csvNoRows: "個檔案入面搵唔到有用嘅資料行。",
+    csvDefaultOwner: "預設卡主 / 邊個俾錢", csvRowCount: "{n} 行準備匯入",
+    csvColDate: "日期", csvColDesc: "描述", csvColAmount: "金額", csvColCategory: "類別", csvColPaidBy: "邊個俾錢",
+    csvConfirm: "確認並匯入", csvImporting: "匯入緊…",
+    csvResult: "已匯入 {ok} / {total}。", csvResultFail: "有 {fail} 行失敗。",
+    csvRemoveRow: "移除呢行", csvChooseAnother: "揀另一個檔案",
     newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
@@ -715,6 +732,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showSettlement, setShowSettlement] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
   const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
@@ -855,7 +873,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
               ))}
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-              onStores={() => setManagingStores(true)}
+              onStores={() => setManagingStores(true)} onCsvImport={() => setShowCsvImport(true)}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
               onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined} />
           </div>
@@ -967,6 +985,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
       {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} lang={lang} t={t}
         onClose={() => setShowRecurring(false)} onChanged={refresh} />}
+      {showCsvImport && <CsvImportModal ledger={ledger} features={features} categories={categories} members={members} lang={lang} t={t}
+        onClose={() => setShowCsvImport(false)} onImported={refresh} />}
     </div>
   );
 }
@@ -1365,6 +1385,144 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
           {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveRule")}
         </button>
       </div>
+    </Overlay>
+  );
+}
+
+// CSV/credit-card batch import. Two phases: pick a file (nothing written yet),
+// then review/edit a parsed preview table before committing anything. The
+// "Default card owner" selector only touches rows the user hasn't hand-picked a
+// payer for (paidByTouched) — editing one row's payer opts it out of future
+// bulk changes from the selector, same idea as the recurring-form defaults.
+function CsvImportModal({ ledger, features, categories, members, lang, t, onClose, onImported }) {
+  const [rows, setRows] = useState(null); // null = no file chosen yet
+  const [fileErr, setFileErr] = useState("");
+  const [defaultPaidBy, setDefaultPaidBy] = useState(members[0]?.id || null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null); // { ok, fail, total } after a confirm
+
+  const onFile = async (file) => {
+    setFileErr(""); setResult(null);
+    try {
+      const text = await file.text();
+      const parsed = parseCsvText(text, todayISO());
+      if (!parsed.length) { setFileErr(t("csvNoRows")); return; }
+      setRows(parsed.map((r, i) => ({
+        id: `r${i}`,
+        date: r.date,
+        description: r.description,
+        amount: r.amount,
+        categoryId: guessCategoryId(r.description, categories),
+        paidById: (features.showSplit ? defaultPaidBy : members[0]?.id) || null,
+        paidByTouched: false,
+      })));
+    } catch (e) { setFileErr(t("csvParseErr", { msg: e.message || String(e) })); }
+  };
+
+  const patchRow = (id, patch) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const removeRow = (id) => setRows((rs) => rs.filter((r) => r.id !== id));
+  const changeDefaultPaidBy = (memberId) => {
+    setDefaultPaidBy(memberId);
+    setRows((rs) => rs.map((r) => (r.paidByTouched ? r : { ...r, paidById: memberId })));
+  };
+
+  const valid = rows && rows.length > 0 && !busy;
+
+  const confirm = async () => {
+    setBusy(true); setResult(null);
+    const toInsert = rows.map((r) => ({
+      description: r.description, amount: r.amount, date: r.date, categoryId: r.categoryId,
+      paidById: r.paidById, note: null,
+      split: features.showSplit ? "shared" : "personal",
+      sharedWith: features.showSplit ? members.map((m) => m.id) : [],
+    }));
+    const results = await db.importExpensesBatch(toInsert, ledger.id);
+    const ok = results.filter((r) => r.ok).length;
+    const fail = results.length - ok;
+    setBusy(false);
+    setResult({ ok, fail, total: results.length });
+    await onImported();
+    // Keep only the rows that failed, so retrying doesn't re-insert (and
+    // duplicate) the ones that already landed.
+    if (fail === 0) onClose();
+    else setRows((rs) => rs.filter((_, i) => !results[i].ok));
+  };
+
+  return (
+    <Overlay onClose={onClose} title={t("csvImportTitle")} t={t}>
+      {!rows ? (
+        <>
+          <label style={{ ...addBtn, marginTop: 0, justifyContent: "center", cursor: "pointer" }}>
+            <Upload size={18} /> {t("csvChoose")}
+            <input type="file" accept=".csv,text/csv" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
+          </label>
+          <div style={{ fontSize: 12, color: SUB, textAlign: "center" }}>{t("csvChooseHint")}</div>
+          {fileErr && <div style={{ color: "#DC2626", fontSize: 13 }}>{fileErr}</div>}
+        </>
+      ) : (
+        <>
+          {features.showSplit && (
+            <Field label={t("csvDefaultOwner")}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {members.map((m) => {
+                  const Icon = memberIcon(m.icon);
+                  return (
+                    <button key={m.id} onClick={() => changeDefaultPaidBy(m.id)} style={chip(defaultPaidBy === m.id)}>
+                      <Icon size={13} /> {m.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+          <div style={{ fontSize: 12, color: SUB }}>{t("csvRowCount", { n: rows.length })}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Native selects per row rather than the touch-friendly chip pickers used
+                elsewhere in the app: with dozens of rows on screen at once, the
+                compact form matters more here than it does for a single expense. */}
+            {rows.map((r) => (
+              <div key={r.id} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input type="date" value={r.date} onChange={(e) => patchRow(r.id, { date: e.target.value })} style={{ ...input, width: 132, fontSize: 12, padding: "6px 8px" }} />
+                  <input type="text" value={r.description} onChange={(e) => patchRow(r.id, { description: e.target.value })} style={{ ...input, flex: 1, fontSize: 13, padding: "6px 8px" }} />
+                  <button onClick={() => removeRow(r.id)} style={{ ...iconBtn, width: 28, height: 28, color: "#DC2626", flexShrink: 0 }} aria-label={t("csvRemoveRow")}><Trash2 size={13} /></button>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ position: "relative", width: 92, flexShrink: 0 }}>
+                    <span style={{ position: "absolute", left: 8, top: 7, color: SUB, fontSize: 12 }}>$</span>
+                    <input type="number" inputMode="decimal" value={r.amount}
+                      onChange={(e) => patchRow(r.id, { amount: Number(e.target.value) || 0 })}
+                      style={{ ...input, padding: "6px 8px 6px 18px", fontSize: 12 }} />
+                  </div>
+                  <select value={r.categoryId || ""} onChange={(e) => patchRow(r.id, { categoryId: e.target.value || null })}
+                    style={{ ...selectStyle, flex: 1, width: "auto", fontSize: 12, padding: "6px 8px" }}>
+                    <option value="">{t("uncategorised")}</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{catName(c, lang)}</option>)}
+                  </select>
+                  {features.showSplit && (
+                    <select value={r.paidById || ""} onChange={(e) => patchRow(r.id, { paidById: e.target.value, paidByTouched: true })}
+                      style={{ ...selectStyle, width: "auto", fontSize: 12, padding: "6px 8px" }}>
+                      {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {result && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? "#DC2626" : TEAL }}>
+              {t("csvResult", { ok: result.ok, total: result.total })}{result.fail ? t("csvResultFail", { fail: result.fail }) : ""}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <button onClick={() => { setRows(null); setResult(null); }} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("csvChooseAnother")}</button>
+            <button onClick={confirm} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+              {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {busy ? t("csvImporting") : t("csvConfirm")}
+            </button>
+          </div>
+        </>
+      )}
     </Overlay>
   );
 }
@@ -2235,7 +2393,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onCsvImport, onManageMembers }) {
   const [open, setOpen] = useState(false);
   const profile = useMyProfile();
   useEffect(() => {
@@ -2297,7 +2455,12 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecur
               <Users size={15} /> {t("manageAccess")}
             </button>
           )}
-          {(onBudget || onReport || onStores || onRecurring || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {onCsvImport && (
+            <button role="menuitem" onClick={() => { setOpen(false); onCsvImport(); }} style={menuItem}>
+              <Upload size={15} /> {t("csvImport")}
+            </button>
+          )}
+          {(onBudget || onReport || onStores || onRecurring || onManageMembers || onCsvImport) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (

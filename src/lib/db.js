@@ -257,6 +257,19 @@ export async function insertExpense(e, ledgerId) {
   await writeSplits(data.id, e);
   await writeItems(data.id, e);
 }
+
+// CSV batch import: each row through the exact same path as a single add, so
+// splits behave identically. Sequential, not Promise.all — one bad row (e.g. a
+// stale category id) shouldn't race a pile of concurrent inserts that are hard to
+// reconcile if something fails partway; the caller shows which rows didn't land.
+export async function importExpensesBatch(rows, ledgerId) {
+  const results = [];
+  for (const row of rows) {
+    try { await insertExpense(row, ledgerId); results.push({ ok: true }); }
+    catch (e) { results.push({ ok: false, error: e.message || String(e) }); }
+  }
+  return results;
+}
 // The personal half of a split receipt, landing in whichever ledger was chosen.
 // That ledger has its own categories and members, so the category is left unset
 // (it shows as Uncategorised, which is visible rather than a wrong guess) and the
