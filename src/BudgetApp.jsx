@@ -1028,8 +1028,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
 
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
+        <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t} />
+
         {/* Summary / settlement */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px", marginTop: 14, marginBottom: 14 }}>
           <span style={{ fontSize: 13, color: SUB, fontWeight: 600 }}>{t("spentIn", { month: label })}</span>
           <span style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(summary.total)}</span>
         </div>
@@ -1037,8 +1039,6 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         <SettlementBar transfers={summary.transfers} members={members} t={t} onClick={() => setShowSettlement(true)} />
 
         <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
-
-        <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t} />
 
         {/* List */}
         <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
