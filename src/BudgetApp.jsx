@@ -341,6 +341,22 @@ const relLuminance = (hex) => {
   return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
 };
 const accentInkFor = (hex) => (relLuminance(hex) > 0.179 ? "#1A1F24" : "#fff");
+// `amount` of `hex` blended into `base`. Used to derive the settle-up/shared
+// "OK" tint from whatever accent is picked, the same way the light/dark
+// theme's own OK_BG/OK_INK were hand-picked as a pale tint + a readable ink
+// of the original fixed teal — this just does that blend for an arbitrary
+// accent instead of one hardcoded color.
+const mix = (hex, base, amount) => {
+  const a = parseInt(hex.slice(1), 16), b = parseInt(base.slice(1), 16);
+  const chan = (shift) => Math.round(((a >> shift) & 255) * amount + ((b >> shift) & 255) * (1 - amount));
+  return "#" + [16, 8, 0].map((s) => chan(s).toString(16).padStart(2, "0")).join("");
+};
+// Every ACCENT_COLORS entry is already dark enough to read as text on its
+// own (that's the whole point of the luminance filter above), so it doubles
+// as OK_INK in light mode with no separate lightening step.
+const okTintsFor = (accent, theme) => (theme === "dark"
+  ? { bg: mix(accent, "#14171A", 0.24), ink: mix(accent, "#ffffff", 0.55), line: mix(accent, "#14171A", 0.44), strong: mix(accent, "#14171A", 0.34) }
+  : { bg: mix(accent, "#ffffff", 0.12), ink: accent, line: mix(accent, "#ffffff", 0.32), strong: mix(accent, "#ffffff", 0.22) });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
 const monthName = (m, lang) =>
@@ -378,7 +394,17 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", accent);
     document.documentElement.style.setProperty("--accent-ink", accentInkFor(accent));
-  }, [accent]);
+    // The settle-up bar and the "shared"/category tag next to it were still
+    // the original fixed teal even after the accent picker shipped — this
+    // ties that "OK" tint to whatever accent is picked instead, same as
+    // everything else already was. Depends on theme too: it's a different
+    // blend base (dark surface vs white) in each.
+    const ok = okTintsFor(accent, theme);
+    document.documentElement.style.setProperty("--ok-bg", ok.bg);
+    document.documentElement.style.setProperty("--ok-ink", ok.ink);
+    document.documentElement.style.setProperty("--ok-line", ok.line);
+    document.documentElement.style.setProperty("--ok-strong", ok.strong);
+  }, [accent, theme]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -956,8 +982,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         .exp-main { grid-column:1; grid-row:1; min-width:0; }
         .exp-meta { grid-column:1 / -1; grid-row:2; min-width:0; }
         .exp-total { grid-column:2; grid-row:1; align-self:center; }
-        .exp-row:hover { background: #FAFBFC; }
-        .exp-row:focus-visible { background: #F1F5F4; box-shadow: inset 3px 0 0 ${TEAL}; }
+        .exp-row:hover { background: ${MUTED_BG}; }
+        .exp-row:focus-visible { background: ${MUTED_BG}; box-shadow: inset 3px 0 0 ${TEAL}; }
         @media (max-width: 560px) {
           .ledger-switcher { flex-basis:100%; }
           .ledger-controls { width:100%; justify-content:flex-end; margin-left:0 !important; }

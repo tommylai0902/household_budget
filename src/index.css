@@ -4,12 +4,16 @@ html, body, #root { margin: 0; height: 100%; }
    LINE, PAPER, CARD, the OK/BAD tint pairs, TRACK, DANGER, WARN) point at
    these instead of literal hex, so every inline style built from them
    repaints on <html data-theme="..."> without touching the components.
-   TEAL (the brand accent, always under white text) is the one colour that
-   stays literal — it reads the same on both backgrounds.
 
    The tinted pairs matter as pairs: a tint background is always drawn with
    its matching ink. Hardcoding the light-mode pair is what made the settle-up
-   bar unreadable in dark mode — pale teal fill under near-white text. */
+   bar unreadable in dark mode — pale teal fill under near-white text.
+
+   --ok-* below is only the pre-JS fallback now. App computes the real value
+   from the picked accent colour (okTintsFor in BudgetApp.jsx) and sets it as
+   an inline style on <html>, same mechanism as --accent itself — the
+   settle-up bar used to stay a fixed teal even after the accent became
+   user-pickable, which read as broken once the rest of the app matched. */
 :root {
   /* User-pickable (Settings → Accent colour), same in both themes — this is
      just the pre-JS fallback, App applies the saved choice (plus its matching
