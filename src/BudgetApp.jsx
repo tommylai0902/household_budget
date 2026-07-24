@@ -315,16 +315,20 @@ const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY
 // Settings → Accent colour. Deliberately its own dusty/muted (Morandi-style)
 // palette, not MEMBER_COLORS — those stay saturated on purpose, for telling
 // people apart at a glance in chips and charts, which is a different job
-// from an app-wide theme colour. Spans both dark, dusty tones and light,
-// pastel ones, which is why the text drawn on top (ACCENT_INK) is computed
-// per pick rather than hardcoded — a pastel needs dark text, a dusty tone
-// needs white, and this list mixes both on purpose.
+// from an app-wide theme colour.
+//
+// Pastel/light entries were tried and pulled: the accent isn't only a fill
+// behind white text (where ACCENT_INK's light/dark switch would cover it) —
+// it's also used bare, as the colour of text and borders directly on the
+// page (unselected pills, links), and there's no "ink" to swap there. A pale
+// accent just goes low-contrast and washes out. So every entry here is kept
+// dark enough (WCAG luminance <= 0.179) to clear ~4.5:1 against white on its
+// own, not just as a fill. ACCENT_INK stays in place as a safety net, not
+// because this list currently needs the light-ink branch.
 const ACCENT_COLORS = [
   "#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D", "#636B74",
-  "#D4B8B9", "#A8B6C4", "#B9C4B0", "#C2B2C2", "#E3D0B9",
-  "#E8D2C4", "#DB9169", "#D3BC72", "#C6BEA9", "#93976B", "#8CB89F", "#6A6890", "#DEDFAF",
-  "#8CA07E", "#7F9BAA", "#977680", "#726B4E", "#C56A61", "#E9D6DD", "#565B54", "#B14B52",
-  "#6D3F49", "#CBA97D", "#8C6432", "#C09E76", "#DDA6AE",
+  "#6A6890", "#726B4E", "#565B54", "#B14B52", "#6D3F49", "#8C6432",
+  "#656565", "#7A7281", "#965454", "#6B5152",
 ];
 // WCAG relative luminance -> pick whichever of white/near-black ink contrasts
 // better against that background. Crossover is ~0.179 (solving
