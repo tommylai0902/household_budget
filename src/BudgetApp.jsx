@@ -307,6 +307,13 @@ const money = (n) => moneyFmt(activeCurrency).format(Number(n || 0));
 const currencySymbol = (currency) =>
   moneyFmt(currency).formatToParts(0).find((p) => p.type === "currency")?.value || currency;
 const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY", "THB", "AUD", "SGD"];
+// Settings → Accent colour. Deliberately its own dusty/muted (Morandi-style)
+// palette, not MEMBER_COLORS — those stay saturated on purpose, for telling
+// people apart at a glance in chips and charts, which is a different job
+// from an app-wide theme colour. Every entry here still clears ~4.8:1 against
+// white text (checked by hand), so the white-text-on-accent buttons/chips
+// throughout the app stay readable no matter which one is picked.
+const ACCENT_COLORS = ["#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D", "#636B74"];
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
 const monthName = (m, lang) =>
@@ -326,8 +333,8 @@ const getTheme = () => {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 const getAccent = () => {
-  try { const c = localStorage.getItem("accent"); if (c && db.MEMBER_COLORS.includes(c)) return c; } catch {}
-  return db.MEMBER_COLORS[0];
+  try { const c = localStorage.getItem("accent"); if (c && ACCENT_COLORS.includes(c)) return c; } catch {}
+  return ACCENT_COLORS[0];
 };
 
 /* ============================ Root ================================= */
@@ -2626,11 +2633,8 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         </div>
       </Field>
       <Field label={t("accentColor")}>
-        {/* Every swatch is a MEMBER_COLORS entry — already proven elsewhere in
-            the app (member avatars) to carry a white glyph cleanly, so no
-            choice here can land on white-on-accent text going unreadable. */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {db.MEMBER_COLORS.map((c) => (
+          {ACCENT_COLORS.map((c) => (
             <button key={c} onClick={() => changeAccent(c)} aria-label={c} aria-pressed={accent === c}
               style={{ width: 32, height: 32, borderRadius: 99, border: accent === c ? `2px solid ${INK}` : `1px solid ${LINE}`, padding: 0, background: c, cursor: "pointer", display: "grid", placeItems: "center" }}>
               {accent === c && <Check size={15} color="#fff" />}
