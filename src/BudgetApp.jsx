@@ -59,7 +59,7 @@ const STRINGS = {
     editExpense: "Edit expense", formWhat: "What was it?", formWhatPh: "e.g. Foody groceries",
     amount: "Amount", date: "Date", addHst: "Add 13% HST",
     category: "Category", whoPaid: "Who paid?", paidBy: "Paid by", split: "Split",
-    noMembersHint: "No members yet",
+    noMembersHint: "No members yet", noCategoriesHint: "No categories yet",
     noteLabel: "Note (optional)", noteDisplay: "Note", notePh: "Note",
     cancel: "Cancel", saveChanges: "Save changes",
     newCatPh: "New category name", saveCategories: "Save categories", deleteCategory: "Delete category",
@@ -172,7 +172,7 @@ const STRINGS = {
     editExpense: "修改支出", formWhat: "支出項目", formWhatPh: "例如：買餸",
     amount: "金額", date: "日期", addHst: "加 13% 稅（HST）",
     category: "類別", whoPaid: "付款人", paidBy: "付款人", split: "分帳",
-    noMembersHint: "仲未有成員",
+    noMembersHint: "仲未有成員", noCategoriesHint: "仲未有類別",
     noteLabel: "備註（可選）", noteDisplay: "備註", notePh: "附註",
     cancel: "取消", saveChanges: "儲存修改",
     newCatPh: "新類別名稱", saveCategories: "儲存類別", deleteCategory: "刪除類別",
@@ -1934,6 +1934,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
             <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
           ))}
         </div>
+        {categories.length === 0 && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("noCategoriesHint")}</div>}
       </Field>
       {features.showSplit && (
         <>
