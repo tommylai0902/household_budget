@@ -1011,7 +1011,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} lang={lang} t={t}
         onClose={() => setShowRecurring(false)} onChanged={refresh} />}
       {batchRows && <BatchImportModal ledger={ledger} features={features} categories={categories} members={members} lang={lang} t={t}
-        initialRows={batchRows} onClose={() => setBatchRows(null)} onImported={refresh} />}
+        initialRows={batchRows} onClose={() => setBatchRows(null)} onImported={refresh} onEditMembers={() => setManagingMembers(true)} />}
     </div>
   );
 }
@@ -1420,7 +1420,7 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
 // PDF) as `initialRows`; there's no file picker in here. The "Default card owner"
 // selector only touches rows the user hasn't hand-picked a payer for
 // (paidByTouched) — editing one row's payer opts it out of future bulk changes.
-function BatchImportModal({ ledger, features, categories, members, lang, t, initialRows, onClose, onImported }) {
+function BatchImportModal({ ledger, features, categories, members, lang, t, initialRows, onClose, onImported, onEditMembers }) {
   const [rows, setRows] = useState(() => buildPreviewRows(initialRows, categories, members[0]?.id || null));
   const [defaultPaidBy, setDefaultPaidBy] = useState(members[0]?.id || null);
   const [busy, setBusy] = useState(false);
@@ -1433,7 +1433,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
     setRows((rs) => rs.map((r) => (r.paidByTouched ? r : { ...r, paidById: memberId })));
   };
 
-  const valid = rows.length > 0 && !busy;
+  const valid = rows.length > 0 && members.length > 0 && !busy;
 
   const confirm = async () => {
     setBusy(true); setResult(null);
@@ -1458,7 +1458,12 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
   return (
     <Overlay onClose={onClose} title={t("csvImportTitle")} t={t}>
       {features.showSplit && (
-        <Field label={t("csvDefaultOwner")}>
+        <Field label={
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            {t("csvDefaultOwner")}
+            <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("manageMembers")}</button>
+          </span>
+        }>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {members.map((m) => {
               const Icon = memberIcon(m.icon);
@@ -1469,6 +1474,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
               );
             })}
           </div>
+          {members.length === 0 && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("noMembersHint")}</div>}
         </Field>
       )}
       {rows.length === 0 ? (
@@ -1642,13 +1648,6 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   const [scanning, setScanning] = useState(false);
   const [scanErr, setScanErr] = useState("");
   const [currencyMismatch, setCurrencyMismatch] = useState(null); // scanned receipt's ISO code, when it differs from the ledger's
-  const [receiptMenuOpen, setReceiptMenuOpen] = useState(false);
-  useEffect(() => {
-    if (!receiptMenuOpen) return;
-    const close = () => setReceiptMenuOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [receiptMenuOpen]);
   const [remember, setRemember] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   // { name, price, mode: split|personal|drop }. Reopening a saved expense brings
@@ -1805,34 +1804,23 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           <Loader2 size={18} className="spin" /> {t("scanning")}
         </div>
       ) : (
-        // Scan and Upload still do different things, not just different sources:
-        // Scan forces the live camera for one receipt (with itemisation). Upload
-        // is always batch — a real CSV, or a screenshot/PDF the AI reads into
-        // several transactions. That split is why this is one trigger opening a
-        // choice of two, rather than a single file input — merging the inputs
-        // themselves would collapse "photo of one receipt" and "photo of a
-        // statement screenshot" into a single accept list with no way to tell
-        // them apart. (iOS Safari shows "Take Photo" in the Upload option's own
-        // picker regardless — that's a platform quirk, no accept list avoids it.)
-        <div style={{ position: "relative", marginBottom: 2 }} onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => setReceiptMenuOpen((o) => !o)}
-            style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: "pointer" }}>
-            <Receipt size={18} /> {t("scanOrUploadReceipt")}
-          </button>
-          {receiptMenuOpen && (
-            <div role="menu" style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, zIndex: 60 }}>
-              <label role="menuitem" style={menuItem}>
-                <Camera size={15} /> {t("scanReceipt")}
-                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; setReceiptMenuOpen(false); if (f) scanReceipt(f); }} />
-              </label>
-              <label role="menuitem" style={menuItem}>
-                <Upload size={15} /> {t("uploadReceipt")}
-                <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv" style={{ display: "none" }}
-                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; setReceiptMenuOpen(false); if (f) importBatchFile(f); }} />
-              </label>
-            </div>
-          )}
+        // Scan and Upload do different things, not just different sources: Scan
+        // forces the live camera for one receipt (with itemisation). Upload is
+        // always batch — a real CSV, or a screenshot/PDF the AI reads into several
+        // transactions — which is why its accept list is extensions rather than
+        // "image/*". (iOS Safari shows "Take Photo" in its picker regardless —
+        // that's a platform quirk, no accept list avoids it.)
+        <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
+          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+            <Camera size={18} /> {t("scanReceipt")}
+            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
+          </label>
+          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+            <Upload size={18} /> {t("uploadReceipt")}
+            <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importBatchFile(f); }} />
+          </label>
         </div>
       )}
       {scanErr && <div style={{ color: "#DC2626", fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
