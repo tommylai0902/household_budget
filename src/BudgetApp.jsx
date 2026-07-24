@@ -309,6 +309,15 @@ const moneyFmt = (currency) => {
   return moneyFmts.get(currency);
 };
 const money = (n) => moneyFmt(activeCurrency).format(Number(n || 0));
+const moneyRoundedFmts = new Map();
+// Calendar day cells: "$2,300" not "$2,300.00" — decimals just add noise at
+// that size, and the exact figure is one tap away on the expense itself.
+const moneyRounded = (n) => {
+  if (!moneyRoundedFmts.has(activeCurrency)) {
+    moneyRoundedFmts.set(activeCurrency, new Intl.NumberFormat("en-CA", { style: "currency", currency: activeCurrency, maximumFractionDigits: 0 }));
+  }
+  return moneyRoundedFmts.get(activeCurrency).format(Number(n || 0));
+};
 const currencySymbol = (currency) =>
   moneyFmt(currency).formatToParts(0).find((p) => p.type === "currency")?.value || currency;
 const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY", "THB", "AUD", "SGD"];
@@ -1185,6 +1194,10 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
   const today = todayISO();
   const cells = Array(startWeekday).fill(null)
     .concat(Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`));
+  // Heatmap intensity is relative to this month's own busiest day, not some
+  // fixed dollar scale — a $200 day should read as "high" in a quiet month
+  // and merely average in an expensive one.
+  const maxDaily = Math.max(1, ...totals.values());
 
   return (
     <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: 14, marginTop: 14 }}>
@@ -1196,21 +1209,30 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
         {cells.map((iso, i) => {
           if (!iso) return <div key={i} />;
-          const total = totals.get(iso) || 0;
+          const amt = totals.get(iso) || 0;
           const isToday = iso === today;
           const isSelected = iso === selectedDay;
+          // Today/selected get their own solid badge instead — heatmap is only
+          // for plain days, so the two treatments never have to blend.
+          const heatPct = !isToday && !isSelected && amt > 0 ? 8 + Math.min(1, amt / maxDaily) * 28 : 0;
+          const badgeBg = isSelected ? TEAL : isToday ? OK_BG : "transparent";
+          const badgeInk = isSelected ? ACCENT_INK : isToday ? OK_INK : INK;
           return (
             <button key={iso} onClick={() => onSelectDay(isSelected ? null : iso)}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-                minHeight: 46, borderRadius: 9, cursor: "pointer", fontFamily: "inherit", padding: 0,
-                border: isToday && !isSelected ? `1.5px solid ${TEAL}` : "1px solid transparent",
-                background: isSelected ? TEAL : "transparent", color: isSelected ? ACCENT_INK : INK,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                minHeight: 46, borderRadius: 9, cursor: "pointer", fontFamily: "inherit", padding: 0, border: "none",
+                // color-mix keeps the heat tint independent of the day-number
+                // badge's own colour — WARN is a CSS var, not a literal hex,
+                // so alpha has to come from color-mix rather than an rgba().
+                background: heatPct ? `color-mix(in srgb, ${WARN} ${heatPct}%, transparent)` : "transparent",
               }}>
-              <span style={{ fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600 }}>{Number(iso.slice(-2))}</span>
-              {total > 0 && (
-                <span style={{ fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: isSelected ? ACCENT_INK : SUB }}>
-                  {money(total)}
+              <span style={{ display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 999, fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600, background: badgeBg, color: badgeInk }}>
+                {Number(iso.slice(-2))}
+              </span>
+              {amt > 0 && (
+                <span style={{ fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: SUB }}>
+                  {moneyRounded(amt)}
                 </span>
               )}
             </button>
