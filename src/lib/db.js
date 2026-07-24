@@ -46,7 +46,7 @@ const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.
 export async function fetchLedgers() {
   const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id }));
+  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id, currency: r.currency || "CAD" }));
 }
 // Seeds at creation time rather than lazily on first open, so the "blank"
 // template stays blank instead of being backfilled with defaults.
@@ -63,7 +63,9 @@ export async function createLedger(name, template = "household") {
   const id = crypto.randomUUID();
   const { error } = await supabase.from("ledgers").insert({ id, name, template, owner_id: ownerId });
   if (error) throw error;
-  await Promise.all([seedCategories(id, template), seedMembers(id)]);
+  // No preset members (not even Tommy/Wing) — every ledger, household included,
+  // starts empty and you add whoever's actually splitting it via Edit members.
+  await seedCategories(id, template);
   return { id, name, template };
 }
 // Only touches the ledger row itself — changing the template here swaps the icon,
@@ -165,23 +167,12 @@ export async function acceptInvite(token) {
 /* ---- ledger members ---- */
 // Colours cycle for members added after the first two.
 export const MEMBER_COLORS = ["#0E9384", "#EA580C", "#7C3AED", "#EC4899", "#0369A1", "#16A34A", "#D97706", "#64748B"];
-const DEFAULT_MEMBERS = [{ name: "Tommy" }, { name: "Wing" }];
 
 export async function fetchMembers(ledgerId) {
   const { data, error } = await supabase
     .from("ledger_members").select("*").eq("ledger_id", ledgerId).order("sort_order").order("created_at");
   if (error) throw error;
   return data.map(toAppMember);
-}
-
-export async function seedMembers(ledgerId) {
-  const rows = DEFAULT_MEMBERS.map((m, i) => ({
-    ...toRowMember({ ...m, color: MEMBER_COLORS[i] }, i),
-    ledger_id: ledgerId,
-  }));
-  const { error } = await supabase
-    .from("ledger_members").upsert(rows, { onConflict: "ledger_id,name", ignoreDuplicates: true });
-  if (error) throw error;
 }
 
 // Same diff-then-write shape as persistCategories. Removing a member who still
@@ -441,11 +432,13 @@ export const TEMPLATES = {
 // Per-template feature toggles. "Family" in the spec is this app's existing
 // "household" template — same concept, already the whole point of the app.
 // blank gets every feature on: it's the freeform starting point, nothing to hide.
+// hasCurrency: only travel ledgers can be set to a foreign ISO currency — a
+// household/personal ledger has no reason to leave its home currency.
 export const TEMPLATE_FEATURES = {
-  household: { showSplit: true, hasRecurring: true, hasBudget: true },
-  personal: { showSplit: false, hasRecurring: true, hasBudget: true },
-  travel: { showSplit: true, hasRecurring: false, hasBudget: true },
-  blank: { showSplit: true, hasRecurring: true, hasBudget: true },
+  household: { showSplit: true, hasRecurring: true, hasBudget: true, hasCurrency: false },
+  personal: { showSplit: false, hasRecurring: true, hasBudget: true, hasCurrency: false },
+  travel: { showSplit: true, hasRecurring: false, hasBudget: true, hasCurrency: true },
+  blank: { showSplit: true, hasRecurring: true, hasBudget: true, hasCurrency: false },
 };
 export const featuresFor = (template) => TEMPLATE_FEATURES[template] || TEMPLATE_FEATURES.blank;
 

@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   if (!GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
 
   try {
-    const { image, mediaType, categories, token } = await readBody(req);
+    const { image, mediaType, categories, token, lang } = await readBody(req);
 
     // ---- validate input (public endpoint: bad input must not reach the model) ----
     if (typeof image !== "string" || !image) return res.status(400).json({ error: "image required" });
@@ -32,6 +32,8 @@ export default async function handler(req, res) {
     if (!MEDIA_TYPES.includes(mediaType)) return res.status(400).json({ error: "unsupported image type" });
     const names = Array.isArray(categories) ? categories.filter((c) => typeof c === "string" && c) : [];
     if (!names.length) return res.status(400).json({ error: "categories required" });
+    // Whitelisted, not interpolated raw — this string lands inside the model prompt.
+    const targetLanguage = lang === "zh" ? "Traditional Chinese" : "English";
 
     // ---- authorize: this endpoint calls a metered API, so it can't be open to the world.
     // The caller's Supabase token must belong to somebody on the `members` allowlist.
@@ -50,9 +52,14 @@ export default async function handler(req, res) {
       model: "gemini-3.5-flash",
       system_instruction:
         "You read photos or PDFs of retail receipts and invoices. " +
-        "Amount is the final total actually paid, including tax and tip. " +
+        "Amount is the final total actually paid, including tax and tip, read exactly as " +
+        "printed on the receipt — do not convert it from whatever currency it's printed in. " +
         `If no date is printed on the receipt, use ${today}. ` +
         "Description is the merchant name, or what was bought if the merchant is unclear. " +
+        `Give the description in ${targetLanguage}, translating it if the receipt is in another language. ` +
+        "Also identify the ISO 4217 currency code the amount is printed in (e.g. USD, JPY, EUR), " +
+        "from an explicit symbol/code or the country the receipt is from. This is for display " +
+        "only — it does not change the amount, which stays exactly as printed. " +
         "Pick the closest category from the allowed list. " +
         "Also list the individual line items with their printed prices, in the order they " +
         "appear. Use the price for that line as printed — do not add tax to it, and do not " +
@@ -72,6 +79,7 @@ export default async function handler(req, res) {
           properties: {
             description: { type: "string" },
             amount: { type: "number" },
+            currency: { type: "string" },
             date: { type: "string" },
             category: { type: "string", enum: names },
             // Line items as printed, pre-tax. The client prorates tax across
@@ -85,7 +93,7 @@ export default async function handler(req, res) {
               },
             },
           },
-          required: ["description", "amount", "date", "category", "items"],
+          required: ["description", "amount", "currency", "date", "category", "items"],
         },
       },
     });

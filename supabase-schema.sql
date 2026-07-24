@@ -21,6 +21,9 @@ create table if not exists ledgers (
   -- Which starter template it was made from; also picks the icon in the list.
   template   text not null default 'household'
                check (template in ('household', 'travel', 'personal', 'blank')),
+  -- One currency for the whole ledger (not per expense). Only travel ledgers
+  -- expose UI to change it away from the household's home currency.
+  currency   text not null default 'CAD' check (currency ~ '^[A-Z]{3}$'),
   sort_order int  not null default 0,
   created_at timestamptz not null default now()
 );

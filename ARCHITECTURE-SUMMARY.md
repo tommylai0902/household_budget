@@ -87,5 +87,5 @@ Panel 結構(`MonthlyReport` component):
 ## 未驗證 / 已知限制(交低俾下一個對話)
 
 - `/api/scan-statement.js` 嘅 AI 讀 statement 路徑(需要真實相/PDF + 有效 Gemini key,呢邊環境驗唔到)。
-- iOS Safari 「Take Photo」消失咗未,需要手機實測(裝置層面行為,冇 HTML attribute 保證控制到)。
+- iOS Safari「Take Photo」**已實測確認冇消失**——accept 入面只要有 image MIME type(screenshot 要送去 AI 讀,唔可以拎走),Safari 就會加返呢個選項,同 `capture` 屬性、`image/*` wildcard 都冇關,HTML 冇任何屬性可以保證控制到。功能上冇壞(撳咗都係行 AI scan-statement 路徑),純粹介面同「Scan receipt」掣重疊,已確認係無法用 code 解決嘅平台限制,唔再追。
 - `hasBudget` flag 而家淨係資料,冇 UI 邏輯掛住(YAGNI,三個 template 而家個 value 一樣)。

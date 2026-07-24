@@ -111,6 +111,7 @@ const STRINGS = {
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
     scanReceipt: "Scan receipt", uploadReceipt: "Upload receipt", scanning: "Reading receipt…",
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
+    currencyMismatch: "This receipt looks like it's in {scanned}, but this ledger is set to {ledger}. Amount was kept as printed — no conversion applied.",
     editCategories: "Edit categories", menu: "Menu",
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
@@ -142,6 +143,7 @@ const STRINGS = {
     tplHintBlank: "No categories — add your own from inside the ledger",
     deleteLedger: "Delete ledger", renameLedger: "Rename ledger",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
+    currency: "Currency",
   },
   zh: {
     eyebrow: "家庭帳簿",
@@ -220,6 +222,7 @@ const STRINGS = {
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
     scanReceipt: "掃描收據", uploadReceipt: "上載收據", scanning: "讀取收據中…",
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
+    currencyMismatch: "呢張收據睇落係 {scanned},但呢本帳簿設定咗 {ledger}。金額已按原數保留，冇做轉換。",
     editCategories: "編輯類別", menu: "選單",
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
@@ -251,6 +254,7 @@ const STRINGS = {
     tplHintBlank: "冇類別 — 入咗帳簿之後自己加",
     deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
     deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
+    currency: "貨幣",
   },
 };
 const interpolate = (str, vars) =>
@@ -263,8 +267,19 @@ const dateLocale = (lang) => (lang === "zh" ? "zh-Hant" : "en-CA");
 // rest of the UI, which does translate.
 const catName = (c) => (!c ? "" : c.name || c.nameZh || "");
 
-const CAD = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
-const money = (n) => CAD.format(Number(n || 0));
+// Ledger-level currency (travel only — see TEMPLATE_FEATURES.hasCurrency).
+// A module var instead of a threaded prop: only one <Ledger> is ever mounted
+// at a time, and it sets this synchronously before any child renders.
+let activeCurrency = "CAD";
+const moneyFmts = new Map();
+const moneyFmt = (currency) => {
+  if (!moneyFmts.has(currency)) moneyFmts.set(currency, new Intl.NumberFormat("en-CA", { style: "currency", currency }));
+  return moneyFmts.get(currency);
+};
+const money = (n) => moneyFmt(activeCurrency).format(Number(n || 0));
+const currencySymbol = (currency) =>
+  moneyFmt(currency).formatToParts(0).find((p) => p.type === "currency")?.value || currency;
+const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY", "THB", "AUD", "SGD"];
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
 const monthName = (m, lang) =>
@@ -527,16 +542,20 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
   const [draftTpl, setDraftTpl] = useState("household");
+  const [draftCurrency, setDraftCurrency] = useState("CAD");
   const startRename = (l) => {
     if (l.ownerId !== currentUserId) { setError(t("ownerOnlyErr")); return; }
-    setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template);
+    setEditingId(l.id); setDraft(l.name); setDraftTpl(l.template); setDraftCurrency(l.currency || "CAD");
   };
   const cancelRename = () => { setEditingId(null); setDraft(""); };
   const saveRename = async (l) => {
     const trimmed = draft.trim();
     if (!trimmed) return cancelRename();
-    if (trimmed === l.name && draftTpl === l.template) return cancelRename();
-    try { await db.updateLedger(l.id, { name: trimmed, template: draftTpl }); cancelRename(); load(); }
+    // Leaving travel drops back to the base currency — a household/personal
+    // ledger has no UI to change it, so it must not stay stuck on a foreign one.
+    const currency = draftTpl === "travel" ? draftCurrency : "CAD";
+    if (trimmed === l.name && draftTpl === l.template && currency === (l.currency || "CAD")) return cancelRename();
+    try { await db.updateLedger(l.id, { name: trimmed, template: draftTpl, currency }); cancelRename(); load(); }
     catch (e) { setError(e.message || String(e)); cancelRename(); }
   };
 
@@ -593,6 +612,14 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
                       );
                     })}
                   </div>
+                  {draftTpl === "travel" && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>{t("currency")}</div>
+                      <select value={draftCurrency} onChange={(e) => setDraftCurrency(e.target.value)} style={{ ...input, width: "auto" }}>
+                        {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -708,6 +735,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 
 /* ============================ Ledger ============================== */
 function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t }) {
+  activeCurrency = ledger.currency || "CAD"; // set before children below read money()/currencySymbol()
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
   const [categories, setCategories] = useState([]);
@@ -1459,7 +1487,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <div style={{ position: "relative", width: 92, flexShrink: 0 }}>
-                    <span style={{ position: "absolute", left: 8, top: 7, color: SUB, fontSize: 12 }}>$</span>
+                    <span style={{ position: "absolute", left: 8, top: 7, color: SUB, fontSize: 12 }}>{currencySymbol(activeCurrency)}</span>
                     <input type="number" inputMode="decimal" value={r.amount}
                       onChange={(e) => patchRow(r.id, { amount: Number(e.target.value) || 0 })}
                       style={{ ...input, padding: "6px 8px 6px 18px", fontSize: 12 }} />
@@ -1611,6 +1639,14 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanErr, setScanErr] = useState("");
+  const [currencyMismatch, setCurrencyMismatch] = useState(null); // scanned receipt's ISO code, when it differs from the ledger's
+  const [receiptMenuOpen, setReceiptMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!receiptMenuOpen) return;
+    const close = () => setReceiptMenuOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [receiptMenuOpen]);
   const [remember, setRemember] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   // { name, price, mode: split|personal|drop }. Reopening a saved expense brings
@@ -1622,7 +1658,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
 
   // Scanning only prefills the form — you still review and save it yourself.
   const scanReceipt = async (file) => {
-    setScanErr(""); setScanning(true);
+    setScanErr(""); setCurrencyMismatch(null); setScanning(true);
     try {
       const { image, mediaType } = await fileToUpload(file);
       const { data } = await supabase.auth.getSession();
@@ -1634,6 +1670,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           mediaType,
           categories: categories.map((c) => c.name),
           token: data.session?.access_token,
+          lang,
         }),
       });
       const out = await res.json();
@@ -1648,6 +1685,9 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       setAddHst(false); // a receipt total already includes tax
       setScanTotal(out.amount ?? null);
       setItems((out.items || []).map((i) => ({ name: i.name, price: Number(i.price) || 0, mode: "split" })));
+      // Informational only — never touches the amount or the ledger's currency.
+      const scannedCcy = (out.currency || "").toUpperCase();
+      setCurrencyMismatch(/^[A-Z]{3}$/.test(scannedCcy) && scannedCcy !== activeCurrency ? scannedCcy : null);
     } catch (e) {
       setScanErr(e.message);
     } finally {
@@ -1763,28 +1803,38 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           <Loader2 size={18} className="spin" /> {t("scanning")}
         </div>
       ) : (
-        // Scan and Upload now do different things, not just different sources:
+        // Scan and Upload still do different things, not just different sources:
         // Scan forces the live camera for one receipt (with itemisation). Upload
         // is always batch — a real CSV, or a screenshot/PDF the AI reads into
-        // several transactions — which is why its accept list is extensions
-        // rather than "image/*": that broad wildcard is what makes iOS Safari
-        // offer "Take Photo" in the picker sheet, redundant with Scan sitting
-        // right next to it. Not a guaranteed cross-version OS behaviour, just the
-        // commonly-observed one — there's no HTML attribute that controls it directly.
-        <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
-          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
-            <Camera size={18} /> {t("scanReceipt")}
-            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
-          </label>
-          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
-            <Upload size={18} /> {t("uploadReceipt")}
-            <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv" style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importBatchFile(f); }} />
-          </label>
+        // several transactions. That split is why this is one trigger opening a
+        // choice of two, rather than a single file input — merging the inputs
+        // themselves would collapse "photo of one receipt" and "photo of a
+        // statement screenshot" into a single accept list with no way to tell
+        // them apart. (iOS Safari shows "Take Photo" in the Upload option's own
+        // picker regardless — that's a platform quirk, no accept list avoids it.)
+        <div style={{ position: "relative", marginBottom: 2 }} onClick={(e) => e.stopPropagation()}>
+          <button type="button" onClick={() => setReceiptMenuOpen((o) => !o)}
+            style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: "pointer" }}>
+            <Receipt size={18} /> {t("scanOrUploadReceipt")}
+          </button>
+          {receiptMenuOpen && (
+            <div role="menu" style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, zIndex: 60 }}>
+              <label role="menuitem" style={menuItem}>
+                <Camera size={15} /> {t("scanReceipt")}
+                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; setReceiptMenuOpen(false); if (f) scanReceipt(f); }} />
+              </label>
+              <label role="menuitem" style={menuItem}>
+                <Upload size={15} /> {t("uploadReceipt")}
+                <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv" style={{ display: "none" }}
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; setReceiptMenuOpen(false); if (f) importBatchFile(f); }} />
+              </label>
+            </div>
+          )}
         </div>
       )}
       {scanErr && <div style={{ color: "#DC2626", fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
+      {currencyMismatch && <div style={{ color: "#C2410C", fontSize: 12 }}>{t("currencyMismatch", { scanned: currencyMismatch, ledger: activeCurrency })}</div>}
       <div style={{ textAlign: "center", color: SUB, fontSize: 12, margin: "-2px 0 2px" }}>{t("scanHint")}</div>
 
       <Field label={t("formWhat")}>
@@ -1822,7 +1872,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       <div style={{ display: "flex", gap: 10 }}>
         <Field label={t("amount")} style={{ flex: 1, minWidth: 0 }}>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 12, top: 12, color: SUB }}>$</span>
+            <span style={{ position: "absolute", left: 12, top: 12, color: SUB }}>{currencySymbol(activeCurrency)}</span>
             <input type="number" inputMode="decimal" value={d.amount} onChange={(e) => setD({ ...d, amount: e.target.value })} placeholder="0.00" style={{ ...input, paddingLeft: 24 }} />
           </div>
         </Field>
@@ -2079,7 +2129,7 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
                 <div style={{ position: "relative", width: 104, flexShrink: 0 }}>
                   {/* Dollar sign only once there's a value, so an unset field reads as
                       "Set budget" rather than a misleading "$ 0.00". */}
-                  {hasBudget && <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>$</span>}
+                  {hasBudget && <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>{currencySymbol(activeCurrency)}</span>}
                   <input type="number" inputMode="decimal" value={drafts[c.id] ?? ""}
                     onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })}
                     onKeyDown={(e) => e.key === "Enter" && save()}
