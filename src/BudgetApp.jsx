@@ -104,6 +104,7 @@ const STRINGS = {
     compareGoneLabel: "Gone this month",
     categoryExpenses: "Expenses in {category}", categoryExpensesEmpty: "No expenses in this category for this month.",
     splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
+    selectAll: "Everyone",
     items: "Receipt items", itemSplit: "Split", itemPersonal: "Personal", itemDrop: "Not mine",
     itemsHint: "Tax is shared out across whatever you keep, in proportion to price.",
     itemsPersonalNote: "{n} personal · {amount} — saved as a second, unsplit expense",
@@ -217,6 +218,7 @@ const STRINGS = {
     compareGoneLabel: "本月冇咗",
     categoryExpenses: "{category}支出", categoryExpensesEmpty: "這個月此類別尚未有支出。",
     splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
+    selectAll: "全部人",
     items: "收據明細", itemSplit: "分帳", itemPersonal: "私人", itemDrop: "唔計",
     itemsHint: "稅款會按價錢比例攤分落你保留嘅項目。",
     itemsPersonalNote: "{n} 件私人 · {amount} — 會另存一張唔分帳嘅支出",
@@ -1430,19 +1432,9 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
           </button>
         </div>
         {d.split === "shared" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 10 }}>
-            {members.map((m) => {
-              const on = (d.sharedWith || []).includes(m.id);
-              const Icon = memberIcon(m.icon);
-              return (
-                <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-                  <input type="checkbox" checked={on}
-                    onChange={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
-                    style={{ width: 17, height: 17, accentColor: TEAL, flexShrink: 0 }} />
-                  <Icon size={14} style={{ color: SUB }} /> {m.name}
-                </label>
-              );
-            })}
+          <div style={{ marginTop: 10 }}>
+            <SplitMemberPicker members={members} sharedWith={d.sharedWith || []} t={t}
+              onChange={(sharedWith) => setD({ ...d, sharedWith })} />
           </div>
         )}
       </Field>
@@ -1644,6 +1636,36 @@ function FieldRow({ label, children, last }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 0", borderBottom: last ? "none" : `1px solid ${LINE}` }}>
       <span style={{ fontSize: 13, color: SUB, fontWeight: 600, flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: 14, fontWeight: 600, textAlign: "right", minWidth: 0 }}>{children}</span>
+    </div>
+  );
+}
+
+// Shared by the expense form and the recurring-rule form, which showed the
+// same list of tickboxes. The "everyone" row on top is checked only when all
+// are — with a big roster, ticking it is faster than tapping each name, and
+// unticking it clears the list to start from nobody.
+function SplitMemberPicker({ members, sharedWith, onChange, t }) {
+  const all = members.length > 0 && members.every((m) => sharedWith.includes(m.id));
+  const row = { display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 };
+  const box = { width: 17, height: 17, accentColor: TEAL, flexShrink: 0 };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <label style={{ ...row, color: SUB, borderBottom: `1px solid ${LINE}` }}>
+        <input type="checkbox" checked={all} style={box}
+          onChange={() => onChange(all ? [] : members.map((m) => m.id))} />
+        <Users size={14} /> {t("selectAll")}
+      </label>
+      {members.map((m) => {
+        const on = sharedWith.includes(m.id);
+        const Icon = memberIcon(m.icon);
+        return (
+          <label key={m.id} style={row}>
+            <input type="checkbox" checked={on} style={box}
+              onChange={() => onChange(on ? sharedWith.filter((x) => x !== m.id) : [...sharedWith, m.id])} />
+            <Icon size={14} style={{ color: SUB }} /> {m.name}
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -2008,20 +2030,8 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
             </div>
             {d.split === "shared" && (
               <div style={{ marginTop: 10 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {members.map((m) => {
-                    const on = (d.sharedWith || []).includes(m.id);
-                    const Icon = memberIcon(m.icon);
-                    return (
-                      <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-                        <input type="checkbox" checked={on}
-                          onChange={() => setD({ ...d, sharedWith: on ? d.sharedWith.filter((x) => x !== m.id) : [...(d.sharedWith || []), m.id] })}
-                          style={{ width: 17, height: 17, accentColor: TEAL, flexShrink: 0 }} />
-                        <Icon size={14} style={{ color: SUB }} /> {m.name}
-                      </label>
-                    );
-                  })}
-                </div>
+                <SplitMemberPicker members={members} sharedWith={d.sharedWith || []} t={t}
+                  onChange={(sharedWith) => setD({ ...d, sharedWith })} />
                 <div style={{ fontSize: 12, color: sharerCount ? SUB : DANGER, marginTop: 6 }}>
                   {sharerCount ? t("splitWays", { n: sharerCount, amount: money(finalAmount / sharerCount) }) : t("splitNobody")}
                 </div>
