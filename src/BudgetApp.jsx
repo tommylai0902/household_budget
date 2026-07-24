@@ -2055,7 +2055,7 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
           <div style={{ fontSize: 13, fontWeight: 700 }}>{t("compareVs", { month: monthName(compareMonth, lang) })}</div>
           <div style={{ display: "flex", gap: 12, fontSize: 11, color: SUB }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: TEAL }} /> {monthName(month, lang)}</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "#CBD5E1" }} /> {monthName(compareMonth, lang)}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "#94A3B8" }} /> {monthName(compareMonth, lang)}</span>
           </div>
         </div>
         {comparison.length === 0 ? (
@@ -2080,7 +2080,7 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
                       <div style={{ width: `${(row.current / comparisonMax) * 100}%`, height: "100%", background: TEAL, borderRadius: 99 }} />
                     </div>
                     <div style={{ height: 7, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
-                      <div style={{ width: `${(row.compare / comparisonMax) * 100}%`, height: "100%", background: "#CBD5E1", borderRadius: 99 }} />
+                      <div style={{ width: `${(row.compare / comparisonMax) * 100}%`, height: "100%", background: "#94A3B8", borderRadius: 99 }} />
                     </div>
                   </div>
                 </div>
