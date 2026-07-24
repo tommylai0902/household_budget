@@ -59,6 +59,7 @@ const STRINGS = {
     editExpense: "Edit expense", formWhat: "What was it?", formWhatPh: "e.g. Foody groceries",
     amount: "Amount", date: "Date", addHst: "Add 13% HST",
     category: "Category", whoPaid: "Who paid?", paidBy: "Paid by", split: "Split",
+    noMembersHint: "No members yet — add one via Edit members to record who paid.",
     noteLabel: "Note (optional)", noteDisplay: "Note", notePh: "Note",
     cancel: "Cancel", saveChanges: "Save changes",
     newCatPh: "New category name", saveCategories: "Save categories", deleteCategory: "Delete category",
@@ -171,6 +172,7 @@ const STRINGS = {
     editExpense: "修改支出", formWhat: "支出項目", formWhatPh: "例如：買餸",
     amount: "金額", date: "日期", addHst: "加 13% 稅（HST）",
     category: "類別", whoPaid: "付款人", paidBy: "付款人", split: "分帳",
+    noMembersHint: "仲未有成員 — 撳「Edit members」加一個先可以揀邊個付款。",
     noteLabel: "備註（可選）", noteDisplay: "備註", notePh: "附註",
     cancel: "取消", saveChanges: "儲存修改",
     newCatPh: "新類別名稱", saveCategories: "儲存類別", deleteCategory: "刪除類別",
@@ -1949,6 +1951,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
                 );
               })}
             </div>
+            {members.length === 0 && <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("noMembersHint")}</div>}
           </Field>
           <Field label={t("split")}>
             <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
