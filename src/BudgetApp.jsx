@@ -988,6 +988,11 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
           onEditCategories={() => setManagingCats(true)} defaultMonth={month}
           onBatchImport={(transactions) => { setEditing(null); setBatchRows(transactions); }} />
       )}
+      {/* Rendered before MemberManager below (same fixed z-index everywhere —
+          later in the DOM wins), so "Edit members" opened from inside this modal
+          stacks on top instead of behind it. */}
+      {batchRows && <BatchImportModal ledger={ledger} features={features} categories={categories} members={members} lang={lang} t={t}
+        initialRows={batchRows} onClose={() => setBatchRows(null)} onImported={refresh} onEditMembers={() => setManagingMembers(true)} />}
       {managingStores && (
         <StoreManager merchants={merchants} t={t} onChange={commitStores} onClose={() => setManagingStores(false)} />
       )}
@@ -1010,8 +1015,6 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
       {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} lang={lang} t={t}
         onClose={() => setShowRecurring(false)} onChanged={refresh} />}
-      {batchRows && <BatchImportModal ledger={ledger} features={features} categories={categories} members={members} lang={lang} t={t}
-        initialRows={batchRows} onClose={() => setBatchRows(null)} onImported={refresh} onEditMembers={() => setManagingMembers(true)} />}
     </div>
   );
 }
