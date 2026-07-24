@@ -1,5 +1,30 @@
 html, body, #root { margin: 0; height: 100%; }
 
+/* Theme colors. The colour constants at the top of BudgetApp.jsx (INK, SUB,
+   LINE, PAPER, CARD, the OK/BAD tint pairs, TRACK, DANGER, WARN) point at
+   these instead of literal hex, so every inline style built from them
+   repaints on <html data-theme="..."> without touching the components.
+   TEAL (the brand accent, always under white text) is the one colour that
+   stays literal — it reads the same on both backgrounds.
+
+   The tinted pairs matter as pairs: a tint background is always drawn with
+   its matching ink. Hardcoding the light-mode pair is what made the settle-up
+   bar unreadable in dark mode — pale teal fill under near-white text. */
+:root, :root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #141A20; --sub: #5B6570; --line: #E4E7EB; --paper: #F6F7F9; --card: #ffffff;
+  --ok-bg: #E3F5F2; --ok-ink: #0F5E55; --ok-line: #B8E4DD; --ok-strong: #C7EBE4;
+  --bad-bg: #FEF2F2; --bad-ink: #B91C1C; --bad-line: #FECACA;
+  --track: #EEF2F1; --muted-bg: #F1F3F5; --danger: #DC2626; --warn: #C2410C;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #E8EAED; --sub: #98A2AD; --line: #2E343B; --paper: #14171A; --card: #1D2226;
+  --ok-bg: #123833; --ok-ink: #7FD9CA; --ok-line: #1F544C; --ok-strong: #1A4B43;
+  --bad-bg: #3A1D1D; --bad-ink: #F19B94; --bad-line: #5E2E2A;
+  --track: #2A3137; --muted-bg: #242A2F; --danger: #F1897F; --warn: #F5A97A;
+}
+
 /* Padding must count inside a declared width, or anything using
    `width: 100%` plus padding — the side panel, the full-width buttons —
    ends up wider than the screen and bleeds off both edges on a phone. */

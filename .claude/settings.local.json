@@ -51,7 +51,10 @@
       "Bash(awk '/^function ExpenseForm/,/^function ExpenseDetail|^\\\\/\\\\/ Lists the ledger/' src/BudgetApp.jsx)",
       "Bash(git revert *)",
       "Bash(node src/lib/csv.test.js)",
-      "Bash(powershell -c \"Get-ChildItem migrations\")"
+      "Bash(powershell -c \"Get-ChildItem migrations\")",
+      "Bash(grep -oE '\"#[0-9A-Fa-f]{3,6}\"' src/BudgetApp.jsx)",
+      "Bash(sed -i 's/background: \"#EEF0F2\"/background: MUTED_BG/g; s/background: \"#FAFBFC\"/background: MUTED_BG/; s/color: \"#B7BEC6\"/color: SUB/' src/BudgetApp.jsx)",
+      "Bash(sed -i 's/color: receiving ? TEAL : \"#C2410C\"/color: receiving ? TEAL : WARN/; s/{ color: \"#C2410C\", fontSize: 12 }/{ color: WARN, fontSize: 12 }/; s/color: shared ? \"#0E9384\" : \"#64748B\"/color: shared ? TEAL : SUB/' src/BudgetApp.jsx)"
     ]
   }
 }

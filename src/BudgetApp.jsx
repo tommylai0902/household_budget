@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
-  Plus, Pencil, Trash2, X, Check, Tag, Coins,
+  Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play,
 } from "lucide-react";
@@ -23,11 +23,29 @@ import { suggestCategoryId } from "./lib/categorize";
  * Same UI as Step 1 (clickable rows + detail panel, dual language).
  * ------------------------------------------------------------------ */
 
-const INK = "#141A20";
-const SUB = "#5B6570";
-const LINE = "#E4E7EB";
-const PAPER = "#F6F7F9";
+// These point at index.css custom properties (not literal hex) so every
+// inline style built from them repaints for the dark theme automatically —
+// see the :root[data-theme] block there. TEAL is a brand accent, not a
+// neutral, so it stays constant across both themes.
+const INK = "var(--ink)";
+const SUB = "var(--sub)";
+const LINE = "var(--line)";
+const PAPER = "var(--paper)";
+const CARD = "var(--card)";
 const TEAL = "#0E9384";
+// Tinted surfaces come in bg/ink pairs — always use a tint's own ink on it,
+// never INK, or the pair breaks when the theme flips.
+const OK_BG = "var(--ok-bg)";
+const OK_INK = "var(--ok-ink)";
+const OK_LINE = "var(--ok-line)";
+const OK_STRONG = "var(--ok-strong)";
+const BAD_BG = "var(--bad-bg)";
+const BAD_INK = "var(--bad-ink)";
+const BAD_LINE = "var(--bad-line)";
+const TRACK = "var(--track)";      // empty half of a progress bar
+const MUTED_BG = "var(--muted-bg)";
+const DANGER = "var(--danger)";    // destructive text/icons, not solid fills
+const WARN = "var(--warn)";        // cautionary text (owes money, currency mismatch)
 
 // Members come from the ledger now — a trip splits between whoever came along.
 const memberById = (members, id) => members.find((m) => m.id === id) || null;
@@ -115,6 +133,7 @@ const STRINGS = {
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
     currencyMismatch: "This receipt looks like it's in {scanned}, but this ledger is set to {ledger}. Amount was kept as printed — no conversion applied.",
     editCategories: "Edit categories", menu: "Menu",
+    settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark",
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
@@ -227,6 +246,7 @@ const STRINGS = {
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
     currencyMismatch: "呢張收據睇落係 {scanned},但呢本帳簿設定咗 {ledger}。金額已按原數保留，冇做轉換。",
     editCategories: "編輯類別", menu: "選單",
+    settings: "設定", appearance: "外觀", light: "淺色", dark: "深色",
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
@@ -295,12 +315,22 @@ const getLang = () => {
   return "en";
 };
 
+// First visit follows the OS/browser preference; after that, whatever you
+// picked in Settings sticks regardless of what the system does.
+const getTheme = () => {
+  try { const s = localStorage.getItem("theme"); if (s === "light" || s === "dark") return s; } catch {}
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
 /* ============================ Root ================================= */
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined=checking, null=logged out
   const [lang, setLang] = useState(getLang);
   const changeLang = (l) => { setLang(l); try { localStorage.setItem("lang", l); } catch {} };
   const t = makeT(lang);
+  const [theme, setTheme] = useState(getTheme);
+  const changeTheme = (th) => { setTheme(th); try { localStorage.setItem("theme", th); } catch {} };
+  useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -324,9 +354,9 @@ export default function App() {
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} hasInvite={!!inviteToken} />;
   if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
-  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} onOpen={setLedger} currentUserId={session.user.id}
+  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} onOpen={setLedger} currentUserId={session.user.id}
     inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
-  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t} />;
+  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} />;
 }
 
 function Centered({ children }) {
@@ -385,7 +415,7 @@ function Login({ lang, changeLang, t, hasInvite }) {
 
   return (
     <div style={{ background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
-      <div style={{ width: "min(360px, 100%)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
+      <div style={{ width: "min(360px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("eyebrow")}</div>
           <LangToggle lang={lang} changeLang={changeLang} />
@@ -398,7 +428,7 @@ function Login({ lang, changeLang, t, hasInvite }) {
             <input type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={t("namePh")} style={input} />
             {nameEqualsEmail ? (
-              <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("usernameSameAsEmailErr")}</div>
+              <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("usernameSameAsEmailErr")}</div>
             ) : nameRequired ? (
               <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("usernameRequiredHint")}</div>
             ) : null}
@@ -414,7 +444,7 @@ function Login({ lang, changeLang, t, hasInvite }) {
         </Field>
 
         {error && <div style={{ ...errorBox, marginTop: 4 }}>{error}</div>}
-        {notice && <div style={{ background: "#E3F5F2", border: "1px solid #B8E4DD", color: "#0F5E55", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 4, fontWeight: 600 }}>{notice}</div>}
+        {notice && <div style={{ background: OK_BG, border: `1px solid ${OK_LINE}`, color: OK_INK, borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 4, fontWeight: 600 }}>{notice}</div>}
 
         <button onClick={submit} disabled={busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail}
           style={{ ...addBtn, opacity: busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
@@ -460,7 +490,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 
   return (
     <div style={{ background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
-      <div style={{ width: "min(380px, 100%)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
+      <div style={{ width: "min(380px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("inviteTitle")}</div>
           <LangToggle lang={lang} changeLang={changeLang} />
@@ -478,7 +508,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0 18px" }}>
-              <span style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, background: "#E3F5F2", color: "#0F5E55", flexShrink: 0 }}><Users size={20} /></span>
+              <span style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, background: OK_BG, color: OK_INK, flexShrink: 0 }}><Users size={20} /></span>
               <p style={{ fontSize: 15, margin: 0, color: INK, lineHeight: 1.45 }}>
                 {preview.ledgerName
                   ? t("invitePromptNamed", { ledger: preview.ledgerName, role: roleName })
@@ -500,7 +530,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite, currentUserId }) {
+function LedgerPicker({ lang, changeLang, t, theme, changeTheme, onOpen, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -570,18 +600,18 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>{t("ledgers")}</h1>
           {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
-          <HeaderMenu t={t} lang={lang} changeLang={changeLang} />
+          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} />
         </div>
         <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
 
         {inviteMsg && (
           <div onClick={onDismissInvite} style={{ cursor: "pointer", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12,
-            background: inviteMsg.ok ? "#E3F5F2" : "#FEF2F2", border: `1px solid ${inviteMsg.ok ? "#B8E4DD" : "#FECACA"}`, color: inviteMsg.ok ? "#0F5E55" : "#B91C1C", fontWeight: 600 }}>
+            background: inviteMsg.ok ? OK_BG : BAD_BG, border: `1px solid ${inviteMsg.ok ? OK_LINE : BAD_LINE}`, color: inviteMsg.ok ? OK_INK : BAD_INK, fontWeight: 600 }}>
             {inviteMsg.text}
           </div>
         )}
 
-        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+        {error && <div style={{ background: BAD_BG, border: `1px solid ${BAD_LINE}`, color: BAD_INK, borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {ledgers.length === 0 && (
@@ -594,7 +624,7 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
             return (
             <div key={l.id}>
               {editingId === l.id ? (
-                <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 12 }}>
+                <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") saveRename(l); if (e.key === "Escape") cancelRename(); }}
@@ -609,7 +639,7 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
                       const Icon = ledgerIcon(k);
                       return (
                         <button key={k} onClick={() => setDraftTpl(k)} aria-label={t("tpl" + k[0].toUpperCase() + k.slice(1))}
-                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : "#fff", color: draftTpl === k ? "#fff" : SUB }}>
+                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : CARD, color: draftTpl === k ? "#fff" : SUB }}>
                           <Icon size={16} />
                         </button>
                       );
@@ -627,13 +657,13 @@ function LedgerPicker({ lang, changeLang, t, onOpen, inviteMsg, onDismissInvite,
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button onClick={() => onOpen(l)} aria-label={t("openLedger", { name: l.name })}
-                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
                     {(() => { const Icon = ledgerIcon(l.template); return <Icon size={17} style={{ color: TEAL, flexShrink: 0 }} />; })()}
                     <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
                     <ChevronRight size={17} style={{ color: SUB }} />
                   </button>
                   <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>
-                  <button onClick={() => remove(l)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
+                  <button onClick={() => remove(l)} style={{ ...iconBtn, color: DANGER }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
                 </div>
               )}
             </div>
@@ -713,13 +743,13 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
         <ChevronDown size={20} strokeWidth={2.5} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
-        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, maxWidth: 320, zIndex: 60 }}>
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, maxWidth: 320, zIndex: 60 }}>
           {ledgers.map((l) => {
             const Icon = ledgerIcon(l.template);
             const active = l.id === ledger.id;
             return (
               <button key={l.id} role="menuitem" onClick={() => select(l)}
-                style={{ ...menuItem, background: active ? "#E3F5F2" : "none", color: active ? "#0F5E55" : INK }}>
+                style={{ ...menuItem, background: active ? OK_BG : "none", color: active ? OK_INK : INK }}>
                 <Icon size={15} style={{ flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
                 {active && <Check size={14} style={{ flexShrink: 0 }} />}
@@ -737,7 +767,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 }
 
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t }) {
+function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t, theme, changeTheme }) {
   activeCurrency = ledger.currency || "CAD"; // set before children below read money()/currencySymbol()
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
@@ -903,7 +933,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
+              onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
               onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined}
@@ -914,7 +945,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
         {/* Summary / settlement */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
           <span style={{ fontSize: 13, color: SUB, fontWeight: 600 }}>{t("spentIn", { month: label })}</span>
           <span style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(summary.total)}</span>
         </div>
@@ -924,7 +955,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
 
         {/* List */}
-        <div style={{ marginTop: 14, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
           {rows.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
               <Receipt size={26} style={{ opacity: 0.4 }} />
@@ -944,10 +975,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                   </div>
                   <div className="exp-total" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{money(e.amount)}</div>
-                    <ChevronRight size={17} style={{ color: "#B7BEC6" }} />
+                    <ChevronRight size={17} style={{ color: SUB }} />
                   </div>
                   <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 8px", borderRadius: 99, background: "#E3F5F2", color: "#0F5E55", fontSize: 11, fontWeight: 700 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 8px", borderRadius: 99, background: OK_BG, color: OK_INK, fontSize: 11, fontWeight: 700 }}>
                       {cat ? catName(cat, lang) : t("uncategorised")}
                     </span>
                     <span aria-hidden="true">·</span>
@@ -1033,7 +1064,7 @@ function LangToggle({ lang, changeLang }) {
   return (
     <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
       {[["en", "EN"], ["zh", "繁中"]].map(([l, lbl]) => (
-        <button key={l} onClick={() => changeLang(l)} style={{ padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: lang === l ? TEAL : "#fff", color: lang === l ? "#fff" : SUB }}>{lbl}</button>
+        <button key={l} onClick={() => changeLang(l)} style={{ padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: lang === l ? TEAL : CARD, color: lang === l ? "#fff" : SUB }}>{lbl}</button>
       ))}
     </div>
   );
@@ -1045,12 +1076,12 @@ function SettlementBar({ transfers, members, t, onClick }) {
   const settled = transfers.length === 0;
   const first = transfers[0];
   return (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", marginBottom: 14, border: `1px solid ${settled ? LINE : "#B8E4DD"}`, borderRadius: 12, background: settled ? "#F1F3F5" : "#E3F5F2", color: INK, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-      <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 800, color: settled ? SUB : "#0F5E55", background: settled ? "#E4E7EB" : "#C7EBE4", padding: "3px 8px", borderRadius: 6, flexShrink: 0 }}>{t("settleUp")}</span>
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", marginBottom: 14, border: `1px solid ${settled ? LINE : OK_LINE}`, borderRadius: 12, background: settled ? MUTED_BG : OK_BG, color: settled ? INK : OK_INK, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+      <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 800, color: settled ? SUB : OK_INK, background: settled ? LINE : OK_STRONG, padding: "3px 8px", borderRadius: 6, flexShrink: 0 }}>{t("settleUp")}</span>
       <span style={{ flex: 1, fontWeight: 700, minWidth: 0 }}>
         {settled ? t("allSquare") : t("owesLine", { debtor: memberById(members, first.fromId)?.name || "—", creditor: memberById(members, first.toId)?.name || "—", amount: money(first.amount) })}
       </span>
-      <ChevronRight size={18} style={{ color: settled ? SUB : "#0F5E55", flexShrink: 0 }} />
+      <ChevronRight size={18} style={{ color: settled ? SUB : OK_INK, flexShrink: 0 }} />
     </button>
   );
 }
@@ -1064,19 +1095,19 @@ function SettlementDetails({ members, summary, t, onClose }) {
           const receiving = balance > 0.005;
           const paying = balance < -0.005;
           return (
-            <div key={member.id} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+            <div key={member.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 800 }}><span style={{ width: 9, height: 9, borderRadius: 99, background: member.color }} /> {member.name}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
                 <div><div style={{ fontSize: 11, color: SUB, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{t("paidThisMonth")}</div><div style={{ fontWeight: 800, marginTop: 3 }}>{money(summary.paid.get(member.id) || 0)}</div></div>
                 <div><div style={{ fontSize: 11, color: SUB, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{t("sharedShare")}</div><div style={{ fontWeight: 800, marginTop: 3 }}>{money(summary.sharedShare.get(member.id) || 0)}</div></div>
               </div>
-              {(receiving || paying) && <div style={{ marginTop: 12, borderTop: `1px solid ${LINE}`, paddingTop: 10, fontSize: 13, fontWeight: 700, color: receiving ? TEAL : "#C2410C" }}>{receiving ? t("shouldReceive") : t("shouldPay")}: {money(Math.abs(balance))}</div>}
+              {(receiving || paying) && <div style={{ marginTop: 12, borderTop: `1px solid ${LINE}`, paddingTop: 10, fontSize: 13, fontWeight: 700, color: receiving ? TEAL : WARN }}>{receiving ? t("shouldReceive") : t("shouldPay")}: {money(Math.abs(balance))}</div>}
             </div>
           );
         })}
       </div>
       {summary.transfers.length === 0 ? <div style={{ color: SUB, fontSize: 13 }}>{t("noSharedBills")}</div> : (
-        <div style={{ background: "#E3F5F2", color: "#0F5E55", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700 }}>
+        <div style={{ background: OK_BG, color: OK_INK, borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700 }}>
           {summary.transfers.map((transfer, index) => <div key={index}>{t("owesLine", { debtor: memberById(members, transfer.fromId)?.name || "—", creditor: memberById(members, transfer.toId)?.name || "—", amount: money(transfer.amount) })}</div>)}
         </div>
       )}
@@ -1162,13 +1193,13 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
   return (
     <Overlay title={t("manageAccess")} t={t} onClose={onClose}>
       <Field label={t("currentMembers")}>
-        {rosterErr && <div style={{ color: "#DC2626", fontSize: 13, marginBottom: 8 }}>{rosterErr}</div>}
+        {rosterErr && <div style={{ color: DANGER, fontSize: 13, marginBottom: 8 }}>{rosterErr}</div>}
         {!roster ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: SUB, fontSize: 13, padding: "8px 0" }}><Loader2 size={15} className="spin" /> {t("connecting")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {roster.map((m) => (
-              <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyUser === m.userId ? 0.6 : 1 }}>
+              <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyUser === m.userId ? 0.6 : 1 }}>
                 {/* Username is the identity people recognise; email rides along
                     underneath rather than competing with it for the same line. */}
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -1183,7 +1214,7 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
                   <>
                     <button disabled={busyUser === m.userId} onClick={() => changeRole(m, "EDITOR")} style={chip(m.role === "EDITOR")}>{t("roleEditor")}</button>
                     <button disabled={busyUser === m.userId} onClick={() => changeRole(m, "VIEWER")} style={chip(m.role === "VIEWER")}>{t("roleViewer")}</button>
-                    <button disabled={busyUser === m.userId} onClick={() => removeOne(m)} style={{ ...iconBtn, color: "#DC2626", flexShrink: 0 }} aria-label={t("removeMemberBtn")}><Trash2 size={14} /></button>
+                    <button disabled={busyUser === m.userId} onClick={() => removeOne(m)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("removeMemberBtn")}><Trash2 size={14} /></button>
                   </>
                 )}
               </div>
@@ -1191,13 +1222,13 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
             {/* Invites nobody has redeemed yet — no user_id exists for these, so
                 there's nothing to change roles on, only revoke. */}
             {pending.map((inv) => (
-              <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#FAFBFC", border: `1px dashed ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyInvite === inv.id ? 0.6 : 1 }}>
+              <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, background: MUTED_BG, border: `1px dashed ${LINE}`, borderRadius: 10, padding: "9px 10px", opacity: busyInvite === inv.id ? 0.6 : 1 }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email || t("openInviteLink")}</div>
                   <span style={{ ...pill("#D97706"), fontSize: 10, marginTop: 2, display: "inline-block" }}>{t("pendingInvite")}</span>
                 </span>
                 <span style={{ ...pill("#94A3B8"), fontSize: 11, flexShrink: 0 }}>{inv.role === "VIEWER" ? t("roleViewer") : t("roleEditor")}</span>
-                <button disabled={busyInvite === inv.id} onClick={() => revoke(inv)} style={{ ...iconBtn, color: "#DC2626", flexShrink: 0 }} aria-label={t("revokeInviteBtn")}><Trash2 size={14} /></button>
+                <button disabled={busyInvite === inv.id} onClick={() => revoke(inv)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("revokeInviteBtn")}><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
@@ -1206,7 +1237,7 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
 
       <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 14 }}>
         <Field label={t("invitePeople")}>
-          <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+          <div style={{ display: "flex", gap: 3, background: MUTED_BG, borderRadius: 10, padding: 3 }}>
             <button onClick={() => { setRole("EDITOR"); setLink(""); }} style={segItem(role === "EDITOR")}>{t("roleEditor")}</button>
             <button onClick={() => { setRole("VIEWER"); setLink(""); }} style={segItem(role === "VIEWER")}>{t("roleViewer")}</button>
           </div>
@@ -1216,7 +1247,7 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
           <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setLink(""); }} placeholder="name@example.com" style={input} />
           <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>{t("inviteEmailHint")}</div>
         </Field>
-        {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
+        {err && <div style={{ color: DANGER, fontSize: 13 }}>{err}</div>}
         {!link ? (
           <button onClick={generate} disabled={busy || !emailValid} style={{ ...addBtn, justifyContent: "center", opacity: busy || !emailValid ? 0.6 : 1, cursor: busy ? "wait" : !emailValid ? "not-allowed" : "pointer" }}>
             {busy ? <Loader2 size={18} className="spin" /> : <Users size={18} />} {t("generateInvite")}
@@ -1288,7 +1319,7 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
       <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 0, justifyContent: "center" }}>
         <Plus size={18} /> {t("recurringAdd")}
       </button>
-      {err && <div style={{ color: "#DC2626", fontSize: 13 }}>{err}</div>}
+      {err && <div style={{ color: DANGER, fontSize: 13 }}>{err}</div>}
       {!rules ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: SUB, fontSize: 13, padding: "8px 0" }}><Loader2 size={15} className="spin" /> {t("connecting")}</div>
       ) : rules.length === 0 ? (
@@ -1299,7 +1330,7 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
             const cat = categories.find((c) => c.id === r.categoryId);
             const due = nextDue(r);
             return (
-              <div key={r.id} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, opacity: busyId === r.id ? 0.6 : 1 }}>
+              <div key={r.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, opacity: busyId === r.id ? 0.6 : 1 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                   <span style={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.description}</span>
                   <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(r.amount)}</span>
@@ -1315,7 +1346,7 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
                     {r.paused ? <><Play size={14} /> {t("resumeRule")}</> : <><Pause size={14} /> {t("pauseRule")}</>}
                   </button>
                   <button onClick={() => setEditing(r)} style={iconBtn} aria-label={t("recurEdit")}><Pencil size={15} /></button>
-                  <button onClick={() => remove(r)} disabled={busyId === r.id} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteStore")}><Trash2 size={15} /></button>
+                  <button onClick={() => remove(r)} disabled={busyId === r.id} style={{ ...iconBtn, color: DANGER }} aria-label={t("deleteStore")}><Trash2 size={15} /></button>
                 </div>
               </div>
             );
@@ -1366,7 +1397,7 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
         </Field>
       </div>
       <Field label={t("frequency")}>
-        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+        <div style={{ display: "flex", gap: 3, background: MUTED_BG, borderRadius: 10, padding: 3 }}>
           {[["weekly", t("freqWeekly")], ["monthly", t("freqMonthly")], ["yearly", t("freqYearly")]].map(([f, label]) => (
             <button key={f} onClick={() => setD({ ...d, frequency: f })} style={segItem(d.frequency === f)}>{label}</button>
           ))}
@@ -1392,7 +1423,7 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
         </div>
       </Field>
       <Field label={t("split")}>
-        <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+        <div style={{ display: "flex", gap: 3, background: MUTED_BG, borderRadius: 10, padding: 3 }}>
           <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
           <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
             <Users size={14} /> {t("splitBetween")}
@@ -1485,7 +1516,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
               );
             })}
           </div>
-          {members.length === 0 && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("noMembersHint")}</div>}
+          {members.length === 0 && <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("noMembersHint")}</div>}
         </Field>
       )}
       {rows.length === 0 ? (
@@ -1498,11 +1529,11 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
                 elsewhere in the app: with dozens of rows on screen at once, the
                 compact form matters more here than it does for a single expense. */}
             {rows.map((r) => (
-              <div key={r.id} style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div key={r.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <input type="date" value={r.date} onChange={(e) => patchRow(r.id, { date: e.target.value })} style={{ ...input, width: 132, fontSize: 12, padding: "6px 8px" }} />
                   <input type="text" value={r.description} onChange={(e) => patchRow(r.id, { description: e.target.value })} style={{ ...input, flex: 1, fontSize: 13, padding: "6px 8px" }} />
-                  <button onClick={() => removeRow(r.id)} style={{ ...iconBtn, width: 28, height: 28, color: "#DC2626", flexShrink: 0 }} aria-label={t("csvRemoveRow")}><Trash2 size={13} /></button>
+                  <button onClick={() => removeRow(r.id)} style={{ ...iconBtn, width: 28, height: 28, color: DANGER, flexShrink: 0 }} aria-label={t("csvRemoveRow")}><Trash2 size={13} /></button>
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 92, flexShrink: 0, padding: "6px 8px", fontSize: 12 }}>
@@ -1529,7 +1560,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
         </>
       )}
       {result && (
-        <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? "#DC2626" : TEAL }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? DANGER : TEAL }}>
           {t("csvResult", { ok: result.ok, total: result.total })}{result.fail ? t("csvResultFail", { fail: result.fail }) : ""}
         </div>
       )}
@@ -1548,7 +1579,7 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
   const share = sharers.length ? amt / sharers.length : amt;
   return (
     <Overlay title={expense.description} onClose={onClose} t={t}>
-      <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px" }}>
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px" }}>
         <div style={{ fontSize: 28, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(amt)}</div>
         <div style={{ fontSize: 13, color: shared ? TEAL : SUB, fontWeight: 600, marginTop: 2 }}>
           {shared ? t("sharedLine", { n: sharers.length, amount: money(share) }) : t("personalLine")}
@@ -1566,7 +1597,7 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
       </div>
 
       {/* Fields */}
-      <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: "2px 14px" }}>
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "2px 14px" }}>
         <FieldRow label={t("date")}>{expense.date}</FieldRow>
         <FieldRow label={t("paidBy")}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -1583,7 +1614,7 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
       <div>
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("receiptTitle")}</div>
         {expense.items?.length ? (
-          <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, overflow: "hidden" }}>
             {expense.items.map((i, idx) => (
               <div key={idx} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 14px", borderTop: idx === 0 ? "none" : `1px solid ${LINE}`, fontSize: 13 }}>
                 <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</span>
@@ -1592,7 +1623,7 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
             ))}
           </div>
         ) : (
-          <div style={{ border: `1px dashed ${LINE}`, borderRadius: 10, padding: "18px 16px", textAlign: "center", color: SUB, background: "#fff" }}>
+          <div style={{ border: `1px dashed ${LINE}`, borderRadius: 10, padding: "18px 16px", textAlign: "center", color: SUB, background: CARD }}>
             <Receipt size={22} style={{ opacity: 0.4 }} />
             <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5 }}>{t("receiptEmpty")}</div>
           </div>
@@ -1845,8 +1876,8 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
           </label>
         </div>
       )}
-      {scanErr && <div style={{ color: "#DC2626", fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
-      {currencyMismatch && <div style={{ color: "#C2410C", fontSize: 12 }}>{t("currencyMismatch", { scanned: currencyMismatch, ledger: activeCurrency })}</div>}
+      {scanErr && <div style={{ color: DANGER, fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
+      {currencyMismatch && <div style={{ color: WARN, fontSize: 12 }}>{t("currencyMismatch", { scanned: currencyMismatch, ledger: activeCurrency })}</div>}
       <div style={{ textAlign: "center", color: SUB, fontSize: 12, margin: "-2px 0 2px" }}>{t("scanHint")}</div>
 
       <Field label={t("formWhat")}>
@@ -1861,7 +1892,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
             onKeyDown={(e) => e.key === "Escape" && setSuggestOpen(false)}
             placeholder={t("formWhatPh")} autoComplete="off" style={input} />
           {suggestOpen && suggestions.length > 0 && (
-            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 70, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 70, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", overflow: "hidden" }}>
               {suggestions.map((m) => (
                 // mousedown, not click: blur would close the list first otherwise.
                 <button key={m.id} onMouseDown={(e) => { e.preventDefault(); applyDescription(m.name); setSuggestOpen(false); }} style={suggestItem}>
@@ -1902,7 +1933,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
       </label>
       {items.length > 0 && (
         <Field label={t("items")}>
-          <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden" }}>
             {items.map((it, idx) => (
               <div key={idx} style={{ padding: "9px 12px", borderTop: idx === 0 ? "none" : `1px solid ${LINE}`, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", opacity: it.mode === "drop" ? 0.45 : 1 }}>
                 <span style={{ flex: 1, minWidth: 110, fontSize: 13, fontWeight: 600, textDecoration: it.mode === "drop" ? "line-through" : "none" }}>{it.name}</span>
@@ -1910,7 +1941,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 <div style={{ display: "flex", gap: 4 }}>
                   {[["split", t("itemSplit"), Users], ["personal", t("itemPersonal"), User], ["drop", t("itemDrop"), Trash2]].map(([mode, label, Icon]) => (
                     <button key={mode} onClick={() => setItemMode(idx, mode)} aria-label={label} title={label}
-                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : "#fff", color: it.mode === mode ? "#fff" : SUB }}>
+                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : CARD, color: it.mode === mode ? "#fff" : SUB }}>
                       <Icon size={13} />
                     </button>
                   ))}
@@ -1923,7 +1954,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
             <button onClick={() => { setItems([]); setScanTotal(null); }} style={{ ...editCatsPill, padding: "3px 8px", fontSize: 11 }}>{t("itemsClear")}</button>
           </div>
           {personalItems.length > 0 && (
-            <div style={{ marginTop: 8, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ marginTop: 8, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 12, color: SUB, marginBottom: 6 }}>
                 {t("itemsPersonalNote", { n: personalItems.length, amount: money(personalTotal) })}
               </div>
@@ -1946,7 +1977,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
             <button key={c.id} onClick={() => { setCategoryTouched(true); setD({ ...d, categoryId: c.id }); }} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
           ))}
         </div>
-        {categories.length === 0 && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("noCategoriesHint")}</div>}
+        {categories.length === 0 && <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("noCategoriesHint")}</div>}
       </Field>
       {features.showSplit && (
         <>
@@ -1966,10 +1997,10 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 );
               })}
             </div>
-            {members.length === 0 && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("noMembersHint")}</div>}
+            {members.length === 0 && <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("noMembersHint")}</div>}
           </Field>
           <Field label={t("split")}>
-            <div style={{ display: "flex", gap: 3, background: "#EEF0F2", borderRadius: 10, padding: 3 }}>
+            <div style={{ display: "flex", gap: 3, background: MUTED_BG, borderRadius: 10, padding: 3 }}>
               <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
               <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
                 <Users size={14} /> {t("splitBetween")}
@@ -1991,7 +2022,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 12, color: sharerCount ? SUB : "#DC2626", marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: sharerCount ? SUB : DANGER, marginTop: 6 }}>
                   {sharerCount ? t("splitWays", { n: sharerCount, amount: money(finalAmount / sharerCount) }) : t("splitNobody")}
                 </div>
               </div>
@@ -2045,7 +2076,7 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
         {list.map((c) => (
           <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input value={catName(c)} onChange={(e) => patchName(c.id, e.target.value)} style={{ ...input, flex: 1 }} />
-            <button onClick={() => del(c.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteCategory")}><Trash2 size={15} /></button>
+            <button onClick={() => del(c.id)} style={{ ...iconBtn, color: DANGER }} aria-label={t("deleteCategory")}><Trash2 size={15} /></button>
           </div>
         ))}
       </div>
@@ -2061,12 +2092,12 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
 // Green under 80% of a budget, amber approaching it, red once past. A bar never
 // overflows its track — how far over you are is in the number, not the bar.
 const budgetBarColor = (spent, budget) =>
-  !budget ? LINE : spent > budget ? "#DC2626" : spent / budget > 0.8 ? "#D97706" : TEAL;
+  !budget ? LINE : spent > budget ? DANGER : spent / budget > 0.8 ? "#D97706" : TEAL;
 
 function BudgetBar({ spent, budget, height = 8 }) {
   const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
   return (
-    <div style={{ height, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
+    <div style={{ height, borderRadius: 99, background: TRACK, overflow: "hidden" }}>
       <div style={{ width: `${budget > 0 ? Math.max(pct, spent > 0 ? 2 : 0) : 0}%`, height: "100%", background: budgetBarColor(spent, budget), borderRadius: 99, transition: "width .25s ease" }} />
     </div>
   );
@@ -2100,7 +2131,7 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
       <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
 
       {/* Whole-month roll-up */}
-      <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("budgetTotal")}</span>
           {totalBudget > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: SUB }}>{t("budgetPct", { pct: Math.round((spent / totalBudget) * 100) })}</span>}
@@ -2115,7 +2146,7 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
             <span style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>
               {over ? t("budgetOver") : t("budgetLeft")}
             </span>
-            <span style={{ fontSize: 22, fontWeight: 800, color: over ? "#DC2626" : TEAL, fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: over ? DANGER : TEAL, fontVariantNumeric: "tabular-nums" }}>
               {money(Math.abs(left))}
             </span>
           </div>
@@ -2141,7 +2172,7 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0 }}>{catName(c)}</button>
                 {/* Just what's been spent — the budget itself is in the field alongside. */}
-                <span style={{ width: 72, textAlign: "right", fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                <span style={{ width: 72, textAlign: "right", fontSize: 12, color: b > 0 && s > b ? DANGER : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                   {money(s)}
                 </span>
                 <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 104, flexShrink: 0, padding: "7px 8px", fontSize: 13 }}>
@@ -2250,7 +2281,7 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
           </select>
         </div>
       </div>
-      <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("reportTotal")}</div>
         <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
         <div style={{ fontSize: 13, color: SUB, marginTop: 2 }}>{t("reportFor", { month: monthName(month, lang) })}</div>
@@ -2261,8 +2292,8 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
         <>
           <div style={{ display: "flex", justifyContent: "center", padding: "8px 0" }}>
             <svg viewBox="0 0 100 100" width="230" height="230" role="img" aria-label={t("reportCategories")}>
-              {slices.map((slice) => <path key={slice.id} d={slice.path} fill={slice.color} stroke="#fff" strokeWidth="1.5" />)}
-              <circle cx="50" cy="50" r="26" fill="#fff" />
+              {slices.map((slice) => <path key={slice.id} d={slice.path} fill={slice.color} stroke={CARD} strokeWidth="1.5" />)}
+              <circle cx="50" cy="50" r="26" fill={CARD} />
               <text x="50" y="48" textAnchor="middle" fontSize="7" fontWeight="700" fill={SUB}>{t("reportTotal")}</text>
               <text x="50" y="57" textAnchor="middle" fontSize="7" fontWeight="800" fill={INK}>{money(total)}</text>
             </svg>
@@ -2298,7 +2329,7 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
                 : row.current === 0 && row.compare > 0 ? t("compareGoneLabel")
                 : delta === 0 ? t("compareUnchanged")
                 : `${delta > 0 ? "+" : "-"}${money(Math.abs(delta))} (${delta > 0 ? "+" : "-"}${Math.round(Math.abs(delta) / row.compare * 100)}%)`;
-              const deltaColor = delta > 0 ? "#DC2626" : delta < 0 ? TEAL : SUB;
+              const deltaColor = delta > 0 ? DANGER : delta < 0 ? TEAL : SUB;
               return (
                 <div key={row.id} title={`${row.name}: ${money(row.current)} vs ${money(row.compare)}`}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -2306,10 +2337,10 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
                     <span style={{ fontSize: 12, fontWeight: 700, color: deltaColor, whiteSpace: "nowrap", marginLeft: 8 }}>{deltaLabel}</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    <div style={{ height: 7, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
+                    <div style={{ height: 7, borderRadius: 99, background: TRACK, overflow: "hidden" }}>
                       <div style={{ width: `${(row.current / comparisonMax) * 100}%`, height: "100%", background: TEAL, borderRadius: 99 }} />
                     </div>
-                    <div style={{ height: 7, borderRadius: 99, background: "#EEF2F1", overflow: "hidden" }}>
+                    <div style={{ height: 7, borderRadius: 99, background: TRACK, overflow: "hidden" }}>
                       <div style={{ width: `${(row.compare / comparisonMax) * 100}%`, height: "100%", background: "#94A3B8", borderRadius: 99 }} />
                     </div>
                   </div>
@@ -2335,7 +2366,7 @@ function CategoryExpenseList({ category, month, expenses, lang, t, onClose }) {
       {rows.length === 0 ? (
         <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "28px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("categoryExpensesEmpty")}</div>
       ) : (
-        <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden" }}>
           {rows.map((expense, index) => (
             <div key={expense.id} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderTop: index ? `1px solid ${LINE}` : "none" }}>
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -2382,7 +2413,7 @@ function StoreManager({ merchants, t, onChange, onClose }) {
           <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Store size={15} style={{ color: SUB, flexShrink: 0 }} />
             <input value={m.name} onChange={(e) => patch(m.id, e.target.value)} style={{ ...input, flex: 1 }} />
-            <button onClick={() => del(m.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteStore")}><Trash2 size={15} /></button>
+            <button onClick={() => del(m.id)} style={{ ...iconBtn, color: DANGER }} aria-label={t("deleteStore")}><Trash2 size={15} /></button>
           </div>
         ))}
       </div>
@@ -2422,12 +2453,12 @@ function MemberManager({ members, t, onChange, onClose }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="color" value={m.color} onChange={(e) => patch(m.id, "color", e.target.value)} style={{ width: 34, height: 34, border: "none", background: "none", padding: 0, cursor: "pointer" }} />
               <input value={m.name} onChange={(e) => patch(m.id, "name", e.target.value)} style={{ ...input, flex: 1 }} />
-              <button onClick={() => del(m.id)} style={{ ...iconBtn, color: "#DC2626" }} aria-label={t("deleteMember")}><Trash2 size={15} /></button>
+              <button onClick={() => del(m.id)} style={{ ...iconBtn, color: DANGER }} aria-label={t("deleteMember")}><Trash2 size={15} /></button>
             </div>
             <div style={{ display: "flex", gap: 6, margin: "-2px 0 4px 42px" }}>
               {Object.entries(MEMBER_ICONS).map(([key, Icon]) => (
                 <button key={key} onClick={() => patch(m.id, "icon", key)} aria-label={key}
-                  style={{ ...iconBtn, width: 30, height: 30, borderColor: (m.icon || "user") === key ? m.color : LINE, background: (m.icon || "user") === key ? m.color : "#fff", color: (m.icon || "user") === key ? "#fff" : SUB }}>
+                  style={{ ...iconBtn, width: 30, height: 30, borderColor: (m.icon || "user") === key ? m.color : LINE, background: (m.icon || "user") === key ? m.color : CARD, color: (m.icon || "user") === key ? "#fff" : SUB }}>
                   <Icon size={14} />
                 </button>
               ))}
@@ -2465,8 +2496,9 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
+function HeaderMenu({ t, lang, changeLang, theme, changeTheme, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
   const [open, setOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const profile = useMyProfile();
   useEffect(() => {
     if (!open) return;
@@ -2485,7 +2517,7 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecur
         <Menu size={16} />
       </button>
       {open && (
-        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 190, zIndex: 60 }}>
           {profile && (
             // Pre-invite-feature accounts had name backfilled to their email
             // (migration 009) — show it once, not as a duplicated name+email pair.
@@ -2537,21 +2569,41 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecur
             </div>
           )}
           {(onBudget || onReport || onStores || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
-          {/* Plain rows like every other entry — a segmented toggle in here read as
-              a different kind of control and sat oddly among them. */}
-          {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
-            <button key={code} role="menuitem" onClick={() => { setOpen(false); changeLang(code); }} style={menuItem}>
-              <Languages size={15} /> <span style={{ flex: 1 }}>{label}</span>
-              {lang === code && <Check size={14} style={{ color: TEAL }} />}
-            </button>
-          ))}
+          <button role="menuitem" onClick={() => { setOpen(false); setShowSettings(true); }} style={menuItem}>
+            <Settings size={15} /> {t("settings")}
+          </button>
           <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
           <button role="menuitem" onClick={() => { setOpen(false); supabase.auth.signOut(); }} style={menuItem}>
             <LogOut size={15} /> {t("signOut")}
           </button>
         </div>
       )}
+      {showSettings && (
+        <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} onClose={() => setShowSettings(false)} />
+      )}
     </div>
+  );
+}
+
+// App-wide, not ledger-scoped — same panel opens from the picker or from
+// inside any ledger, which is why it only needs t/lang/theme, nothing here.
+function SettingsPanel({ t, lang, changeLang, theme, changeTheme, onClose }) {
+  return (
+    <Overlay title={t("settings")} onClose={onClose} t={t}>
+      <Field label={t("language")}>
+        <LangToggle lang={lang} changeLang={changeLang} />
+      </Field>
+      <Field label={t("appearance")}>
+        <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
+          {[["light", t("light"), Sun], ["dark", t("dark"), Moon]].map(([value, label, Icon]) => (
+            <button key={value} onClick={() => changeTheme(value)}
+              style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: theme === value ? TEAL : CARD, color: theme === value ? "#fff" : SUB }}>
+              <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
+      </Field>
+    </Overlay>
   );
 }
 
@@ -2579,10 +2631,12 @@ function Overlay({ title, onClose, t, children }) {
 function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,26,32,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={onCancel}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 20, width: "min(360px, 100%)", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, borderRadius: 14, padding: 20, width: "min(360px, 100%)", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
         <div style={{ fontSize: 14, color: INK, lineHeight: 1.5, marginBottom: 18 }}>{message}</div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
+          {/* Solid red stays literal in both themes: DANGER lightens for dark
+              mode so it reads as text, which would leave white-on-pale here. */}
           <button onClick={onConfirm} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: 12, borderRadius: 9, border: "none", background: "#DC2626", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             <Trash2 size={16} /> {confirmLabel || t("delete")}
           </button>
@@ -2604,21 +2658,21 @@ function Field({ label, children, style }) {
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 /* ----------------------------- Styles ----------------------------- */
-const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: "#fff", fontSize: 15, color: INK, outline: "none", fontFamily: "inherit" };
+const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: CARD, fontSize: 15, color: INK, outline: "none", fontFamily: "inherit" };
 // fontSize 16, not input's 15: below 16px, iOS Safari zooms in on focus and,
 // for a <select>, sometimes doesn't fully zoom back out after you pick a
 // value — leaving the page clipped/squeezed at the top until you scroll.
 const selectStyle = { ...input, width: "auto", padding: "8px 10px", cursor: "pointer", fontWeight: 600, fontSize: 16 };
 const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
-const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: "#fff", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid #F3C4C4`, background: "#fff", color: "#DC2626", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
-const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: "#fff", color: SUB, cursor: "pointer" };
+const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid ${BAD_LINE}`, background: CARD, color: DANGER, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
+const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: SUB, cursor: "pointer" };
 const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 const suggestItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 12px", border: "none", background: "none", color: INK, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 // Dashed outline sets it apart from the coloured category pills — it's an action, not a category.
 const editCatsPill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 999, border: `1px dashed ${SUB}`, background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
-const errorBox = { fontSize: 13, color: "#B42318", background: "#FEF3F2", border: "1px solid #FDA29B", borderRadius: 10, padding: "10px 12px", marginBottom: 12 };
+const errorBox = { fontSize: 13, color: BAD_INK, background: BAD_BG, border: `1px solid ${BAD_LINE}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 };
 const backdrop = { position: "fixed", inset: 0, zIndex: 20 };
 
 function pill(color) {
@@ -2631,7 +2685,10 @@ function selectablePill(color, active) {
 // and member tags share it, so the form reads as one system rather than a row of
 // clashing coloured outlines.
 function chip(active) {
-  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", color: active ? "#fff" : "#374151", background: active ? TEAL : "#EEF0F2" };
+  // Unselected used to be a flat light-gray fill that needed no border to read
+  // as a pill; now that it's CARD (white in light mode, dark in night mode) a
+  // border keeps it visible against the page background in both themes.
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, fontFamily: "inherit", color: active ? "#fff" : INK, background: active ? TEAL : CARD };
 }
 // One grey track, the active half lifts to green — a proper segmented control.
 function segItem(active) {
@@ -2639,5 +2696,5 @@ function segItem(active) {
 }
 function splitBadge(split) {
   const shared = split === "shared";
-  return { display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", borderRadius: 99, fontSize: 11, fontWeight: 700, color: shared ? "#0E9384" : "#64748B", background: shared ? "#E3F5F2" : "#EFF1F3" };
+  return { display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", borderRadius: 99, fontSize: 11, fontWeight: 700, color: shared ? TEAL : SUB, background: shared ? OK_BG : MUTED_BG };
 }
