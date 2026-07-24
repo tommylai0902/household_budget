@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
-  Plus, Pencil, Trash2, X, Check, Tag,
+  Plus, Pencil, Trash2, X, Check, Tag, Coins,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play,
 } from "lucide-react";
@@ -828,6 +828,12 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   // Removing someone who still has expenses is refused by the FK, so the error
   // surfaces here rather than silently dropping who paid for what.
   const commitStores = async (list) => { try { setMerchants(await db.persistMerchants(list, merchants, ledger.id)); } catch (e) { setError(e.message); } };
+  // Updates the ledger object App holds, not just the DB row — otherwise the new
+  // currency wouldn't take effect until you left and reopened this ledger.
+  const changeCurrency = async (currency) => {
+    try { await db.updateLedger(ledger.id, { currency }); onSwitchLedger({ ...ledger, currency }); }
+    catch (e) { setError(e.message); }
+  };
   const commitMembers = async (list) => {
     try { setMembers(await db.persistMembers(list, members, ledger.id)); }
     catch (e) { setError(/foreign key/i.test(e.message || "") ? t("memberHasExpenses") : e.message); }
@@ -899,7 +905,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
-              onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined} />
+              onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined}
+              currency={features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
           </div>
         </div>
 
@@ -1497,11 +1504,11 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
                   <button onClick={() => removeRow(r.id)} style={{ ...iconBtn, width: 28, height: 28, color: "#DC2626", flexShrink: 0 }} aria-label={t("csvRemoveRow")}><Trash2 size={13} /></button>
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <div style={{ position: "relative", width: 92, flexShrink: 0 }}>
-                    <span style={{ position: "absolute", left: 8, top: 7, color: SUB, fontSize: 12 }}>{currencySymbol(activeCurrency)}</span>
+                  <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 92, flexShrink: 0, padding: "6px 8px", fontSize: 12 }}>
+                    <span style={{ color: SUB, flexShrink: 0 }}>{currencySymbol(activeCurrency)}</span>
                     <input type="number" inputMode="decimal" value={r.amount}
                       onChange={(e) => patchRow(r.id, { amount: Number(e.target.value) || 0 })}
-                      style={{ ...input, padding: "6px 8px 6px 18px", fontSize: 12 }} />
+                      style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
                   </div>
                   <select value={r.categoryId || ""} onChange={(e) => patchRow(r.id, { categoryId: e.target.value || null })}
                     style={{ ...selectStyle, flex: 1, width: "auto", fontSize: 12, padding: "6px 8px" }}>
@@ -1864,9 +1871,13 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           and would otherwise push the row past the edge of a phone screen. */}
       <div style={{ display: "flex", gap: 10 }}>
         <Field label={t("amount")} style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 12, top: 12, color: SUB }}>{currencySymbol(activeCurrency)}</span>
-            <input type="number" inputMode="decimal" value={d.amount} onChange={(e) => setD({ ...d, amount: e.target.value })} placeholder="0.00" style={{ ...input, paddingLeft: 24 }} />
+          {/* Flex row rather than an absolutely-positioned prefix: a currency
+              symbol can be several characters (e.g. "JP¥"), not just "$", and a
+              fixed paddingLeft sized for one character overlapped the digits. */}
+          <div style={{ ...input, display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ color: SUB, flexShrink: 0 }}>{currencySymbol(activeCurrency)}</span>
+            <input type="number" inputMode="decimal" value={d.amount} onChange={(e) => setD({ ...d, amount: e.target.value })} placeholder="0.00"
+              style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
           </div>
         </Field>
         <Field label={t("date")} style={{ flex: 1, minWidth: 0 }}>
@@ -2120,14 +2131,14 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
                 <span style={{ width: 72, textAlign: "right", fontSize: 12, color: b > 0 && s > b ? "#DC2626" : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                   {money(s)}
                 </span>
-                <div style={{ position: "relative", width: 104, flexShrink: 0 }}>
+                <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 104, flexShrink: 0, padding: "7px 8px", fontSize: 13 }}>
                   {/* Dollar sign only once there's a value, so an unset field reads as
                       "Set budget" rather than a misleading "$ 0.00". */}
-                  {hasBudget && <span style={{ position: "absolute", left: 9, top: 8, color: SUB, fontSize: 13 }}>{currencySymbol(activeCurrency)}</span>}
+                  {hasBudget && <span style={{ color: SUB, flexShrink: 0 }}>{currencySymbol(activeCurrency)}</span>}
                   <input type="number" inputMode="decimal" value={drafts[c.id] ?? ""}
                     onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })}
                     onKeyDown={(e) => e.key === "Enter" && save()}
-                    placeholder={t("setBudgetPh")} style={{ ...input, padding: hasBudget ? "7px 8px 7px 20px" : "7px 8px", fontSize: 13 }} />
+                    placeholder={t("setBudgetPh")} style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
                 </div>
               </div>
               <BudgetBar spent={s} budget={b} />
@@ -2441,7 +2452,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
   const [open, setOpen] = useState(false);
   const profile = useMyProfile();
   useEffect(() => {
@@ -2503,7 +2514,16 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecur
               <Users size={15} /> {t("manageAccess")}
             </button>
           )}
-          {(onBudget || onReport || onStores || onRecurring || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {currency && (
+            <div style={menuItem}>
+              <Coins size={15} /> <span style={{ flex: 1 }}>{t("currency")}</span>
+              <select value={currency} onChange={(e) => onChangeCurrency(e.target.value)} onClick={(e) => e.stopPropagation()}
+                style={{ border: "none", background: "none", fontSize: 13, fontWeight: 700, color: TEAL, cursor: "pointer" }}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
+          {(onBudget || onReport || onStores || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
