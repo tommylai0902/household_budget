@@ -43,7 +43,15 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node --check api/rbac.js)",
+      "Bash(node src/lib/recurring.test.js)",
+      "Bash(awk 'NR==1020,NR==1180' src/BudgetApp.jsx)",
+      "Bash(awk 'NR==1173,NR==1260' src/BudgetApp.jsx)",
+      "Bash(awk '/^function ExpenseForm/,/^function ExpenseDetail|^\\\\/\\\\/ Lists the ledger/' src/BudgetApp.jsx)",
+      "Bash(git revert *)",
+      "Bash(node src/lib/csv.test.js)",
+      "Bash(powershell -c \"Get-ChildItem migrations\")"
     ]
   }
 }
