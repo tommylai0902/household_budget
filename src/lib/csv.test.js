@@ -1,6 +1,6 @@
 // Self-check for CSV import parsing. Run: node src/lib/csv.test.js
 import assert from "node:assert";
-import { parseCsvText, normalizeDate, guessCategoryId } from "./csv.js";
+import { parseCsvText, normalizeDate, guessCategoryId, buildPreviewRows } from "./csv.js";
 
 // Header detected, standard format, including a quoted field with an embedded comma.
 const withHeader = 'Date,Description,Amount\n2026-07-01,UBER TRIP 123,12.50\n07/15/2026,"Costco Wholesale, Store 42",88.10';
@@ -33,5 +33,15 @@ assert.equal(guessCategoryId("COSTCO WHOLESALE", cats), "c2");
 assert.equal(guessCategoryId("SOME RANDOM MERCHANT", cats), null);
 // No matching category in THIS ledger (no "Rent" here) -> null, not a wrong guess.
 assert.equal(guessCategoryId("MONTHLY RENT PAYMENT", cats), null);
+
+// buildPreviewRows: same shape regardless of source (CSV rows or AI-extracted
+// statement rows both arrive as plain {date, description, amount}).
+const preview = buildPreviewRows(
+  [{ date: "2026-07-01", description: "UBER TRIP 123", amount: 12.5 }, { date: "2026-07-02", description: "unknown merchant", amount: 5 }],
+  cats, "member-1",
+);
+assert.equal(preview.length, 2);
+assert.deepEqual(preview[0], { id: "r0", date: "2026-07-01", description: "UBER TRIP 123", amount: 12.5, categoryId: "c1", paidById: "member-1", paidByTouched: false });
+assert.equal(preview[1].categoryId, null);
 
 console.log("csv.js: all checks passed");

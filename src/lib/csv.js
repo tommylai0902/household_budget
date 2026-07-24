@@ -89,3 +89,19 @@ export function guessCategoryId(description, categories) {
   }
   return null;
 }
+
+// Shared by every source that feeds the batch-import preview table — a parsed
+// CSV and an AI-extracted statement both end up as { date, description, amount }
+// rows, so they go through the same shape-building step (id, guessed category,
+// default payer) regardless of where they came from.
+export function buildPreviewRows(transactions, categories, defaultPaidById) {
+  return transactions.map((r, i) => ({
+    id: `r${i}`,
+    date: r.date,
+    description: r.description,
+    amount: r.amount,
+    categoryId: guessCategoryId(r.description, categories),
+    paidById: defaultPaidById,
+    paidByTouched: false,
+  }));
+}

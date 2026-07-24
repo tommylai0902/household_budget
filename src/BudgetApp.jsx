@@ -14,7 +14,7 @@ import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
 import { settlements, netBalances } from "./lib/settle";
 import { nextOccurrence } from "./lib/recurring";
-import { parseCsvText, guessCategoryId } from "./lib/csv";
+import { parseCsvText, guessCategoryId, buildPreviewRows } from "./lib/csv";
 
 /* ------------------------------------------------------------------ *
  * Household Budget — Step 2: shared, live-synced ledger (Supabase).
@@ -101,14 +101,11 @@ const STRINGS = {
     startDate: "Start date", nextDue: "Next due", paused: "Paused",
     pauseRule: "Pause", resumeRule: "Resume", saveRule: "Save",
     recurDeleteConfirm: "Delete this recurring rule? Expenses it already created stay.",
-    csvImport: "Import CSV", csvImportTitle: "Import expenses",
-    csvChoose: "Choose a CSV file", csvChooseHint: "Card or bank statement export — Date, Description, Amount columns.",
-    csvParseErr: "Couldn't read that file: {msg}", csvNoRows: "No usable rows found in that file.",
+    csvImportTitle: "Import expenses", csvNoRows: "No usable rows found in that file.",
     csvDefaultOwner: "Default card owner / Paid by", csvRowCount: "{n} rows ready to import",
-    csvColDate: "Date", csvColDesc: "Description", csvColAmount: "Amount", csvColCategory: "Category", csvColPaidBy: "Paid by",
     csvConfirm: "Confirm & import", csvImporting: "Importing…",
     csvResult: "Imported {ok} of {total}.", csvResultFail: " {fail} failed.",
-    csvRemoveRow: "Remove row", csvChooseAnother: "Choose a different file",
+    csvRemoveRow: "Remove row",
     newMemberPh: "New member name", saveMembers: "Save members", deleteMember: "Remove member",
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
@@ -213,14 +210,11 @@ const STRINGS = {
     startDate: "開始日期", nextDue: "下次", paused: "已暫停",
     pauseRule: "暫停", resumeRule: "恢復", saveRule: "儲存",
     recurDeleteConfirm: "刪除呢條定期規則？佢已經產生嘅支出會保留。",
-    csvImport: "匯入 CSV", csvImportTitle: "匯入支出",
-    csvChoose: "揀一個 CSV 檔案", csvChooseHint: "信用卡或銀行結單匯出檔 — 要有日期、描述、金額欄。",
-    csvParseErr: "讀唔到個檔案：{msg}", csvNoRows: "個檔案入面搵唔到有用嘅資料行。",
+    csvImportTitle: "匯入支出", csvNoRows: "個檔案入面搵唔到有用嘅資料行。",
     csvDefaultOwner: "預設卡主 / 邊個俾錢", csvRowCount: "{n} 行準備匯入",
-    csvColDate: "日期", csvColDesc: "描述", csvColAmount: "金額", csvColCategory: "類別", csvColPaidBy: "邊個俾錢",
     csvConfirm: "確認並匯入", csvImporting: "匯入緊…",
     csvResult: "已匯入 {ok} / {total}。", csvResultFail: "有 {fail} 行失敗。",
-    csvRemoveRow: "移除呢行", csvChooseAnother: "揀另一個檔案",
+    csvRemoveRow: "移除呢行",
     newMemberPh: "新成員名稱", saveMembers: "儲存成員", deleteMember: "移除成員",
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
@@ -732,7 +726,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showSettlement, setShowSettlement] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
-  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [batchRows, setBatchRows] = useState(null); // transactions pending batch review (from Upload)
   const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(false);
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
@@ -873,7 +867,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
               ))}
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-              onStores={() => setManagingStores(true)} onCsvImport={() => setShowCsvImport(true)}
+              onStores={() => setManagingStores(true)}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
               onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined} />
           </div>
@@ -961,7 +955,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
           merchants={merchants} ledgers={allLedgers} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)}
-          onEditCategories={() => setManagingCats(true)} defaultMonth={month} />
+          onEditCategories={() => setManagingCats(true)} defaultMonth={month}
+          onBatchImport={(transactions) => { setEditing(null); setBatchRows(transactions); }} />
       )}
       {managingStores && (
         <StoreManager merchants={merchants} t={t} onChange={commitStores} onClose={() => setManagingStores(false)} />
@@ -985,8 +980,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
       {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} lang={lang} t={t}
         onClose={() => setShowRecurring(false)} onChanged={refresh} />}
-      {showCsvImport && <CsvImportModal ledger={ledger} features={features} categories={categories} members={members} lang={lang} t={t}
-        onClose={() => setShowCsvImport(false)} onImported={refresh} />}
+      {batchRows && <BatchImportModal ledger={ledger} features={features} categories={categories} members={members} lang={lang} t={t}
+        initialRows={batchRows} onClose={() => setBatchRows(null)} onImported={refresh} />}
     </div>
   );
 }
@@ -1389,35 +1384,17 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
   );
 }
 
-// CSV/credit-card batch import. Two phases: pick a file (nothing written yet),
-// then review/edit a parsed preview table before committing anything. The
-// "Default card owner" selector only touches rows the user hasn't hand-picked a
-// payer for (paidByTouched) — editing one row's payer opts it out of future
-// bulk changes from the selector, same idea as the recurring-form defaults.
-function CsvImportModal({ ledger, features, categories, members, lang, t, onClose, onImported }) {
-  const [rows, setRows] = useState(null); // null = no file chosen yet
-  const [fileErr, setFileErr] = useState("");
+// Batch add — the review/edit table for multiple transactions at once. The only
+// way in is via the Add-expense form's Upload button (see ExpenseForm), which
+// hands off already-parsed rows (a real CSV, or an AI-read statement screenshot/
+// PDF) as `initialRows`; there's no file picker in here. The "Default card owner"
+// selector only touches rows the user hasn't hand-picked a payer for
+// (paidByTouched) — editing one row's payer opts it out of future bulk changes.
+function BatchImportModal({ ledger, features, categories, members, lang, t, initialRows, onClose, onImported }) {
+  const [rows, setRows] = useState(() => buildPreviewRows(initialRows, categories, members[0]?.id || null));
   const [defaultPaidBy, setDefaultPaidBy] = useState(members[0]?.id || null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null); // { ok, fail, total } after a confirm
-
-  const onFile = async (file) => {
-    setFileErr(""); setResult(null);
-    try {
-      const text = await file.text();
-      const parsed = parseCsvText(text, todayISO());
-      if (!parsed.length) { setFileErr(t("csvNoRows")); return; }
-      setRows(parsed.map((r, i) => ({
-        id: `r${i}`,
-        date: r.date,
-        description: r.description,
-        amount: r.amount,
-        categoryId: guessCategoryId(r.description, categories),
-        paidById: (features.showSplit ? defaultPaidBy : members[0]?.id) || null,
-        paidByTouched: false,
-      })));
-    } catch (e) { setFileErr(t("csvParseErr", { msg: e.message || String(e) })); }
-  };
 
   const patchRow = (id, patch) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const removeRow = (id) => setRows((rs) => rs.filter((r) => r.id !== id));
@@ -1426,7 +1403,7 @@ function CsvImportModal({ ledger, features, categories, members, lang, t, onClos
     setRows((rs) => rs.map((r) => (r.paidByTouched ? r : { ...r, paidById: memberId })));
   };
 
-  const valid = rows && rows.length > 0 && !busy;
+  const valid = rows.length > 0 && !busy;
 
   const confirm = async () => {
     setBusy(true); setResult(null);
@@ -1450,32 +1427,24 @@ function CsvImportModal({ ledger, features, categories, members, lang, t, onClos
 
   return (
     <Overlay onClose={onClose} title={t("csvImportTitle")} t={t}>
-      {!rows ? (
-        <>
-          <label style={{ ...addBtn, marginTop: 0, justifyContent: "center", cursor: "pointer" }}>
-            <Upload size={18} /> {t("csvChoose")}
-            <input type="file" accept=".csv,text/csv" style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
-          </label>
-          <div style={{ fontSize: 12, color: SUB, textAlign: "center" }}>{t("csvChooseHint")}</div>
-          {fileErr && <div style={{ color: "#DC2626", fontSize: 13 }}>{fileErr}</div>}
-        </>
+      {features.showSplit && (
+        <Field label={t("csvDefaultOwner")}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {members.map((m) => {
+              const Icon = memberIcon(m.icon);
+              return (
+                <button key={m.id} onClick={() => changeDefaultPaidBy(m.id)} style={chip(defaultPaidBy === m.id)}>
+                  <Icon size={13} /> {m.name}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      )}
+      {rows.length === 0 ? (
+        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "20px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("csvNoRows")}</div>
       ) : (
         <>
-          {features.showSplit && (
-            <Field label={t("csvDefaultOwner")}>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {members.map((m) => {
-                  const Icon = memberIcon(m.icon);
-                  return (
-                    <button key={m.id} onClick={() => changeDefaultPaidBy(m.id)} style={chip(defaultPaidBy === m.id)}>
-                      <Icon size={13} /> {m.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-          )}
           <div style={{ fontSize: 12, color: SUB }}>{t("csvRowCount", { n: rows.length })}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {/* Native selects per row rather than the touch-friendly chip pickers used
@@ -1510,19 +1479,16 @@ function CsvImportModal({ ledger, features, categories, members, lang, t, onClos
               </div>
             ))}
           </div>
-          {result && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? "#DC2626" : TEAL }}>
-              {t("csvResult", { ok: result.ok, total: result.total })}{result.fail ? t("csvResultFail", { fail: result.fail }) : ""}
-            </div>
-          )}
-          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-            <button onClick={() => { setRows(null); setResult(null); }} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("csvChooseAnother")}</button>
-            <button onClick={confirm} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
-              {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {busy ? t("csvImporting") : t("csvConfirm")}
-            </button>
-          </div>
         </>
       )}
+      {result && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? "#DC2626" : TEAL }}>
+          {t("csvResult", { ok: result.ok, total: result.total })}{result.fail ? t("csvResultFail", { fail: result.fail }) : ""}
+        </div>
+      )}
+      <button onClick={confirm} disabled={!valid} style={{ ...addBtn, marginTop: 6, justifyContent: "center", opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+        {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {busy ? t("csvImporting") : t("csvConfirm")}
+      </button>
     </Overlay>
   );
 }
@@ -1631,7 +1597,7 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, features }) {
+function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, features, onBatchImport }) {
   // Personal-template ledgers (features.showSplit false) have no one to split
   // with — the payer is just whoever's account this is, silently the first
   // member, and every expense is personal. Nothing left to ask about.
@@ -1684,6 +1650,38 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       setItems((out.items || []).map((i) => ({ name: i.name, price: Number(i.price) || 0, mode: "split" })));
     } catch (e) {
       setScanErr(e.message);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  // Upload always means "many at once": a real CSV, or a screenshot/PDF of a
+  // statement that the AI reads into separate transactions — never straight into
+  // this single-expense form. That's deliberately how Scan and Upload differ now:
+  // Scan is live single-receipt capture (with itemisation, above); Upload hands
+  // off to the batch review table (see onBatchImport / BatchImportModal).
+  const importBatchFile = async (file) => {
+    setScanErr(""); setScanning(true);
+    try {
+      let transactions;
+      if (file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv") {
+        transactions = parseCsvText(await file.text(), todayISO());
+      } else {
+        const { image, mediaType } = await fileToUpload(file);
+        const { data } = await supabase.auth.getSession();
+        const res = await fetch("/api/scan-statement", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ image, mediaType, token: data.session?.access_token }),
+        });
+        const out = await res.json();
+        if (!res.ok) throw new Error(out.error || res.statusText);
+        transactions = out.transactions || [];
+      }
+      if (!transactions.length) { setScanErr(t("csvNoRows")); return; }
+      onBatchImport(transactions);
+    } catch (e) {
+      setScanErr(e.message || String(e));
     } finally {
       setScanning(false);
     }
@@ -1765,8 +1763,14 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           <Loader2 size={18} className="spin" /> {t("scanning")}
         </div>
       ) : (
-        // Two entry points share one handler: Scan forces the camera (capture,
-        // image only); Upload takes a screenshot, image or PDF from the files.
+        // Scan and Upload now do different things, not just different sources:
+        // Scan forces the live camera for one receipt (with itemisation). Upload
+        // is always batch — a real CSV, or a screenshot/PDF the AI reads into
+        // several transactions — which is why its accept list is extensions
+        // rather than "image/*": that broad wildcard is what makes iOS Safari
+        // offer "Take Photo" in the picker sheet, redundant with Scan sitting
+        // right next to it. Not a guaranteed cross-version OS behaviour, just the
+        // commonly-observed one — there's no HTML attribute that controls it directly.
         <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
           <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
             <Camera size={18} /> {t("scanReceipt")}
@@ -1775,8 +1779,8 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
           </label>
           <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
             <Upload size={18} /> {t("uploadReceipt")}
-            <input type="file" accept="image/*,application/pdf,.pdf" style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
+            <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importBatchFile(f); }} />
           </label>
         </div>
       )}
@@ -2393,7 +2397,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onCsvImport, onManageMembers }) {
+function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecurring, onManageMembers }) {
   const [open, setOpen] = useState(false);
   const profile = useMyProfile();
   useEffect(() => {
@@ -2455,12 +2459,7 @@ function HeaderMenu({ t, lang, changeLang, onBudget, onReport, onStores, onRecur
               <Users size={15} /> {t("manageAccess")}
             </button>
           )}
-          {onCsvImport && (
-            <button role="menuitem" onClick={() => { setOpen(false); onCsvImport(); }} style={menuItem}>
-              <Upload size={15} /> {t("csvImport")}
-            </button>
-          )}
-          {(onBudget || onReport || onStores || onRecurring || onManageMembers || onCsvImport) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onBudget || onReport || onStores || onRecurring || onManageMembers) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           {/* Plain rows like every other entry — a segmented toggle in here read as
               a different kind of control and sat oddly among them. */}
           {[["en", "English"], ["zh", "繁體中文"]].map(([code, label]) => (
