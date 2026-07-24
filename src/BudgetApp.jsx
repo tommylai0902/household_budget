@@ -77,6 +77,7 @@ const STRINGS = {
     spentIn: "Spent in {month}",
     settleUp: "Settle up", allSquare: "All square this month 🎉",
     emptyState: "No expenses in {month} yet. Add your first one above.",
+    emptyStateDay: "No expenses on {date}.", showAll: "Show all",
     paidByRow: "{name} paid", split5050: "Split 50/50", personal: "Personal",
     uncategorised: "Uncategorised", edit: "Edit", delete: "Delete",
     deleteConfirm: 'Delete "{name}"?',
@@ -192,6 +193,7 @@ const STRINGS = {
     spentIn: "{month}支出",
     settleUp: "結算", allSquare: "本月已結清 🎉",
     emptyState: "{month}還沒有支出，先在上方新增一筆。",
+    emptyStateDay: "{date} 冇支出記錄。", showAll: "顯示全部",
     paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "個人",
     uncategorised: "未分類", edit: "修改", delete: "刪除",
     deleteConfirm: "確定刪除「{name}」？",
@@ -864,6 +866,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showRecurring, setShowRecurring] = useState(false);
   const [batchRows, setBatchRows] = useState(null); // transactions pending batch review (from Upload)
   const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(null); // MonthCalendar tap — filters the list only, not summary/settlement
   const [budgets, setBudgets] = useState(new Map());
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
@@ -955,6 +958,12 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
     () => expenses.filter((e) => monthOf(e.date) === month).sort((a, b) => (a.date < b.date ? 1 : -1)),
     [expenses, month]
   );
+  // Display-only filter from tapping a MonthCalendar day — summary/settlement
+  // below are computed from `rows`, not this, so they stay whole-month.
+  const visibleRows = useMemo(
+    () => (selectedDay ? rows.filter((e) => e.date === selectedDay) : rows),
+    [rows, selectedDay]
+  );
 
   const summary = useMemo(() => {
     let total = 0;
@@ -1003,7 +1012,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
             <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
               <ArrowLeft size={15} /> {t("exit")}
             </button>
-            <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label={t("selectMonth")} style={selectStyle}>
+            <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
               {monthsAvailable.map((m) => (
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
@@ -1029,15 +1038,19 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
 
         <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
 
+        <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t} />
+
         {/* List */}
         <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
-          {rows.length === 0 ? (
+          {visibleRows.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
               <Receipt size={26} style={{ opacity: 0.4 }} />
-              <p style={{ margin: "10px 0 0" }}>{t("emptyState", { month: label })}</p>
+              <p style={{ margin: "10px 0 0" }}>
+                {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: label })}
+              </p>
             </div>
           ) : (
-            rows.map((e, i) => {
+            visibleRows.map((e, i) => {
               const cat = catById(e.categoryId);
               const payer = memberById(members, e.paidById);
               return (
@@ -1161,6 +1174,69 @@ function SettlementBar({ transfers, members, t, onClick }) {
       </span>
       <ChevronRight size={18} style={{ color: settled ? SUB : OK_INK, flexShrink: 0 }} />
     </button>
+  );
+}
+
+// Month-grid view of daily spend, sitting above the transaction list. Tapping
+// a day is a display filter only — it narrows the list below, but summary/
+// settlement math stays whole-month (netBalances/settlements run on the
+// unfiltered rows in Ledger; this component never sees them).
+function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t }) {
+  const totals = useMemo(() => dailyTotalsFor(month, expenses), [month, expenses]);
+  const [year, mo] = month.split("-").map(Number);
+  const daysInMonth = new Date(year, mo, 0).getDate();
+  const startWeekday = (new Date(year, mo - 1, 1).getDay() + 6) % 7; // Monday = 0
+  // A known Monday, walked forward — gives locale-correct short weekday names
+  // without hardcoding a translated list, same trick monthName/shortDate use.
+  const weekdayLabels = useMemo(() => {
+    const monday = new Date(2024, 0, 1);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      return d.toLocaleDateString(dateLocale(lang), { weekday: "short" });
+    });
+  }, [lang]);
+  const today = todayISO();
+  const cells = Array(startWeekday).fill(null)
+    .concat(Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`));
+
+  return (
+    <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: 14, marginTop: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+        {weekdayLabels.map((w, i) => (
+          <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase" }}>{w}</div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+        {cells.map((iso, i) => {
+          if (!iso) return <div key={i} />;
+          const total = totals.get(iso) || 0;
+          const isToday = iso === today;
+          const isSelected = iso === selectedDay;
+          return (
+            <button key={iso} onClick={() => onSelectDay(isSelected ? null : iso)}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                minHeight: 46, borderRadius: 9, cursor: "pointer", fontFamily: "inherit", padding: 0,
+                border: isToday && !isSelected ? `1.5px solid ${TEAL}` : "1px solid transparent",
+                background: isSelected ? TEAL : "transparent", color: isSelected ? ACCENT_INK : INK,
+              }}>
+              <span style={{ fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600 }}>{Number(iso.slice(-2))}</span>
+              {total > 0 && (
+                <span style={{ fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: isSelected ? ACCENT_INK : SUB }}>
+                  {money(total)}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {selectedDay && (
+        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+          <span style={{ color: SUB }}>{shortDate(selectedDay, lang)}</span>
+          <button onClick={() => onSelectDay(null)} style={{ ...categoryLink, color: TEAL }}>{t("showAll")}</button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2290,6 +2366,16 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
       {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
     </Overlay>
   );
+}
+
+// Per-day totals for one month, for MonthCalendar's day cells.
+function dailyTotalsFor(month, expenses) {
+  const totals = new Map();
+  for (const e of expenses) {
+    if (monthOf(e.date) !== month) continue;
+    totals.set(e.date, (totals.get(e.date) || 0) + (Number(e.amount) || 0));
+  }
+  return totals;
 }
 
 // Category totals for one month, shared by the pie chart and both sides of the
