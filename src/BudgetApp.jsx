@@ -322,6 +322,9 @@ const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY
 const ACCENT_COLORS = [
   "#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D", "#636B74",
   "#D4B8B9", "#A8B6C4", "#B9C4B0", "#C2B2C2", "#E3D0B9",
+  "#E8D2C4", "#DB9169", "#D3BC72", "#C6BEA9", "#93976B", "#8CB89F", "#6A6890", "#DEDFAF",
+  "#8CA07E", "#7F9BAA", "#977680", "#726B4E", "#C56A61", "#E9D6DD", "#565B54", "#B14B52",
+  "#6D3F49", "#CBA97D", "#8C6432", "#C09E76", "#DDA6AE",
 ];
 // WCAG relative luminance -> pick whichever of white/near-black ink contrasts
 // better against that background. Crossover is ~0.179 (solving
