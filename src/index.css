@@ -10,6 +10,14 @@ html, body, #root { margin: 0; height: 100%; }
    The tinted pairs matter as pairs: a tint background is always drawn with
    its matching ink. Hardcoding the light-mode pair is what made the settle-up
    bar unreadable in dark mode — pale teal fill under near-white text. */
+:root {
+  /* User-pickable (Settings → Accent colour), same in both themes — this is
+     just the pre-JS fallback, App applies the saved choice as an inline
+     style on <html>, which outranks this rule. Every option in the picker is
+     one of MEMBER_COLORS (db.js), already proven to carry white text as a
+     member-avatar fill, so no option here can land on unreadable-with-white. */
+  --accent: #0E9384;
+}
 :root, :root[data-theme="light"] {
   color-scheme: light;
   --ink: #141A20; --sub: #5B6570; --line: #E4E7EB; --paper: #F6F7F9; --card: #ffffff;

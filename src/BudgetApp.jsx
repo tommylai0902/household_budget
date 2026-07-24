@@ -25,14 +25,16 @@ import { suggestCategoryId } from "./lib/categorize";
 
 // These point at index.css custom properties (not literal hex) so every
 // inline style built from them repaints for the dark theme automatically —
-// see the :root[data-theme] block there. TEAL is a brand accent, not a
-// neutral, so it stays constant across both themes.
+// see the :root[data-theme] block there. TEAL is the name kept from before
+// accent became user-pickable (Settings → Accent colour); it now reads
+// --accent, which App sets as an inline style on <html> and which stays the
+// same across both themes, same as it always did.
 const INK = "var(--ink)";
 const SUB = "var(--sub)";
 const LINE = "var(--line)";
 const PAPER = "var(--paper)";
 const CARD = "var(--card)";
-const TEAL = "#0E9384";
+const TEAL = "var(--accent)";
 // Tinted surfaces come in bg/ink pairs — always use a tint's own ink on it,
 // never INK, or the pair breaks when the theme flips.
 const OK_BG = "var(--ok-bg)";
@@ -134,7 +136,7 @@ const STRINGS = {
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
     currencyMismatch: "This receipt looks like it's in {scanned}, but this ledger is set to {ledger}. Amount was kept as printed — no conversion applied.",
     editCategories: "Edit categories", menu: "Menu",
-    settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark",
+    settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
@@ -248,7 +250,7 @@ const STRINGS = {
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
     currencyMismatch: "呢張收據睇落係 {scanned},但呢本帳簿設定咗 {ledger}。金額已按原數保留，冇做轉換。",
     editCategories: "編輯類別", menu: "選單",
-    settings: "設定", appearance: "外觀", light: "淺色", dark: "深色",
+    settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
@@ -323,6 +325,10 @@ const getTheme = () => {
   try { const s = localStorage.getItem("theme"); if (s === "light" || s === "dark") return s; } catch {}
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
+const getAccent = () => {
+  try { const c = localStorage.getItem("accent"); if (c && db.MEMBER_COLORS.includes(c)) return c; } catch {}
+  return db.MEMBER_COLORS[0];
+};
 
 /* ============================ Root ================================= */
 export default function App() {
@@ -333,6 +339,9 @@ export default function App() {
   const [theme, setTheme] = useState(getTheme);
   const changeTheme = (th) => { setTheme(th); try { localStorage.setItem("theme", th); } catch {} };
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
+  const [accent, setAccent] = useState(getAccent);
+  const changeAccent = (c) => { setAccent(c); try { localStorage.setItem("accent", c); } catch {} };
+  useEffect(() => { document.documentElement.style.setProperty("--accent", accent); }, [accent]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -356,9 +365,10 @@ export default function App() {
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} hasInvite={!!inviteToken} />;
   if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
-  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} onOpen={setLedger} currentUserId={session.user.id}
-    inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
-  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} />;
+  if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
+    onOpen={setLedger} currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
+  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t}
+    theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />;
 }
 
 function Centered({ children }) {
@@ -532,7 +542,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, theme, changeTheme, onOpen, inviteMsg, onDismissInvite, currentUserId }) {
+function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -602,7 +612,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, onOpen, inviteM
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>{t("ledgers")}</h1>
           {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
-          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} />
+          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
         </div>
         <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
 
@@ -769,7 +779,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 }
 
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t, theme, changeTheme }) {
+function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
   activeCurrency = ledger.currency || "CAD"; // set before children below read money()/currencySymbol()
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
@@ -935,7 +945,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
               onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
@@ -2508,7 +2518,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, theme, changeTheme, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
+function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const profile = useMyProfile();
@@ -2591,7 +2601,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, onBudget, onRepor
         </div>
       )}
       {showSettings && (
-        <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} onClose={() => setShowSettings(false)} />
+        <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onClose={() => setShowSettings(false)} />
       )}
     </div>
   );
@@ -2599,7 +2609,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, onBudget, onRepor
 
 // App-wide, not ledger-scoped — same panel opens from the picker or from
 // inside any ledger, which is why it only needs t/lang/theme, nothing here.
-function SettingsPanel({ t, lang, changeLang, theme, changeTheme, onClose }) {
+function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onClose }) {
   return (
     <Overlay title={t("settings")} onClose={onClose} t={t}>
       <Field label={t("language")}>
@@ -2611,6 +2621,19 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, onClose }) {
             <button key={value} onClick={() => changeTheme(value)}
               style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: theme === value ? TEAL : CARD, color: theme === value ? "#fff" : SUB }}>
               <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <Field label={t("accentColor")}>
+        {/* Every swatch is a MEMBER_COLORS entry — already proven elsewhere in
+            the app (member avatars) to carry a white glyph cleanly, so no
+            choice here can land on white-on-accent text going unreadable. */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {db.MEMBER_COLORS.map((c) => (
+            <button key={c} onClick={() => changeAccent(c)} aria-label={c} aria-pressed={accent === c}
+              style={{ width: 32, height: 32, borderRadius: 99, border: accent === c ? `2px solid ${INK}` : `1px solid ${LINE}`, padding: 0, background: c, cursor: "pointer", display: "grid", placeItems: "center" }}>
+              {accent === c && <Check size={15} color="#fff" />}
             </button>
           ))}
         </div>
