@@ -1091,6 +1091,13 @@ function SettlementBar({ transfers, members, t, onClick }) {
 function SettlementDetails({ members, summary, t, onClose }) {
   return (
     <Overlay title={t("settlementDetails")} t={t} onClose={onClose}>
+      {/* Who pays whom comes first: it's the answer you opened this panel for.
+          The per-member cards below are the working that backs it up. */}
+      {summary.transfers.length === 0 ? <div style={{ color: SUB, fontSize: 13 }}>{t("noSharedBills")}</div> : (
+        <div style={{ background: OK_BG, color: OK_INK, borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700 }}>
+          {summary.transfers.map((transfer, index) => <div key={index}>{t("owesLine", { debtor: memberById(members, transfer.fromId)?.name || "—", creditor: memberById(members, transfer.toId)?.name || "—", amount: money(transfer.amount) })}</div>)}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {members.map((member) => {
           const balance = summary.balances.get(member.id) || 0;
@@ -1108,11 +1115,6 @@ function SettlementDetails({ members, summary, t, onClose }) {
           );
         })}
       </div>
-      {summary.transfers.length === 0 ? <div style={{ color: SUB, fontSize: 13 }}>{t("noSharedBills")}</div> : (
-        <div style={{ background: OK_BG, color: OK_INK, borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700 }}>
-          {summary.transfers.map((transfer, index) => <div key={index}>{t("owesLine", { debtor: memberById(members, transfer.fromId)?.name || "—", creditor: memberById(members, transfer.toId)?.name || "—", amount: money(transfer.amount) })}</div>)}
-        </div>
-      )}
     </Overlay>
   );
 }
