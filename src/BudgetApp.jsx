@@ -74,8 +74,7 @@ const STRINGS = {
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
     addExpense: "Add expense",
-    spentIn: "Spent in {month}",
-    settleUp: "Settle up", allSquare: "All square this month 🎉",
+    spentIn: "Spent in {month}", checkSettleUp: "Check settle up",
     emptyState: "No expenses in {month} yet. Add your first one above.",
     emptyStateDay: "No expenses on {date}.", showAll: "Show all",
     paidByRow: "{name} paid", split5050: "Split 50/50", personal: "Personal",
@@ -190,8 +189,7 @@ const STRINGS = {
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
     addExpense: "新增支出",
-    spentIn: "{month}支出",
-    settleUp: "結算", allSquare: "本月已結清 🎉",
+    spentIn: "{month}支出", checkSettleUp: "查看結算",
     emptyState: "{month}還沒有支出，先在上方新增一筆。",
     emptyStateDay: "{date} 冇支出記錄。", showAll: "顯示全部",
     paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "個人",
@@ -1028,17 +1026,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
 
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
-        <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t} />
+        <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t}
+          monthLabel={label} total={summary.total} onCheckSettleUp={() => setShowSettlement(true)} />
 
-        {/* Summary / settlement */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px", marginTop: 14, marginBottom: 14 }}>
-          <span style={{ fontSize: 13, color: SUB, fontWeight: 600 }}>{t("spentIn", { month: label })}</span>
-          <span style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(summary.total)}</span>
-        </div>
-
-        <SettlementBar transfers={summary.transfers} members={members} t={t} onClick={() => setShowSettlement(true)} />
-
-        <button onClick={() => setEditing("new")} style={addBtn}><Plus size={18} /> {t("addExpense")}</button>
+        <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
 
         {/* List */}
         <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
@@ -1163,25 +1154,14 @@ function LangToggle({ lang, changeLang }) {
 
 // Shows the single largest transfer as plain "X owes Y $n"; the full list (there
 // can be several with 3+ members) lives in the SettlementDetails panel this opens.
-function SettlementBar({ transfers, members, t, onClick }) {
-  const settled = transfers.length === 0;
-  const first = transfers[0];
-  return (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", marginBottom: 14, border: `1px solid ${settled ? LINE : OK_LINE}`, borderRadius: 12, background: settled ? MUTED_BG : OK_BG, color: settled ? INK : OK_INK, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-      <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 800, color: settled ? SUB : OK_INK, background: settled ? LINE : OK_STRONG, padding: "3px 8px", borderRadius: 6, flexShrink: 0 }}>{t("settleUp")}</span>
-      <span style={{ flex: 1, fontWeight: 700, minWidth: 0 }}>
-        {settled ? t("allSquare") : t("owesLine", { debtor: memberById(members, first.fromId)?.name || "—", creditor: memberById(members, first.toId)?.name || "—", amount: money(first.amount) })}
-      </span>
-      <ChevronRight size={18} style={{ color: settled ? SUB : OK_INK, flexShrink: 0 }} />
-    </button>
-  );
-}
-
 // Month-grid view of daily spend, sitting above the transaction list. Tapping
 // a day is a display filter only — it narrows the list below, but summary/
 // settlement math stays whole-month (netBalances/settlements run on the
-// unfiltered rows in Ledger; this component never sees them).
-function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t }) {
+// unfiltered rows in Ledger; this component never sees them). The spend
+// total and settle-up entry point (formerly two separate bars) live as a
+// footer row on this same card — "Check settle up" is deliberately detail-
+// free, the amounts/who-owes-whom live in SettlementDetails behind it.
+function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, monthLabel, total, onCheckSettleUp }) {
   const totals = useMemo(() => dailyTotalsFor(month, expenses), [month, expenses]);
   const [year, mo] = month.split("-").map(Number);
   const daysInMonth = new Date(year, mo, 0).getDate();
@@ -1236,6 +1216,13 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t }) {
           <button onClick={() => onSelectDay(null)} style={{ ...categoryLink, color: TEAL }}>{t("showAll")}</button>
         </div>
       )}
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${LINE}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: SUB, fontWeight: 600 }}>{t("spentIn", { month: monthLabel })}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
+        </div>
+        <button onClick={onCheckSettleUp} style={{ ...ghostBtn, flexShrink: 0 }}>{t("checkSettleUp")}</button>
+      </div>
     </div>
   );
 }
