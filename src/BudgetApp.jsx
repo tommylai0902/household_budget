@@ -15,6 +15,7 @@ import * as db from "./lib/db";
 import { settlements, netBalances } from "./lib/settle";
 import { nextOccurrence } from "./lib/recurring";
 import { parseCsvText, guessCategoryId, buildPreviewRows } from "./lib/csv";
+import { suggestCategoryId } from "./lib/categorize";
 
 /* ------------------------------------------------------------------ *
  * Household Budget — Step 2: shared, live-synced ledger (Supabase).
@@ -990,7 +991,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       )}
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
-          merchants={merchants} ledgers={allLedgers} lang={lang} t={t}
+          merchants={merchants} expenses={expenses} ledgers={allLedgers} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)}
           onEditCategories={() => setManagingCats(true)} defaultMonth={month}
           onBatchImport={(transactions) => { setEditing(null); setBatchRows(transactions); }} />
@@ -1643,7 +1644,7 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, features, onBatchImport }) {
+function ExpenseForm({ initial, categories, members, merchants, expenses = [], ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, features, onBatchImport }) {
   // Personal-template ledgers (features.showSplit false) have no one to split
   // with — the payer is just whoever's account this is, silently the first
   // member, and every expense is personal. Nothing left to ask about.
@@ -1660,6 +1661,17 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
   const [currencyMismatch, setCurrencyMismatch] = useState(null); // scanned receipt's ISO code, when it differs from the ledger's
   const [remember, setRemember] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  // Once you've picked a category yourself (or this is an existing expense),
+  // typing stops trying to guess one for you.
+  const [categoryTouched, setCategoryTouched] = useState(!!initial);
+  const applyDescription = (value) => setD((prev) => {
+    const next = { ...prev, description: value };
+    if (!categoryTouched) {
+      const suggested = suggestCategoryId(value, expenses);
+      if (suggested) next.categoryId = suggested;
+    }
+    return next;
+  });
   // { name, price, mode: split|personal|drop }. Reopening a saved expense brings
   // its stored lines back; those prices already include their share of the tax,
   // which is why scanTotal stays null and the ratio below comes out as 1.
@@ -1843,7 +1855,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
             suggestions never showed. Hand-rolled dropdown instead. */}
         <div style={{ position: "relative" }}>
           <input autoFocus value={d.description}
-            onChange={(e) => { setD({ ...d, description: e.target.value }); setSuggestOpen(true); }}
+            onChange={(e) => { applyDescription(e.target.value); setSuggestOpen(true); }}
             onFocus={() => setSuggestOpen(true)}
             onBlur={() => setSuggestOpen(false)}
             onKeyDown={(e) => e.key === "Escape" && setSuggestOpen(false)}
@@ -1852,7 +1864,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
             <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 70, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", overflow: "hidden" }}>
               {suggestions.map((m) => (
                 // mousedown, not click: blur would close the list first otherwise.
-                <button key={m.id} onMouseDown={(e) => { e.preventDefault(); setD({ ...d, description: m.name }); setSuggestOpen(false); }} style={suggestItem}>
+                <button key={m.id} onMouseDown={(e) => { e.preventDefault(); applyDescription(m.name); setSuggestOpen(false); }} style={suggestItem}>
                   <Store size={13} style={{ color: SUB, flexShrink: 0 }} /> {m.name}
                 </button>
               ))}
@@ -1931,7 +1943,7 @@ function ExpenseForm({ initial, categories, members, merchants, ledgers = [], la
       }>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {categories.map((c) => (
-            <button key={c.id} onClick={() => setD({ ...d, categoryId: c.id })} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
+            <button key={c.id} onClick={() => { setCategoryTouched(true); setD({ ...d, categoryId: c.id }); }} style={chip(d.categoryId === c.id)}>{catName(c, lang)}</button>
           ))}
         </div>
         {categories.length === 0 && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 6 }}>{t("noCategoriesHint")}</div>}
