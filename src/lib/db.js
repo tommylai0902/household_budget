@@ -66,6 +66,15 @@ export async function createLedger(name, template = "household") {
   // No preset members (not even Tommy/Wing) — every ledger, household included,
   // starts empty and you add whoever's actually splitting it via Edit members.
   await seedCategories(id, template);
+  // Personal ledgers hide "Who paid?"/"Edit members" entirely (one silent payer,
+  // by design) — without a single member seeded here, there'd be no UI path to
+  // ever create one, and every expense would fail its paid_by_id NOT NULL check.
+  if (!featuresFor(template).showSplit) {
+    const { data: me } = await supabase.from("app_user").select("name").eq("id", ownerId).maybeSingle();
+    const myName = me?.name || session.user.email || "Me";
+    const { error: memberErr } = await supabase.from("ledger_members").insert({ ledger_id: id, name: myName, color: MEMBER_COLORS[0] });
+    if (memberErr) throw memberErr;
+  }
   return { id, name, template };
 }
 // Only touches the ledger row itself — changing the template here swaps the icon,
