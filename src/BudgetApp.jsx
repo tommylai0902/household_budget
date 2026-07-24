@@ -1064,7 +1064,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                       {payer?.name || "—"}
                     </span>
                     <span aria-hidden="true">·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: e.split === "shared" ? TEAL : SUB }}>
+                    {/* Plain SUB, matching the date/payer either side — it stood
+                        out as the one accent-coloured thing in an otherwise
+                        neutral metadata row. */}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: SUB }}>
                       {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
                       {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
                     </span>
