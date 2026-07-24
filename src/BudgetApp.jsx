@@ -35,6 +35,11 @@ const LINE = "var(--line)";
 const PAPER = "var(--paper)";
 const CARD = "var(--card)";
 const TEAL = "var(--accent)";
+// The accent palette now spans dark, dusty tones and light, pastel ones (see
+// ACCENT_COLORS below) — a single hardcoded "#fff" stopped being safe as the
+// text/icon colour drawn on top of it. ACCENT_INK is computed per pick (see
+// accentInkFor) and kept as a matching CSS var, same mechanism as TEAL itself.
+const ACCENT_INK = "var(--accent-ink)";
 // Tinted surfaces come in bg/ink pairs — always use a tint's own ink on it,
 // never INK, or the pair breaks when the theme flips.
 const OK_BG = "var(--ok-bg)";
@@ -310,10 +315,25 @@ const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY
 // Settings → Accent colour. Deliberately its own dusty/muted (Morandi-style)
 // palette, not MEMBER_COLORS — those stay saturated on purpose, for telling
 // people apart at a glance in chips and charts, which is a different job
-// from an app-wide theme colour. Every entry here still clears ~4.8:1 against
-// white text (checked by hand), so the white-text-on-accent buttons/chips
-// throughout the app stay readable no matter which one is picked.
-const ACCENT_COLORS = ["#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D", "#636B74"];
+// from an app-wide theme colour. Spans both dark, dusty tones and light,
+// pastel ones, which is why the text drawn on top (ACCENT_INK) is computed
+// per pick rather than hardcoded — a pastel needs dark text, a dusty tone
+// needs white, and this list mixes both on purpose.
+const ACCENT_COLORS = [
+  "#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D", "#636B74",
+  "#D4B8B9", "#A8B6C4", "#B9C4B0", "#C2B2C2", "#E3D0B9",
+];
+// WCAG relative luminance -> pick whichever of white/near-black ink contrasts
+// better against that background. Crossover is ~0.179 (solving
+// 1.05/(L+.05) = (L+.05)/.05 for L); this is the same formula the earlier
+// hand-checked "~4.8:1" comment relied on, just automated across a bigger
+// palette instead of eyeballing each new addition.
+const relLuminance = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+};
+const accentInkFor = (hex) => (relLuminance(hex) > 0.179 ? "#1A1F24" : "#fff");
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
 const monthName = (m, lang) =>
@@ -348,7 +368,10 @@ export default function App() {
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
   const [accent, setAccent] = useState(getAccent);
   const changeAccent = (c) => { setAccent(c); try { localStorage.setItem("accent", c); } catch {} };
-  useEffect(() => { document.documentElement.style.setProperty("--accent", accent); }, [accent]);
+  useEffect(() => {
+    document.documentElement.style.setProperty("--accent", accent);
+    document.documentElement.style.setProperty("--accent-ink", accentInkFor(accent));
+  }, [accent]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -658,7 +681,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                       const Icon = ledgerIcon(k);
                       return (
                         <button key={k} onClick={() => setDraftTpl(k)} aria-label={t("tpl" + k[0].toUpperCase() + k.slice(1))}
-                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : CARD, color: draftTpl === k ? "#fff" : SUB }}>
+                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : CARD, color: draftTpl === k ? ACCENT_INK : SUB }}>
                           <Icon size={16} />
                         </button>
                       );
@@ -1083,7 +1106,7 @@ function LangToggle({ lang, changeLang }) {
   return (
     <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
       {[["en", "EN"], ["zh", "繁中"]].map(([l, lbl]) => (
-        <button key={l} onClick={() => changeLang(l)} style={{ padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: lang === l ? TEAL : CARD, color: lang === l ? "#fff" : SUB }}>{lbl}</button>
+        <button key={l} onClick={() => changeLang(l)} style={{ padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: lang === l ? TEAL : CARD, color: lang === l ? ACCENT_INK : SUB }}>{lbl}</button>
       ))}
     </div>
   );
@@ -1982,7 +2005,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 <div style={{ display: "flex", gap: 4 }}>
                   {[["split", t("itemSplit"), Users], ["personal", t("itemPersonal"), User], ["drop", t("itemDrop"), Trash2]].map(([mode, label, Icon]) => (
                     <button key={mode} onClick={() => setItemMode(idx, mode)} aria-label={label} title={label}
-                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : CARD, color: it.mode === mode ? "#fff" : SUB }}>
+                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : CARD, color: it.mode === mode ? ACCENT_INK : SUB }}>
                       <Icon size={13} />
                     </button>
                   ))}
@@ -2551,7 +2574,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
             // Pre-invite-feature accounts had name backfilled to their email
             // (migration 009) — show it once, not as a duplicated name+email pair.
             <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "-6px -6px 6px", padding: "12px 14px", background: PAPER, borderBottom: `1px solid ${LINE}`, borderRadius: "10px 10px 0 0" }}>
-              <span style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 99, background: TEAL, color: "#fff", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+              <span style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 99, background: TEAL, color: ACCENT_INK, fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
                 {(profile.name || profile.email || "?").trim().charAt(0).toUpperCase()}
               </span>
               <div style={{ minWidth: 0 }}>
@@ -2626,7 +2649,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
           {[["light", t("light"), Sun], ["dark", t("dark"), Moon]].map(([value, label, Icon]) => (
             <button key={value} onClick={() => changeTheme(value)}
-              style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: theme === value ? TEAL : CARD, color: theme === value ? "#fff" : SUB }}>
+              style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: theme === value ? TEAL : CARD, color: theme === value ? ACCENT_INK : SUB }}>
               <Icon size={14} /> {label}
             </button>
           ))}
@@ -2637,7 +2660,9 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
           {ACCENT_COLORS.map((c) => (
             <button key={c} onClick={() => changeAccent(c)} aria-label={c} aria-pressed={accent === c}
               style={{ width: 32, height: 32, borderRadius: 99, border: accent === c ? `2px solid ${INK}` : `1px solid ${LINE}`, padding: 0, background: c, cursor: "pointer", display: "grid", placeItems: "center" }}>
-              {accent === c && <Check size={15} color="#fff" />}
+              {/* Own colour's ink, not the currently-picked accent's — a pale
+                  swatch needs a dark tick even while a dusty one is selected. */}
+              {accent === c && <Check size={15} color={accentInkFor(c)} />}
             </button>
           ))}
         </div>
@@ -2702,7 +2727,7 @@ const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", bo
 // for a <select>, sometimes doesn't fully zoom back out after you pick a
 // value — leaving the page clipped/squeezed at the top until you scroll.
 const selectStyle = { ...input, width: "auto", padding: "8px 10px", cursor: "pointer", fontWeight: 600, fontSize: 16 };
-const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
+const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: ACCENT_INK, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid ${BAD_LINE}`, background: CARD, color: DANGER, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
@@ -2718,7 +2743,9 @@ function pill(color) {
   return { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, border: "none", fontSize: 12.5, fontWeight: 700, color: "#fff", background: color, fontFamily: "inherit", whiteSpace: "nowrap" };
 }
 function selectablePill(color, active) {
-  return { padding: "6px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: active ? "#fff" : color, background: active ? color : "transparent", border: `1.5px solid ${color}`, fontFamily: "inherit" };
+  // Only ever called with TEAL as `color` — ACCENT_INK is that colour's
+  // matching text, not a generic "white on any fill" assumption.
+  return { padding: "6px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: active ? ACCENT_INK : color, background: active ? color : "transparent", border: `1.5px solid ${color}`, fontFamily: "inherit" };
 }
 // Unified selectable chip: neutral grey when off, brand green when on. Category
 // and member tags share it, so the form reads as one system rather than a row of
@@ -2727,11 +2754,11 @@ function chip(active) {
   // Unselected used to be a flat light-gray fill that needed no border to read
   // as a pill; now that it's CARD (white in light mode, dark in night mode) a
   // border keeps it visible against the page background in both themes.
-  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, fontFamily: "inherit", color: active ? "#fff" : INK, background: active ? TEAL : CARD };
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
 }
 // One grey track, the active half lifts to green — a proper segmented control.
 function segItem(active) {
-  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", color: active ? "#fff" : SUB, background: active ? TEAL : "transparent" };
+  return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", color: active ? ACCENT_INK : SUB, background: active ? TEAL : "transparent" };
 }
 function splitBadge(split) {
   const shared = split === "shared";

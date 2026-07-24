@@ -12,11 +12,13 @@ html, body, #root { margin: 0; height: 100%; }
    bar unreadable in dark mode — pale teal fill under near-white text. */
 :root {
   /* User-pickable (Settings → Accent colour), same in both themes — this is
-     just the pre-JS fallback, App applies the saved choice as an inline style
-     on <html>, which outranks this rule. Matches ACCENT_COLORS[0] in
-     BudgetApp.jsx, a dusty/muted palette (no vibrant options by request),
-     each entry checked by hand to clear ~4.8:1 against white text. */
+     just the pre-JS fallback, App applies the saved choice (plus its matching
+     --accent-ink, computed by accentInkFor in BudgetApp.jsx) as inline styles
+     on <html>, which outrank these rules. Matches ACCENT_COLORS[0] — a dusty
+     Morandi tone, so its ink is white, same as the rest of that dark half of
+     the palette. */
   --accent: #41625F;
+  --accent-ink: #fff;
 }
 :root, :root[data-theme="light"] {
   color-scheme: light;
