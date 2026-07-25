@@ -105,7 +105,7 @@ const STRINGS = {
     monthlyReport: "Reports", reportFor: "Spending in {month}",
     reportTotal: "Total spending", reportCategories: "By category",
     reportEmpty: "No spending recorded for this month yet.", reportUncategorised: "Uncategorised",
-    compareMonth: "Compare to", compareVs: "This month vs {month}",
+    compareMonth: "Compare to",
     compareEmpty: "Nothing to compare — no spending in either month.",
     compareUnchanged: "No change", compareNew: "New this month",
     compareGoneLabel: "Gone this month",
@@ -219,7 +219,7 @@ const STRINGS = {
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
     reportEmpty: "這個月尚未有支出紀錄。", reportUncategorised: "未分類",
-    compareMonth: "比較月份", compareVs: "本月 vs {month}",
+    compareMonth: "比較月份",
     compareEmpty: "兩個月都冇支出，冇嘢好比較。",
     compareUnchanged: "冇變動", compareNew: "本月新增",
     compareGoneLabel: "本月冇咗",
@@ -2472,20 +2472,6 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
 
   return (
     <Overlay onClose={onClose} title={t("monthlyReport")} t={t}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("selectMonth")}</div>
-          <select value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label={t("selectMonth")} style={{ ...selectStyle, width: "100%" }}>
-            {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
-          </select>
-        </div>
-        <div style={{ flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("compareMonth")}</div>
-          <select value={compareMonth} onChange={(e) => setCompareMonth(e.target.value)} aria-label={t("compareMonth")} style={{ ...selectStyle, width: "100%" }}>
-            {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
-          </select>
-        </div>
-      </div>
       <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("reportTotal")}</div>
         <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
@@ -2520,12 +2506,28 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
       )}
 
       <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>{t("compareVs", { month: monthName(compareMonth, lang) })}</div>
-          <div style={{ display: "flex", gap: 12, fontSize: 11, color: SUB }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: TEAL }} /> {monthName(month, lang)}</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "#94A3B8" }} /> {monthName(compareMonth, lang)}</span>
+        {/* Select month/Compare to used to sit at the top of the whole panel;
+            moved here since this comparison section is the only place they
+            actually matter — the pie chart/breakdown above only ever reflect
+            "Select month" anyway. Doubles as this section's header, replacing
+            the old static "This month vs {month}" title. */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 130 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("selectMonth")}</div>
+            <select value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label={t("selectMonth")} style={{ ...selectStyle, width: "100%" }}>
+              {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
+            </select>
           </div>
+          <div style={{ flex: 1, minWidth: 130 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("compareMonth")}</div>
+            <select value={compareMonth} onChange={(e) => setCompareMonth(e.target.value)} aria-label={t("compareMonth")} style={{ ...selectStyle, width: "100%" }}>
+              {months.map((value) => <option key={value} value={value}>{monthName(value, lang)}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 12, fontSize: 11, color: SUB, marginBottom: 10 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: TEAL }} /> {monthName(month, lang)}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: "#94A3B8" }} /> {monthName(compareMonth, lang)}</span>
         </div>
         {comparison.length === 0 ? (
           <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "20px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("compareEmpty")}</div>
