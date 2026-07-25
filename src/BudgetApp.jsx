@@ -100,7 +100,7 @@ const STRINGS = {
     budgetNone: "No budgets set for {month}. Give any category an amount below.",
     budgetSpent: "Spent", budgetLeft: "Left", budgetOver: "Over budget",
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget", setBudgetPh: "Set budget",
-    budgetPct: "{pct}% used", budgetOtherMonths: "Other months",
+    budgetAmountLabel: "{amount} budget", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
     monthlyReport: "Reports", reportFor: "Spending in {month}",
     reportTotal: "Total spending", reportCategories: "By category",
@@ -215,7 +215,7 @@ const STRINGS = {
     budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
     budgetSpent: "已用", budgetLeft: "剩餘", budgetOver: "超出預算",
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算", setBudgetPh: "設定預算",
-    budgetPct: "已用 {pct}%", budgetOtherMonths: "其他月份",
+    budgetAmountLabel: "預算 {amount}", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
     reportEmpty: "這個月尚未有支出紀錄。", reportUncategorised: "未分類",
@@ -2288,11 +2288,17 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
 const budgetBarColor = (spent, budget) =>
   !budget ? LINE : spent > budget ? DANGER : spent / budget > 0.8 ? "#D97706" : TEAL;
 
-function BudgetBar({ spent, budget, height = 8 }) {
+// `pace` (0-100, only passed for the month actually in progress) marks how
+// far through the month "today" is — a quick "on track or not" cue next to
+// the fill, not derived from spend/budget at all.
+function BudgetBar({ spent, budget, height = 8, pace }) {
   const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
   return (
-    <div style={{ height, borderRadius: 99, background: TRACK, overflow: "hidden" }}>
+    <div style={{ position: "relative", height, borderRadius: 99, background: TRACK, overflow: "hidden" }}>
       <div style={{ width: `${budget > 0 ? Math.max(pct, spent > 0 ? 2 : 0) : 0}%`, height: "100%", background: budgetBarColor(spent, budget), borderRadius: 99, transition: "width .25s ease" }} />
+      {pace != null && budget > 0 && (
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${pace}%`, width: 2, background: INK, opacity: 0.3 }} />
+      )}
     </div>
   );
 }
@@ -2313,6 +2319,12 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
   const left = totalBudget - spent;
   const over = left < 0;
   const uncategorised = spent - categories.reduce((s, c) => s + (spentByCategory.get(c.id) || 0), 0);
+  // Only meaningful for the month actually in progress — a past or future
+  // month has no "today" to mark a pace against.
+  const today = todayISO();
+  const pace = monthOf(today) === month
+    ? (Number(today.slice(-2)) / new Date(...month.split("-").map(Number), 0).getDate()) * 100
+    : null;
 
   const save = async () => {
     setBusy(true);
@@ -2326,49 +2338,34 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
 
       {/* Whole-month roll-up */}
       <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("budgetTotal")}</span>
-          {totalBudget > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: SUB }}>{t("budgetPct", { pct: Math.round((spent / totalBudget) * 100) })}</span>}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+          <span style={{ fontSize: 15, fontWeight: 700 }}>{t("budgetTotal")}</span>
+          {totalBudget > 0 && <span style={{ fontSize: 13, color: SUB }}>{t("budgetAmountLabel", { amount: money(totalBudget) })}</span>}
         </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-          <span style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(spent)}</span>
-          {totalBudget > 0 && <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>/ {money(totalBudget)}</span>}
-        </div>
-        <BudgetBar spent={spent} budget={totalBudget} height={12} />
+        <BudgetBar spent={spent} budget={totalBudget} height={12} pace={pace} />
         {totalBudget > 0 ? (
-          <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>
-              {over ? t("budgetOver") : t("budgetLeft")}
-            </span>
-            <span style={{ fontSize: 22, fontWeight: 800, color: over ? DANGER : TEAL, fontVariantNumeric: "tabular-nums" }}>
-              {money(Math.abs(left))}
-            </span>
+          <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 14 }}>
+            <span><b style={{ fontWeight: 800 }}>{money(spent)}</b> <span style={{ color: SUB }}>{t("budgetSpent")}</span></span>
+            <span><b style={{ fontWeight: 800, color: over ? DANGER : INK }}>{money(Math.abs(left))}</b> <span style={{ color: SUB }}>{over ? t("budgetOver") : t("budgetLeft")}</span></span>
           </div>
         ) : (
-          <div style={{ marginTop: 12, fontSize: 13, color: SUB }}>{t("budgetNone", { month: monthLabel })}</div>
+          <div style={{ marginTop: 10, fontSize: 13, color: SUB }}>{t("budgetNone", { month: monthLabel })}</div>
         )}
       </div>
 
-      {/* Per-category */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* Column headers, aligned to the spent value and the budget field below. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: -4 }}>
-          <span style={{ flex: 1, minWidth: 0 }}>{t("category")}</span>
-          <span style={{ width: 72, textAlign: "right" }}>{t("budgetSpent")}</span>
-          <span style={{ width: 104, textAlign: "left", paddingLeft: 2 }}>{t("budget")}</span>
-        </div>
+      {/* Per-category — each its own card, same spent/budget/remaining shape
+          as the roll-up above it, since that's just their sum. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {categories.map((c) => {
           const s = spentByCategory.get(c.id) || 0;
           const b = budgetOf(c.id);
           const hasBudget = drafts[c.id] != null && drafts[c.id] !== "";
+          const catLeft = b - s;
+          const catOver = catLeft < 0;
           return (
-            <div key={c.id}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0 }}>{catName(c)}</button>
-                {/* Just what's been spent — the budget itself is in the field alongside. */}
-                <span style={{ width: 72, textAlign: "right", fontSize: 12, color: b > 0 && s > b ? DANGER : SUB, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                  {money(s)}
-                </span>
+            <div key={c.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{catName(c)}</button>
                 <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 104, flexShrink: 0, padding: "7px 8px", fontSize: 13 }}>
                   {/* Dollar sign only once there's a value, so an unset field reads as
                       "Set budget" rather than a misleading "$ 0.00". */}
@@ -2379,7 +2376,13 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
                     placeholder={t("setBudgetPh")} style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
                 </div>
               </div>
-              <BudgetBar spent={s} budget={b} />
+              <BudgetBar spent={s} budget={b} pace={pace} />
+              <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                <span><b style={{ fontWeight: 800 }}>{money(s)}</b> <span style={{ color: SUB }}>{t("budgetSpent")}</span></span>
+                {hasBudget && (
+                  <span><b style={{ fontWeight: 800, color: catOver ? DANGER : INK }}>{money(Math.abs(catLeft))}</b> <span style={{ color: SUB }}>{catOver ? t("budgetOver") : t("budgetLeft")}</span></span>
+                )}
+              </div>
             </div>
           );
         })}
