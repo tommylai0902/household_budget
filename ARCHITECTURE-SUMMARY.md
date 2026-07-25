@@ -169,6 +169,21 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 
 ---
 
+## 12b. Notification Centre + 訂閱取消提醒(migration 017)
+
+一個新表 `notifications`,**跨全部 template**(唔係淨係 kid ledger 嗰啲),同埋一個全域(唔跟單一帳簿)嘅 Bell component。
+
+- **邊度會有 reminder**:Add/Edit Expense 表格,揀嘅 category 個名(`catName(c)`)一係 `"Subscriptions"`,就會多出一個「Cancellation Reminder」Field——係按名嚟判斷,唔係按 template,所以邊個 template 有個叫「Subscriptions」嘅類別(seed 定自己改名都好)都會觸發,唔淨係 `personal` template 果 7 個預設類別入面嗰個。
+- **Toggle 一開,`reminderDate` 自動填 `billing date - 3 日`**(`addDays(prev.date, -3)`),但淨係喺 off→on 嗰下先填一次——之後你自己改咗個日期,唔會因為改咗 billing date 就俾佢靜雞雞蓋返轉頭。
+- **一個 expense 淨係得一個 reminder**:`notifications.expense_id` 有 `unique` constraint,`db.upsertReminderNotification()` 用 `onConflict: expense_id` 嚟做,再 save 一次就係覆蓋,唔會愈嚟愈多重複行。撳走 toggle,或者 category 改咗做第樣,`Ledger.upsertExpense()` 就會 `deleteReminderNotification()`。
+- **編輯緊嘅 expense 點知自己有冇 reminder**:`expenses` 表冇呢兩個欄(`hasReminder`/`reminderDate`),`Ledger` 用 `db.fetchLedgerReminders(ledgerId)` 攞成個 ledger 嘅 reminder(用 `expense_id` 做 key 嘅 Map,**冇 due 唔 due 嘅篩選**),再用 `existingReminder` prop 傳落 `ExpenseForm` 補返落個 draft 度。呢一步唔做嘅話,打開一個已經有 reminder 嘅 subscription,toggle 會預設off,一撳 Save 就會靜雞雞刪咗個原本嘅 reminder——已經確認過真係會咁,而家補晒。
+- **Bell 淨係顯示「到咗嘅」**:`db.fetchNotifications()` 有 `remind_at <= today` 嘅篩選——冇到嘅 reminder(例如 billing date 喺下個月)喺編輯嗰陣照樣睇到個 toggle/日期,但唔會喺 bell 度出現同計入 unread count,因為冇跟排程 job,「到咗未」淨係前端攞返嚟嗰下同今日比較,同 `generateDueRecurring` 果套一樣土炮。
+- **Mark as read vs Dismiss**:前者淨係 flip `read`,個 item 留喺個 list(冇咗個「Mark as read」掣同個 unread 樣式);後者係真係 delete 行,成個消失。「Mark all as read」淨係傳緊喺畫面度嗰批 unread 嘅 id,唔係盲目 update read=false 嘅全部行(咁樣先唔會將未到期嘅 reminder 都錯手標成已讀)。
+- **Bell 係全域,唔綁單一帳簿**:同 `fetchLedgers()` 一樣淨係靠 RLS 窄返去邊個帳簿你有得睇,`db.js` 冇傳任何 `ledgerId`——一個 bell 就跟晒你成個帳號嘅所有帳簿。
+- **必踩坑,已修好**:同 Kid Ledger 嗰次一樣嘅陷阱又踩多次——`fetchLedgerReminders` 一開始都係加落 `refresh()` 嘅 `Promise.all`,但呢次冇得好似 `wishlist_goals` 咁淨係 kid template 先 fetch(subscription reminder 邊個 template 都用得),所以 migration 017 行之前**四個舊 template 全部一齊爆**(`Could not find the table 'public.notifications'`)——呢個係預咗嘅、冇得避嘅代價(呢個 feature 本身就要跨晒所有 template),行完 migration 就冇事。
+
+---
+
 ## 12. 未驗證 / 已知限制(交低俾下一個對話)
 
 - `/api/scan-statement.js` 嘅 AI 讀 statement 路徑(需要真實相/PDF + 有效 Gemini key,呢邊環境驗唔到)。

@@ -280,6 +280,7 @@ export async function insertExpense(e, ledgerId) {
   if (error) throw error;
   await writeSplits(data.id, e);
   await writeItems(data.id, e);
+  return data.id;
 }
 
 // CSV batch import: each row through the exact same path as a single add, so
@@ -604,6 +605,62 @@ export async function saveWishlistGoal(ledgerId, { name, targetAmount }) {
   if (error) throw error;
 }
 
+/* ---- notifications ---- */
+// One reminder per expense (unique expense_id, migration 017) — re-saving the
+// expense form overwrites it rather than piling up duplicates.
+export async function upsertReminderNotification(ledgerId, expenseId, { title, remindAt }) {
+  const { error } = await supabase.from("notifications").upsert(
+    { ledger_id: ledgerId, expense_id: expenseId, title, remind_at: remindAt, read: false },
+    { onConflict: "expense_id" },
+  );
+  if (error) throw error;
+}
+export async function deleteReminderNotification(expenseId) {
+  const { error } = await supabase.from("notifications").delete().eq("expense_id", expenseId);
+  if (error) throw error;
+}
+// Every reminder in this ledger, keyed by expense_id — lets the Add/Edit form
+// know an expense already has one (and its date) without a per-expense round
+// trip. Not filtered to "due" (see fetchNotifications for that) — editing a
+// not-yet-due reminder still needs to show it as set.
+export async function fetchLedgerReminders(ledgerId) {
+  const { data, error } = await supabase
+    .from("notifications").select("expense_id, title, remind_at").eq("ledger_id", ledgerId).not("expense_id", "is", null);
+  if (error) throw error;
+  return new Map(data.map((r) => [r.expense_id, { title: r.title, remindAt: r.remind_at }]));
+}
+
+// Notification Centre bell: every ledger the signed-in user can see (RLS scopes
+// this the same way fetchLedgers() does — no ledger_id filter needed), and only
+// ones whose reminder date has actually arrived. A future-dated reminder exists
+// in the table already (so editing its expense sees it) but doesn't count as
+// "due" yet — there's no server-side scheduler here, so "due" is just today's
+// date compared client-side, same low-tech spirit as generateDueRecurring.
+export async function fetchNotifications() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("notifications").select("id, ledger_id, expense_id, title, remind_at, read")
+    .lte("remind_at", today).order("read", { ascending: true }).order("remind_at", { ascending: false });
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, title: r.title, remindAt: r.remind_at, read: r.read }));
+}
+export async function markNotificationsRead(ids) {
+  if (!ids.length) return;
+  const { error } = await supabase.from("notifications").update({ read: true }).in("id", ids);
+  if (error) throw error;
+}
+export async function dismissNotification(id) {
+  const { error } = await supabase.from("notifications").delete().eq("id", id);
+  if (error) throw error;
+}
+export function subscribeNotifications(onChange) {
+  const ch = supabase
+    .channel("notifications-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+
 /* ---- realtime ---- */
 // Postgres filters can't be applied to DELETEs (the old row isn't sent), so this
 // stays unfiltered and the caller refetches its own ledger. Cheap at this scale.
@@ -618,6 +675,7 @@ export function subscribeLedger(onChange) {
     .on("postgres_changes", { event: "*", schema: "public", table: "expense_splits" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "recurring_rules" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "wishlist_goals" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
 }

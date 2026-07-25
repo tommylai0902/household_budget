@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
-  Home, Plane, Repeat, Pause, Play, PiggyBank,
+  Home, Plane, Repeat, Pause, Play, PiggyBank, Bell,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -180,6 +180,10 @@ const STRINGS = {
     goalNamePh: "e.g. Lego Star Wars", goalAmountLabel: "Target amount", saveGoal: "Save goal",
     goalReached: "🎉 Goal reached!", recentActivity: "Recent Activity",
     noKidActivity: "Nothing yet — earn or spend to see it here!",
+    cancellationReminder: "Cancellation Reminder", remindMeToCancel: "Remind me to cancel",
+    cancellationReminderTitle: "Cancel {name} before it renews",
+    notifications: "Notifications", noNotifications: "You're all caught up!",
+    markAllRead: "Mark all as read", markAsRead: "Mark as read", dismiss: "Dismiss",
   },
   zh: {
     eyebrow: "Monira",
@@ -301,6 +305,10 @@ const STRINGS = {
     goalNamePh: "例如：Lego Star Wars", goalAmountLabel: "目標金額", saveGoal: "儲存目標",
     goalReached: "🎉 達成目標喇！", recentActivity: "最近活動",
     noKidActivity: "仲未有記錄 — 賺錢或者買嘢就會喺度顯示！",
+    cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
+    cancellationReminderTitle: "續約前記得取消{name}",
+    notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
+    markAllRead: "全部標記為已讀", markAsRead: "標記為已讀", dismiss: "移除",
   },
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
@@ -425,6 +433,10 @@ const STRINGS = {
     goalNamePh: "例如：乐高星球大战", goalAmountLabel: "目标金额", saveGoal: "保存目标",
     goalReached: "🎉 达成目标啦！", recentActivity: "最近活动",
     noKidActivity: "还没有记录 — 赚钱或买东西后会显示在这里！",
+    cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
+    cancellationReminderTitle: "续约前记得取消{name}",
+    notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
+    markAllRead: "全部标记为已读", markAsRead: "标记为已读", dismiss: "移除",
   },
   fr: {
     eyebrow: "Monira",
@@ -547,6 +559,10 @@ const STRINGS = {
     goalNamePh: "ex. Lego Star Wars", goalAmountLabel: "Montant visé", saveGoal: "Enregistrer l'objectif",
     goalReached: "🎉 Objectif atteint !", recentActivity: "Activité récente",
     noKidActivity: "Rien pour l'instant — gagne ou dépense pour voir ça ici !",
+    cancellationReminder: "Rappel d'annulation", remindMeToCancel: "Me rappeler d'annuler",
+    cancellationReminderTitle: "Annuler {name} avant le renouvellement",
+    notifications: "Notifications", noNotifications: "Tout est à jour !",
+    markAllRead: "Tout marquer comme lu", markAsRead: "Marquer comme lu", dismiss: "Ignorer",
   },
   es: {
     eyebrow: "Monira",
@@ -669,6 +685,10 @@ const STRINGS = {
     goalNamePh: "p. ej. Lego Star Wars", goalAmountLabel: "Monto objetivo", saveGoal: "Guardar meta",
     goalReached: "🎉 ¡Meta alcanzada!", recentActivity: "Actividad reciente",
     noKidActivity: "Nada todavía — ¡gana o gasta para verlo aquí!",
+    cancellationReminder: "Recordatorio de cancelación", remindMeToCancel: "Recuérdame cancelar",
+    cancellationReminderTitle: "Cancela {name} antes de que se renueve",
+    notifications: "Notificaciones", noNotifications: "¡Estás al día!",
+    markAllRead: "Marcar todo como leído", markAsRead: "Marcar como leído", dismiss: "Descartar",
   },
 };
 // Order here is the order of the toggle in Settings. `zh` predates the others
@@ -762,6 +782,8 @@ const okTintsFor = (accent, theme) => (theme === "dark"
   : { bg: mix(accent, "#ffffff", 0.12), ink: accent, line: mix(accent, "#ffffff", 0.32), strong: mix(accent, "#ffffff", 0.22) });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
+// T00:00:00 keeps this timezone-free, same trick as recurring.js's date math.
+const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const monthName = (m, lang) =>
   new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
 const shortDate = (iso, lang) =>
@@ -1103,8 +1125,11 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
               a description of the list below it (that's ledgersHint). Same string
               in every language, like the eyebrow on the sign-in screen. */}
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>Monira</h1>
-          {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
-          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <NotificationBell t={t} lang={lang} />
+            {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
+          </div>
         </div>
         <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
 
@@ -1258,6 +1283,7 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
           <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
             <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}><ArrowLeft size={15} /> {t("exit")}</button>
+            <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
               accent={accent} changeAccent={changeAccent} onHome={onExit} />
           </div>
@@ -1531,6 +1557,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [managingStores, setManagingStores] = useState(false);
   const [allLedgers, setAllLedgers] = useState([]);
   const [goal, setGoal] = useState(null); // Kid Ledger's wishlist goal, null elsewhere
+  const [reminders, setReminders] = useState(new Map()); // expenseId -> {title, remindAt}, any template
 
   const refresh = useCallback(async () => {
     try {
@@ -1544,11 +1571,12 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       // Wishlist goal is Kid-Ledger-only — every other template skips the query
       // entirely, so this table existing (migration 016) is only a prerequisite
       // for that one template, never a trip hazard for the other four.
-      const [cats, exps, mems, buds, shops, leds, wish] = await Promise.all([
+      const [cats, exps, mems, buds, shops, leds, wish, rems] = await Promise.all([
         db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id),
         db.fetchMembers(ledger.id), db.fetchBudgets(ledger.id), db.fetchMerchants(ledger.id),
         db.fetchLedgers(), // for sending personal receipt items elsewhere
         ledger.template === "kid" ? db.fetchWishlistGoal(ledger.id) : Promise.resolve(null),
+        db.fetchLedgerReminders(ledger.id),
       ]);
       setAllLedgers(leds);
       setMembers(mems);
@@ -1557,6 +1585,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       setCategories(cats);
       setExpenses(exps);
       setGoal(wish);
+      setReminders(rems);
       setReady(true);
     } catch (e) {
       setError(e.message || String(e));
@@ -1600,8 +1629,19 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const upsertExpense = async (draft, rememberName, personal) => {
     try {
       if (rememberName) await db.rememberMerchant(ledger.id, rememberName);
+      let expenseId = draft.id;
       if (draft.id) await db.updateExpense(draft.id, draft);
-      else await db.insertExpense(draft, ledger.id);
+      else expenseId = await db.insertExpense(draft, ledger.id);
+      if (draft.hasReminder && draft.reminderDate) {
+        await db.upsertReminderNotification(ledger.id, expenseId, {
+          title: t("cancellationReminderTitle", { name: draft.description }), remindAt: draft.reminderDate,
+        });
+      } else if (reminders.has(expenseId)) {
+        // The toggle was turned off, or the category changed away from
+        // Subscriptions — either way, a reminder that's no longer wanted
+        // shouldn't survive un-set.
+        await db.deleteReminderNotification(expenseId);
+      }
       if (personal) await db.insertPersonalExpense(personal, memberById(members, draft.paidById)?.name);
       setEditing(null);
       refresh();
@@ -1707,6 +1747,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
               ))}
             </select>
+            <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
               onHome={onExit}
               onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
@@ -1807,6 +1848,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {editing !== null && (
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
           merchants={merchants} expenses={expenses} ledgers={allLedgers} lang={lang} t={t}
+          existingReminder={editing && editing !== "new" ? reminders.get(editing.id) : null}
           onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)}
           onEditCategories={() => setManagingCats(true)} defaultMonth={month} defaultDate={selectedDay}
           onBatchImport={(transactions) => { setEditing(null); setBatchRows(transactions); }} />
@@ -2573,21 +2615,30 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, expenses = [], ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, defaultDate, features, onBatchImport }) {
+function ExpenseForm({ initial, categories, members, merchants, expenses = [], ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, defaultDate, features, onBatchImport, existingReminder }) {
   // Personal-template ledgers (features.showSplit false) have no one to split
   // with — the payer is just whoever's account this is, silently the first
   // member, and every expense is personal. Nothing left to ask about.
-  const [d, setD] = useState(() => initial || {
-    // A day tapped on the calendar wins over the usual mid-month guess.
-    description: "", amount: "", categoryId: categories[0]?.id || null,
-    date: defaultDate || `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
-    // Follows this ledger's last entry (expenses come back newest-first), so a
-    // household that doesn't split taps Personal once instead of on every
-    // expense. Ticking nobody is not the way to say "don't split" — that's a
-    // blocked state, see `valid` below; Personal is.
-    split: features.showSplit ? (expenses[0]?.split || "shared") : "personal",
-    sharedWith: members.map((m) => m.id), // everyone by default; untick who wasn't there
-  });
+  // hasReminder/reminderDate aren't part of `initial` (they live in the
+  // notifications table, not expenses) — merged in from existingReminder
+  // (looked up by expense id in Ledger) so re-opening an expense that already
+  // has one shows it as set, instead of the toggle defaulting to off and
+  // deleting it on the next save.
+  const [d, setD] = useState(() => ({
+    ...(initial || {
+      // A day tapped on the calendar wins over the usual mid-month guess.
+      description: "", amount: "", categoryId: categories[0]?.id || null,
+      date: defaultDate || `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
+      // Follows this ledger's last entry (expenses come back newest-first), so a
+      // household that doesn't split taps Personal once instead of on every
+      // expense. Ticking nobody is not the way to say "don't split" — that's a
+      // blocked state, see `valid` below; Personal is.
+      split: features.showSplit ? (expenses[0]?.split || "shared") : "personal",
+      sharedWith: members.map((m) => m.id), // everyone by default; untick who wasn't there
+    }),
+    hasReminder: !!existingReminder,
+    reminderDate: existingReminder?.remindAt || "",
+  }));
   const [addHst, setAddHst] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -2711,7 +2762,17 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   // A shared expense with nobody ticked can't be divided, so block saving it.
   const sharerCount = d.split === "shared" ? (d.sharedWith || []).length : 0;
   const valid = d.description.trim() && finalAmount > 0 && d.date && d.categoryId && d.paidById
-    && (d.split !== "shared" || sharerCount > 0) && !busy;
+    && (d.split !== "shared" || sharerCount > 0) && (!d.hasReminder || d.reminderDate) && !busy;
+  // Name-based, not template-based — "Subscriptions" only ships pre-seeded in
+  // the Personal template, but any ledger can rename/add a category to match.
+  const isSubscription = catName(categories.find((c) => c.id === d.categoryId)) === "Subscriptions";
+  const toggleReminder = () => setD((prev) => ({
+    ...prev, hasReminder: !prev.hasReminder,
+    // Default only fills in once, on the way from off to on — a date you've
+    // already adjusted shouldn't get silently overwritten by re-deriving it
+    // from the billing date on every render.
+    reminderDate: !prev.hasReminder && !prev.reminderDate ? addDays(prev.date, -3) : prev.reminderDate,
+  }));
 
   // Offer to keep a shop only when it isn't already saved, and never pre-ticked —
   // plenty of entries are one-offs that shouldn't clutter the suggestions.
@@ -2882,6 +2943,18 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
         </div>
         {categories.length === 0 && <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("noCategoriesHint")}</div>}
       </Field>
+      {isSubscription && (
+        <Field label={t("cancellationReminder")}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
+            <input type="checkbox" checked={d.hasReminder} onChange={toggleReminder} />
+            {t("remindMeToCancel")}
+          </label>
+          {d.hasReminder && (
+            <input type="date" value={d.reminderDate} onChange={(e) => setD({ ...d, reminderDate: e.target.value })}
+              style={{ ...input, marginTop: 8 }} />
+          )}
+        </Field>
+      )}
       {features.showSplit && (
         <>
           <Field label={
@@ -3433,6 +3506,71 @@ function useMyProfile() {
     return () => { live = false; };
   }, []);
   return profile;
+}
+
+// Global, not ledger-scoped — same as fetchLedgers(), RLS already narrows
+// db.fetchNotifications() to whatever ledgers this account can see, so one
+// bell covers every ledger without threading a ledgerId through it. Sits next
+// to HeaderMenu everywhere that renders (picker, every ledger template).
+function NotificationBell({ t, lang }) {
+  const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  const load = useCallback(() => { db.fetchNotifications().then(setItems).catch(() => {}); }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => db.subscribeNotifications(load), [load]);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", (e) => e.key === "Escape" && close());
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  const unread = items.filter((n) => !n.read);
+  const markRead = async (id) => { try { await db.markNotificationsRead([id]); load(); } catch {} };
+  const markAllRead = async () => { try { await db.markNotificationsRead(unread.map((n) => n.id)); load(); } catch {} };
+  const dismiss = async (id) => { try { await db.dismissNotification(id); load(); } catch {} };
+
+  return (
+    <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+      <button onClick={() => setOpen((o) => !o)} style={{ ...iconBtn, position: "relative" }}
+        aria-label={t("notifications")} aria-haspopup="menu" aria-expanded={open}>
+        <Bell size={16} />
+        {unread.length > 0 && (
+          <span style={{ position: "absolute", top: -3, right: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 99, background: DANGER, color: "#fff", fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center", lineHeight: 1 }}>
+            {unread.length > 9 ? "9+" : unread.length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", width: "min(340px, 90vw)", maxHeight: 420, overflowY: "auto", zIndex: 60 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "12px 14px", borderBottom: `1px solid ${LINE}`, position: "sticky", top: 0, background: CARD }}>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>{t("notifications")}</span>
+            {unread.length > 0 && (
+              <button onClick={markAllRead} style={{ ...categoryLink, fontSize: 12, color: TEAL, flexShrink: 0 }}>{t("markAllRead")}</button>
+            )}
+          </div>
+          {items.length === 0 ? (
+            <div style={{ padding: "26px 14px", textAlign: "center", color: SUB, fontSize: 13 }}>{t("noNotifications")}</div>
+          ) : (
+            items.map((n) => (
+              <div key={n.id} style={{ padding: "10px 14px", borderBottom: `1px solid ${LINE}`, background: n.read ? "transparent" : OK_BG }}>
+                <div style={{ fontSize: 13, fontWeight: n.read ? 600 : 800, color: INK }}>{n.title}</div>
+                <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{shortDate(n.remindAt, lang)}</div>
+                <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
+                  {!n.read && <button onClick={() => markRead(n.id)} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("markAsRead")}</button>}
+                  <button onClick={() => dismiss(n.id)} style={{ ...categoryLink, fontSize: 12, color: SUB }}>{t("dismiss")}</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
