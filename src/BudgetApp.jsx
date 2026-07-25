@@ -888,7 +888,7 @@ function Login({ lang, changeLang, t, hasInvite }) {
       <div style={{ width: "min(360px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("eyebrow")}</div>
-          <LangToggle lang={lang} changeLang={changeLang} />
+          <LangToggle lang={lang} changeLang={changeLang} t={t} />
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>{signup ? t("signUpTitle") : t("signInTitle")}</h1>
         <p style={{ fontSize: 13, color: SUB, margin: "0 0 16px" }}>{signup ? t("signUpHint") : t("signInHint")}</p>
@@ -963,7 +963,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
       <div style={{ width: "min(380px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("inviteTitle")}</div>
-          <LangToggle lang={lang} changeLang={changeLang} />
+          <LangToggle lang={lang} changeLang={changeLang} t={t} />
         </div>
 
         {!preview ? (
@@ -1555,13 +1555,15 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
 
 /* ----------------------------- Pieces ----------------------------- */
 
-function LangToggle({ lang, changeLang }) {
+// A select, not a row of buttons: five languages wrapped to two lines in the
+// login header, and the list only grows. Native picker, so it stays one line
+// at any count and gets the platform's own wheel/menu on mobile.
+function LangToggle({ lang, changeLang, t }) {
   return (
-    <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
-      {LANGS.map(([l, lbl]) => (
-        <button key={l} onClick={() => changeLang(l)} style={{ padding: "8px 11px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: lang === l ? TEAL : CARD, color: lang === l ? ACCENT_INK : SUB }}>{lbl}</button>
-      ))}
-    </div>
+    <select value={lang} onChange={(e) => changeLang(e.target.value)} aria-label={t("language")}
+      style={{ ...selectStyle, fontSize: 13, padding: "7px 8px" }}>
+      {LANGS.map(([l, lbl]) => <option key={l} value={l}>{lbl}</option>)}
+    </select>
   );
 }
 
@@ -3260,7 +3262,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   return (
     <Overlay title={t("settings")} onClose={close} t={t}>
       <Field label={t("language")}>
-        <LangToggle lang={lang} changeLang={changeLang} />
+        <LangToggle lang={lang} changeLang={changeLang} t={t} />
       </Field>
       <Field label={t("appearance")}>
         <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
