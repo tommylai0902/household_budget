@@ -653,9 +653,29 @@ export async function dismissNotification(id) {
   const { error } = await supabase.from("notifications").delete().eq("id", id);
   if (error) throw error;
 }
+// Settings → Manage reminders: every cancellation reminder that exists, due or
+// not, across every ledger this account can see — distinct from
+// fetchNotifications()'s due-only inbox. Chronological, since this is a
+// schedule you're managing rather than an unread pile.
+export async function fetchAllReminders() {
+  const { data, error } = await supabase
+    .from("notifications").select("id, ledger_id, expense_id, title, remind_at, read")
+    .not("expense_id", "is", null).order("remind_at", { ascending: true });
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, title: r.title, remindAt: r.remind_at, read: r.read }));
+}
+export async function updateNotificationDate(id, remindAt) {
+  const { error } = await supabase.from("notifications").update({ remind_at: remindAt }).eq("id", id);
+  if (error) throw error;
+}
+// A fixed channel name would collide the moment a second caller subscribes
+// while the first is still mounted (Supabase throws: "cannot add
+// postgres_changes callbacks... after subscribe()") — unlike subscribeLedger,
+// this one has more than one simultaneous caller (the Bell, and Settings'
+// Manage reminders), so each call needs its own channel.
 export function subscribeNotifications(onChange) {
   const ch = supabase
-    .channel("notifications-changes")
+    .channel(`notifications-changes-${Math.random().toString(36).slice(2)}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);

@@ -184,6 +184,7 @@ const STRINGS = {
     cancellationReminderTitle: "Cancel {name} before it renews",
     notifications: "Notifications", noNotifications: "You're all caught up!",
     markAllRead: "Mark all as read", markAsRead: "Mark as read", dismiss: "Dismiss",
+    manageReminders: "Manage reminders", noReminders: "No cancellation reminders set.",
   },
   zh: {
     eyebrow: "Monira",
@@ -309,6 +310,7 @@ const STRINGS = {
     cancellationReminderTitle: "續約前記得取消{name}",
     notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
     markAllRead: "全部標記為已讀", markAsRead: "標記為已讀", dismiss: "移除",
+    manageReminders: "管理提醒", noReminders: "仲未設定任何取消提醒。",
   },
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
@@ -437,6 +439,7 @@ const STRINGS = {
     cancellationReminderTitle: "续约前记得取消{name}",
     notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
     markAllRead: "全部标记为已读", markAsRead: "标记为已读", dismiss: "移除",
+    manageReminders: "管理提醒", noReminders: "还没有设置任何取消提醒。",
   },
   fr: {
     eyebrow: "Monira",
@@ -563,6 +566,7 @@ const STRINGS = {
     cancellationReminderTitle: "Annuler {name} avant le renouvellement",
     notifications: "Notifications", noNotifications: "Tout est à jour !",
     markAllRead: "Tout marquer comme lu", markAsRead: "Marquer comme lu", dismiss: "Ignorer",
+    manageReminders: "Gérer les rappels", noReminders: "Aucun rappel d'annulation défini.",
   },
   es: {
     eyebrow: "Monira",
@@ -689,6 +693,7 @@ const STRINGS = {
     cancellationReminderTitle: "Cancela {name} antes de que se renueve",
     notifications: "Notificaciones", noNotifications: "¡Estás al día!",
     markAllRead: "Marcar todo como leído", markAsRead: "Marcar como leído", dismiss: "Descartar",
+    manageReminders: "Gestionar recordatorios", noReminders: "No hay recordatorios de cancelación.",
   },
 };
 // Order here is the order of the toggle in Settings. `zh` predates the others
@@ -3677,6 +3682,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   const [saved, setSaved] = useState(getAccent);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [showReminders, setShowReminders] = useState(false);
   const dirty = accent !== saved;
   const close = () => { if (dirty) changeAccent(saved); onClose(); };
   const save = async () => {
@@ -3727,6 +3733,53 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         </button>
         {err && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{t("accentSaveErr", { msg: err })}</div>}
       </Field>
+      {/* Same account-wide scope as the Bell — every reminder you've set,
+          across every ledger, not just the one Settings happened to open from. */}
+      <button onClick={() => setShowReminders(true)} style={ghostBtn}>
+        <Bell size={15} /> {t("manageReminders")}
+      </button>
+      {showReminders && <ManageRemindersPanel t={t} onClose={() => setShowReminders(false)} />}
+    </Overlay>
+  );
+}
+
+function ManageRemindersPanel({ t, onClose }) {
+  const [items, setItems] = useState(null); // null = loading
+  const [error, setError] = useState("");
+  const load = useCallback(() => {
+    db.fetchAllReminders().then(setItems).catch((e) => setError(e.message || String(e)));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => db.subscribeNotifications(load), [load]);
+
+  const updateDate = async (id, remindAt) => {
+    try { await db.updateNotificationDate(id, remindAt); load(); } catch (e) { setError(e.message || String(e)); }
+  };
+  const remove = async (id) => {
+    try { await db.dismissNotification(id); load(); } catch (e) { setError(e.message || String(e)); }
+  };
+
+  return (
+    <Overlay title={t("manageReminders")} onClose={onClose} t={t}>
+      {error && <div style={errorBox}>{error}</div>}
+      {items === null ? (
+        <Centered>{t("connecting")}</Centered>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noReminders")}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((n) => (
+            <div key={n.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
+                <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
+                  style={{ ...input, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
+              </div>
+              <button onClick={() => remove(n.id)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
+            </div>
+          ))}
+        </div>
+      )}
     </Overlay>
   );
 }

@@ -181,6 +181,8 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 - **Mark as read vs Dismiss**:前者淨係 flip `read`,個 item 留喺個 list(冇咗個「Mark as read」掣同個 unread 樣式);後者係真係 delete 行,成個消失。「Mark all as read」淨係傳緊喺畫面度嗰批 unread 嘅 id,唔係盲目 update read=false 嘅全部行(咁樣先唔會將未到期嘅 reminder 都錯手標成已讀)。
 - **Bell 係全域,唔綁單一帳簿**:同 `fetchLedgers()` 一樣淨係靠 RLS 窄返去邊個帳簿你有得睇,`db.js` 冇傳任何 `ledgerId`——一個 bell 就跟晒你成個帳號嘅所有帳簿。
 - **必踩坑,已修好**:同 Kid Ledger 嗰次一樣嘅陷阱又踩多次——`fetchLedgerReminders` 一開始都係加落 `refresh()` 嘅 `Promise.all`,但呢次冇得好似 `wishlist_goals` 咁淨係 kid template 先 fetch(subscription reminder 邊個 template 都用得),所以 migration 017 行之前**四個舊 template 全部一齊爆**(`Could not find the table 'public.notifications'`)——呢個係預咗嘅、冇得避嘅代價(呢個 feature 本身就要跨晒所有 template),行完 migration 就冇事。
+- **Settings → Manage reminders**:同 Bell 一樣全域(唔跟單一帳簿),睇晒同改到**全部**reminder(唔止「到咗」嗰啲),兩個掣:改個 `remind_at`(`db.updateNotificationDate`)、刪走(重用返 `dismissNotification`)。
+- **第二個必踩坑,已修好**:`subscribeNotifications` 一開始用返同一個寫死嘅 channel 名(`"notifications-changes"`),跟 `subscribeLedger`/`subscribeLedgerList` 嗰種「成個 app 淨係得一個呼叫者」唔同——Bell 成日都掛住,一旦「Manage reminders」都同時開住,第二個 `.channel(同名).subscribe()` 就會即刻拋 `cannot add postgres_changes callbacks... after subscribe()`,成個 app 冧晒(冇 error boundary,即刻變返白版)。而家 channel 名加咗個 random suffix,每次 call 都係獨立一個,幾多個同時訂閱都得。**如果之後想再加一個新嘅 `notifications` 訂閱源,唔使諗呢個問題,呢個 fix 已經係通用嘅。**
 
 ---
 
