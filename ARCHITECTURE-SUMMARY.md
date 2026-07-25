@@ -1,6 +1,6 @@
 # 記賬 App 架構與需求摘要
 
-> Household Budget App — Vite + React (JS, 非 TS) + Supabase + inline styles(無 CSS framework、無 Tailwind)。呢份摘要供新對話接續開發用。
+> Household Budget App — Vite + React(JS,非 TS)+ Supabase + inline styles(無 CSS framework、無 Tailwind)。單一大檔 `src/BudgetApp.jsx`(UI 全部喺度)+ `src/lib/db.js`(資料層,row⇄app mapping 淨係喺呢度做)+ `src/lib/settle.js`/`csv.js`/`categorize.js`(pure、有 `*.test.js`)。呢份摘要供新對話接續開發用,睇完呢份文件就唔使再由頭 explore 個 codebase。
 
 ---
 
@@ -10,12 +10,12 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 
 **Feature flags**(`src/lib/db.js` → `TEMPLATE_FEATURES` + `featuresFor(template)`):
 
-| Template(顯示名) | `showSplit` | `hasRecurring` | `hasBudget` |
-|---|---|---|---|
-| `household`(Family) | ✅ | ✅ | ✅ |
-| `personal`(Personal) | ❌ | ✅ | ✅ |
-| `travel`(Travel) | ✅ | ❌ | ✅ |
-| `blank`(Blank) | ✅ | ✅ | ✅ |
+| Template(顯示名) | `showSplit` | `hasRecurring` | `hasBudget` | `hasCurrency` |
+|---|---|---|---|---|
+| `household`(Family) | ✅ | ✅ | ✅ | ❌ |
+| `personal`(Personal) | ❌ | ✅ | ✅ | ❌ |
+| `travel`(Travel) | ✅ | ❌ | ✅ | ✅ |
+| `blank`(Blank) | ✅ | ✅ | ✅ | ❌ |
 
 前端 hook:`useLedgerFeatures(ledger)`(BudgetApp.jsx),內部包住 `db.featuresFor(ledger.template)`,`useMemo` cache。
 
@@ -24,6 +24,8 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 - **travel**:Flights / Accommodation / Food / Transport / Activities / Shopping / Other
 - **personal**:Food / Transport / Shopping / Health / Subscriptions / Other
 - **blank**:冇預設分類
+
+**成員(`ledger_members`)已經冇晒 auto-seed**:`createLedger()`(db.js)以前會幫每本新帳簿塞返「Tommy」「Wing」兩個成員,而家**完全刪除咗**——任何 template 開新帳簿一律零成員,要自己去「Edit members」加。**例外**:`!showSplit` 嘅 template(即係 Personal)由於 UI 完全隱藏晒「Who paid?」/「Edit members」入口(見下),冇呢個入口就冇辦法加成員,所以 `createLedger()` 對呢類 template 會自動幫 ledger 擁有者本人加一個成員(名讀 `app_user.name`,攞唔到就 fallback email,再攞唔到就叫「Me」)。
 
 ---
 
@@ -37,55 +39,125 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 ### `hasRecurring = false`(Travel)
 - **Header menu**:隱藏「Recurring expenses」呢一項(`onRecurring={features.hasRecurring ? ... : undefined}`)。
 
+### `hasCurrency = true`(Travel 專屬)— 見第 4 節
+
 ### `hasBudget`
-- 三個 template 而家全部係 `true`,**未有任何 UI 根據呢個 flag 隱藏嘢**(避免死代碼)。之前試過將 Budget 選單改名做「Trip budget」(Travel 專用),但**已 revert 返做「Budget」**——同其他 ledger 一致,冇特別命名。
+- 三個 template 而家全部係 `true`,**未有任何 UI 根據呢個 flag 隱藏嘢**(避免死代碼)。
 
 ### 邊個角色可以做咩(RBAC,同 template 冇關,但常同時出現)
 - Owner / Editor / Viewer 三個角色,menu **對三者顯示一樣**(唔再按角色隱藏掣)。
 - 撳落 owner-only 動作(delete ledger、invite、change role、remove member、revoke invite)先至檢查權限,冇權會彈 `ownerOnlyErr` 訊息,唔會靜靜雞冇反應。
 - 所有刪除確認(ledger / expense / member / recurring rule)已經由 `window.confirm()` 改用自訂 `ConfirmDialog` component(因為 native confirm 有「Prevent this page from creating additional dialogs」呢個瀏覽器陷阱,一中就全部刪除掣好似壞晒)。
+- Auth/roster 走嘅係 `app_user` + `ledger_role` + `ledger_invite`(migration 008/009),同 bill-split 用嘅 `ledger_members` 係**兩個完全獨立嘅概念**(RBAC = 邊個睇到/改到呢本帳,ledger_members = 邊個要夾份)。
 
 ---
 
-## 3. 圖表 Panel 布局(Reports / Monthly Report panel)
+## 3. 缺缺(既有,未變)Reports panel 圖表寫法
 
-**冇用 Recharts 或者任何 chart library**——原本 spec 成日寫「React + Recharts」,但呢個 app 一直用手寫 SVG/div-bar,呢次都跟返呢個做法(唔加新 dependency)。
+**冇用 Recharts 或者任何 chart library**——手寫 SVG donut + div-bar,冇加新 dependency。
 
-Panel 結構(`MonthlyReport` component):
-
-1. **頂部雙 dropdown**:「Select month」(current)+「Compare to」(compare month),各自獨立揀,compare 預設揀 current 之前嗰個月。
-2. **Category Pie Chart**:手寫 SVG donut,中心顯示總金額,底下列表(色點 + 名 + % + 金額),撳個名可以睇返嗰個分類嗰個月啲邊筆支出。
-3. **Month-over-Month Bar Chart**(grouped bar,今個月 vs compare 月):
-   - 逐個分類一行,兩條疊住嘅水平 bar(今月 teal,compare 月 `#94A3B8` 灰)。
-   - 每行右側顯示 delta:`+$X (+Y%)` 紅色(加咗)/ `-$X (-Y%)` teal(少咗)/ `New this month` / `Gone this month` / `No change`。
-   - 兩個月嘅分類總額經同一個 `categoryTotalsFor()` function 計,pie 同 bar 唔會有數對唔上嘅情況。
-
----
-
-## 4. 批量 Import 三步式預覽流
-
-**入口**:Add Expense 表格入面嘅兩個掣,而家做緊唔同嘢:
-- **Scan receipt**(相機,`capture="environment"`):即場影相,單一收據,連 line items 拆分,填返呢個表格——**冇變**。
-- **Upload receipt**(檔案):**一律 batch 模式**,唔會再入返單一表格。`accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv"`(用副檔名列表唔用 `image/*`,iOS Safari 通常會因此喺揀圖 sheet 隱藏「Take Photo」,唔保證每個 iOS 版本都咁)。
-
-**三步流程**(冇獨立嘅「Import CSV」選單入口——已刪除,全部經 Upload 掣觸發):
-
-1. **解析**(揀檔案嗰刻自動做,冇再有獨立「選檔案」畫面):
-   - 檔案係 `.csv` / `text/csv` → 本機免費解析(`src/lib/csv.js` 嘅 `parseCsvText`,支援有/冇 header、MM/DD/YYYY 或 ISO 日期、quoted 欄位)。
-   - 其他(screenshot / PDF)→ 送去 `/api/scan-statement.js`(新 serverless endpoint,同 `scan-receipt.js` 一樣嘅 auth/驗證寫法,Gemini vision 讀出 `{transactions: [{date, description, amount}]}`,唔含分類——刻意咁設計)。
-2. **預覽表**(`BatchImportModal`,前身叫 `CsvImportModal`,而家冇晒自己嘅選檔案畫面,一定係帶住 `initialRows` 開嘅):
-   - 逐行:日期(`<input type=date>`)、描述(text input)、金額(number input)、分類(native `<select>`,靠 `guessCategoryId()` keyword 比對**呢本帳簿真實存在嘅分類**估分類,估唔到就 Uncategorised——CSV 同 AI 嚟源共用同一個 `buildPreviewRows()` function,唔會兩套邏輯)、Paid by(`showSplit=true` 先顯示)。
-   - **Default card owner / Paid by** selector(頂部,`showSplit=true` 先顯示):撳一下會 bulk 更新晒未手動改過嗰啲行嘅 Paid by(`paidByTouched` flag 追蹤邊行畀人手動改過,改過就唔會再被 bulk 更新影響)。
-   - 每行有刪除掣。
-3. **Confirm & Import**:
-   - 逐行(sequential,唔係 `Promise.all`)call `db.importExpensesBatch()` → 底層用返同「手動加一筆支出」完全一樣嘅 `insertExpense()`,所以 split/items 行為一致。
-   - 全部成功 → 自動關閉 modal + refresh 帳簿。
-   - 部分失敗 → **只保留失敗嗰幾行**留喺表格畀你再試(已成功嗰啲會從 state 移除),防止撳多次 Confirm 會重複插入已經成功嗰啲行。
+`MonthlyReport` component 現時結構(由頂至尾):
+1. Total spending 卡(當月總額)。
+2. **Category Pie Chart**:手寫 SVG donut,中心顯示總金額。
+3. **Category breakdown**:唔再係「色點 + 名」嘅細行,而係**每個分類自己一張卡**(白底/CARD 底、border、圓角),左邊一個色底圓形 icon(emoji,見第 8 節嘅 `categoryIcon()`),中間名、右邊 % 同金額,**成張卡都撳得**(drill-down 去 `CategoryExpenseList`,唔止個名先撳得)。
+4. **Select month / Compare to 雙 dropdown**:由 panel 最頂**搬咗去 bar chart 之前**,順便取代原本嗰句靜態「This month vs {month}」標題文字——dropdown 本身已經講緊同一件事,唔使再多一句標題。Select month 依然係控制成個 panel(pie/breakdown/total 全部跟佢),唔止 bar chart。
+5. **Month-over-Month Bar Chart**:逐個分類一行,兩條疊住嘅水平 bar(今月 accent 色,compare 月灰),右側 delta(`+$X (+Y%)` / `-$X (-Y%)` / `New this month` / `Gone this month` / `No change`)。
+6. 兩個月嘅分類總額經同一個 `categoryTotalsFor()` function 計(而家仲會夾埋 `category` raw object 一齊 return,俾 icon lookup 用),pie 同 bar 唔會有數對唔上。
 
 ---
 
-## 未驗證 / 已知限制(交低俾下一個對話)
+## 4. 帳本貨幣(Ledger currency,Travel 專屬)
+
+- `ledgers.currency` 欄(migration 014),3 字母 ISO code,預設 `CAD`。**得 Travel template**(`hasCurrency`)先可以改。
+- 改嘅地方:入到帳本之後,☰ menu 有一行「Currency」,揀完即時生效(`db.updateLedger` + 更新 App 揸住嗰個 `ledger` state,唔使 refetch)。
+- **`activeCurrency`**(BudgetApp.jsx 頂部一個 module-level `let`)—— 淨係一個 `<Ledger>` 會同時掛住,所以用 module 變數而唔係逐層 thread prop,`Ledger` 一 render 就即刻設定,子components 全部靠 `money()`/`currencySymbol()` 讀返呢個值。
+- 金額輸入框(Amount 一類)嘅 `$` 前綴一律用 `currencySymbol(activeCurrency)`,唔再係寫死嘅 `$`。
+
+---
+
+## 5. 主題系統(Light/Dark)同 Settings 頁
+
+- **Settings** 係新加嘅一個 panel(`SettingsPanel`),由 ☰ menu 入面「Settings」呢一項開;原本掛喺 menu 度嘅 EN/繁中 language toggle **搬咗入去** Settings(menu 度唔再有語言選項)。
+- **Theme**:`localStorage["theme"]`,第一次開冇存過就跟 `prefers-color-scheme`,之後就記住你揀嘅嗰個,唔會再跟 OS 變。套用方式:`document.documentElement.setAttribute("data-theme", theme)`,`src/index.css` 有 `:root[data-theme="light"|"dark"]` 兩組 CSS custom properties(`--ink` `--sub` `--line` `--paper` `--card` `--ok-*` `--bad-*` `--track` `--muted-bg` `--danger` `--warn`)。
+- BudgetApp.jsx 頂部啲顏色常數(`INK` `SUB` `LINE` `PAPER` `CARD` `OK_BG` `OK_INK` … )全部係 `"var(--xxx)"` 字串,唔係寫死 hex——所以淨係加一個 `data-theme` attribute,成個 app 嘅 inline style 就跟晒轉,唔使逐個 component 改。
+- **一定要記住嘅陷阱**:一個 tint(例如 `OK_BG`)背景,永遠要配返佢自己嗰組 ink(`OK_INK`),唔可以用 `INK`——早前試過寫死淺色主題嗰對 tint,dark mode 就變咗「近乎白色字」印喺「淺青色底」,睇唔到。
+
+---
+
+## 6. Accent 主題色(Settings → Accent colour)
+
+- 使用者可以自己揀成個 app 嘅主色(原本淨係寫死 teal)。已試過三輪先定案:
+  1. 第一輪:8 隻深色 dusty/Morandi 色。
+  2. 第二輪:加咗幾隻 pastel 淺色 —— 之後發現**淺色會令白字睇唔到**,加咗 `accentInkFor(hex)`(WCAG relative luminance,閾值 `0.179`)自動揀返白字定深字。
+  3. 第三輪:用戶指出淺色喺「唔經 ink、直接做文字/邊框色」嘅場合(例如未選中嘅 pill 邊框、連結文字)一樣會洗色——**淺色options 全部移除**,`ACCENT_COLORS`(BudgetApp.jsx)而家 18 隻,全部 luminance ≤ 0.179,保證企喺白底都夠 4.5:1。`accentInkFor` 依然留住做 safety net,唔係因為而家個 list 需要淺色分支。
+- 機制同 theme 一樣:`document.documentElement.style.setProperty("--accent", accent)`,`TEAL` 呢個常數而家係 `"var(--accent)"`(改名歷史包袱,值已經唔一定係 teal)。
+- **預設色 = 灰(`#656565`,即 `ACCENT_COLORS[0]`)**,`index.css` 嘅 `--accent` fallback 同步咗。
+- **儲存方式(2026-07 改)**:accent **跟帳號走**,存喺 `app_user.accent`(migration 015)。`localStorage["accent"]` 淨係一個 cache,俾 app 開機即刻上色,唔使等 profile fetch 返嚟先閃一下預設色;登入之後 `db.fetchMyAccent()` 覆蓋佢(所以換部機/換瀏覽器登入都會見返自己嗰隻色)。
+- **揀色 ≠ 儲存**:`changeAccent` 而家淨係 preview(即場重畫成個 app,唔寫任何嘢),`SettingsPanel` 自己揸住「Save colour / Saved」掣先真係寫入(先寫 DB,成功先更新 localStorage cache),中途唔 save 就撳 X/背景關閉會自動 revert 返已儲存嗰隻。語言同 light/dark 就冇呢個 draft 步驟,照舊撳即生效。
+- **Settle-up / shared 呢一類「OK」tint**(`--ok-bg` 等)而家**跟住 accent 一齊變**,唔再係寫死 teal——`okTintsFor(accent, theme)` 用 `mix()`(簡單 RGB channel blend,唔係 hex library)將 accent 撈落白色/深色底,即場算出 bg/ink/line/strong 四個值,喺 accent 或 theme 一變就重新 set 做 inline style。「你欠幾多」嗰句紅色/橙色(`DANGER`/`WARN`)保持寫死,唔跟 accent 變(語意色,唔係品牌色)。
+
+---
+
+## 7. 月曆 View(Ledger 頁面頂部,新增)
+
+原本頁面由上至下:標題 → Spent 卡 → Settle-up bar → Add expense → list。而家:
+
+1. **`MonthCalendar`** 組件擺**成頁最頂**(标题下面即刻),7 欄月曆格仔(Monday-first,weekday label 用 `toLocaleDateString(...,{weekday:"short"})` 自動雙語,唔使寫死翻譯)。
+   - 每格:日期數字 + (如果嗰日有支出)`money()` 顯示嗰日總額。
+   - **今日**:淺色 badge 圈住個數字(`OK_BG`/`OK_INK`)。
+   - **撳中嗰日(selected)**:成粒格填實 accent 色(`TEAL`/`ACCENT_INK`),同今日嘅badge 分得開。
+   - **有支出嘅日**:淺色圓圈(固定透明度,`color-mix(in srgb, ${WARN} 12%, transparent)`),**唔跟金額深淺變**(試過做 heatmap 深淺,用戶話改返做統一淺色)。
+   - 撳一日 = **淨係篩選底下個 list**,月結算(settle-up)、總額呢啲數**繼續睇成個月**,唔會因為揀咗一日而變(`Ledger` 用 `visibleRows = selectedDay ? rows.filter(...) : rows`)。撳多次同一日或者撳「Show all」清空。轉月會自動清返 selectedDay。
+2. **Calendar 底部一個 footer bar**(合併咗原本獨立嘅「Spent in {month}」卡 + 「Settle up」bar 兩個嘢):
+   - 左:「Total Spending」+ 金額。
+   - 中:「Balance」(呢個月啲分類預算加埋 - 已使 = 幾多,冇 budget 就顯示「—」)。
+   - 右:「Settle up ›」——純粹一個入口掣,唔顯示邊個欠邊個,撳落先開返 `SettlementDetails` 睇詳情。
+   - 呢三樣本身喺唔同時間分開加嘅,而家全部一齊擠喺一行(電話闊度都試過冇問題)。
+3. Add Expense 表格嘅日期,而家會**跟返月曆揀嗰日**(`ExpenseForm` 加咗 `defaultDate` prop,有揀就用嗰日,冇揀先 fallback 返月中 15 號)。
+
+---
+
+## 8. 分類 Emoji Icon
+
+- `CATEGORY_ICONS`(BudgetApp.jsx):一個 `{分類英文名小寫: emoji}` 嘅 map,cover 晒 `db.TEMPLATES` 入面全部分類名(Rent🏠、Grocery🛒、Utilities💡、Food Delivery🛵、Dine in🍽️、Entertainment🎬、Flights✈️、Accommodation🏨、Food🍔、Transport🚌、Activities🎡、Shopping🛍️、Health💊、Subscriptions📱、Household🧹、Other🏷️),自訂/改名分類冇對應就 fallback 🏷️,冇分類(Uncategorised)用 ❔。
+- 因為分類名本身係 language-neutral(`catName()` 一早就係咁設計),呢個 lookup 唔使分 EN/ZH 兩份。
+- 用喺兩個地方:Expense list 每行嘅分類 badge 入面(icon 就喺個 pill 入面,同個 pill 一樣大細/顏色,唔係獨立一粒喺最左),同 Reports 分類卡嘅色底圓形 icon。
+
+---
+
+## 9. Split 相關細節
+
+- **`SplitMemberPicker`**:Add expense 表格 + 定期支出表格,兩個地方以前各自有一份一模一樣嘅「揀邊個人夾」checkbox list,而家共用一個 component。加咗一行「Everyone」(全揀先勾,揀晒自動勾,唔係全揀就唔勾),擺喺成個 list 最頂,同底下逐個人隔一條線。
+- Batch import modal 嘅「Edit members」掣以前撳落會**匿咗喺 batch modal 後面**(睇唔到)——成因:全部 Overlay 都用同一個寫死 `z-index:50`,邊個喺 DOM 後面邊個就贏。改法:`<BatchImportModal>` 喺 `<MemberManager>` 之前 render(唔係邏輯本身有問題,純粹 DOM 次序)。**呢個係一個通用陷阱**:之後如果再喺邊個 modal 入面開多一層 modal,記得檢查邊個要喺 DOM 後面。
+- Add expense / Batch import,如果嗰本帳冇成員/冇分類,會有紅色字提示(「No members yet」/「No categories yet」),唔可撳。
+
+---
+
+## 10. Budget Panel:睇 vs 編輯分開咗
+
+- **`BudgetPanel`**(主 Budget 頁)而家**完全 read-only**:「All categories」總卡 + 逐個分類卡,金額全部係文字顯示(直接讀 `budgets` map,唔再靠本地 draft state),每張卡都有 bar(有 pace tick,見下)+「{spent} Spent」/「{left} Left / Over」。
+- 總卡右上有個實色 pill「Edit budget」badge,撳先開 **`EditBudgetPanel`**(新獨立頁面)——淨係呢頁先有得改:逐個分類一個 input 填數字,底部先有「Save budgets」掣,save 完自動關返自己、返去(已更新嘅)read-only 頁。
+- **Pace tick**:`BudgetBar` 加咗個 `pace` prop(0–100,淨係當睇緊「今個月」先計,過去/未來月冇意思),bar 上面一條幼線,表示「今日行到成個月幾多 %」,同支出/預算嘅比例完全冇關,純粹一個「進度參考線」。
+
+---
+
+## 11. 批量 Import 三步式預覽流(既有,未變)
+
+**入口**:Add Expense 表格入面兩個掣:
+- **Scan receipt**(相機,`capture="environment"`):即場影相,單一收據,連 line items 拆分——冇變。
+- **Upload receipt**(檔案):一律 batch 模式。`accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv"`。
+
+**三步流程**:
+1. **解析**(揀檔案即刻做):`.csv`/`text/csv` → 本機免費解析(`src/lib/csv.js` 嘅 `parseCsvText`);其他(screenshot/PDF)→ `/api/scan-statement.js`(Gemini vision)。
+2. **預覽表**(`BatchImportModal`):逐行日期/描述/金額/分類(`guessCategoryId()` keyword 估分類)/Paid by(`showSplit=true` 先顯示);「Default card owner」bulk 更新未手動改過嗰啲行(`paidByTouched` flag)。
+3. **Confirm & Import**:逐行 sequential call `db.importExpensesBatch()`,底層同手動加一筆用返同一個 `insertExpense()`。部分失敗淨係留低失敗嗰幾行畀你再試。
+
+---
+
+## 12. 未驗證 / 已知限制(交低俾下一個對話)
 
 - `/api/scan-statement.js` 嘅 AI 讀 statement 路徑(需要真實相/PDF + 有效 Gemini key,呢邊環境驗唔到)。
-- iOS Safari「Take Photo」**已實測確認冇消失**——accept 入面只要有 image MIME type(screenshot 要送去 AI 讀,唔可以拎走),Safari 就會加返呢個選項,同 `capture` 屬性、`image/*` wildcard 都冇關,HTML 冇任何屬性可以保證控制到。功能上冇壞(撳咗都係行 AI scan-statement 路徑),純粹介面同「Scan receipt」掣重疊,已確認係無法用 code 解決嘅平台限制,唔再追。
-- `hasBudget` flag 而家淨係資料,冇 UI 邏輯掛住(YAGNI,三個 template 而家個 value 一樣)。
+- iOS Safari「Take Photo」**已實測確認冇消失**——accept 入面只要有 image MIME type,Safari 就會加返呢個選項,HTML 冇任何屬性可以保證控制到。功能上冇壞,已確認係無法用 code 解決嘅平台限制,唔再追。
+- **呢個開發環境嘅 browser session 會不定時無啦啦登出**(`localStorage` 清晒),原因未查(唔係 code bug,單純環境/瀏覽器層面),遇到就要用戶自己重新登入先可以再肉眼驗證。
+- `hasBudget` flag 而家淨係資料,冇 UI 邏輯掛住(YAGNI,四個 template 而家個 value 一樣)。
+- Accent 而家跟帳號(見第 6 節),但 **`migrations/015-user-accent.sql` 要喺 Supabase SQL editor 行過一次**,唔行嘅話撳 Save 會出「Couldn't save your colour: Could not find the 'accent' column」,fallback 行為 = 淨係 preview,冇嘢寫得入去。Theme(light/dark)同語言就仲係純 `localStorage`,冇跟帳號。

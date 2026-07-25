@@ -90,6 +90,28 @@ export async function deleteLedger(id) {
   if (error) throw error;
 }
 
+/* ---- account preferences ---- */
+// Accent colour lives on app_user (migration 015) so it follows the account to
+// any browser, instead of only the localStorage cache the app paints from at
+// boot. app_user's RLS is self-only, so both of these are implicitly scoped to
+// the signed-in user. Null = never picked; the caller applies its own default.
+export async function fetchMyAccent() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  const { data, error } = await supabase.from("app_user").select("accent").eq("id", session.user.id).maybeSingle();
+  if (error) throw error;
+  return data?.accent || null;
+}
+export async function saveMyAccent(accent) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("not signed in");
+  // .select() so a no-op update (no app_user row for this account) surfaces as
+  // an error instead of the UI reporting a save that never landed.
+  const { data, error } = await supabase.from("app_user").update({ accent }).eq("id", session.user.id).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("no profile row");
+}
+
 /* ---- invites (RBAC) ---- */
 // A random secret goes in the link; only its SHA-256 hash is stored, so the DB
 // never holds anything that can be replayed. crypto.subtle needs a secure context

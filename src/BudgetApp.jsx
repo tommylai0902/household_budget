@@ -142,6 +142,7 @@ const STRINGS = {
     currencyMismatch: "This receipt looks like it's in {scanned}, but this ledger is set to {ledger}. Amount was kept as printed — no conversion applied.",
     editCategories: "Edit categories", menu: "Menu",
     settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
+    saveAccent: "Save colour", accentSaved: "Saved", accentSaveErr: "Couldn't save your colour: {msg}",
     ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
@@ -256,6 +257,7 @@ const STRINGS = {
     currencyMismatch: "呢張收據睇落係 {scanned},但呢本帳簿設定咗 {ledger}。金額已按原數保留，冇做轉換。",
     editCategories: "編輯類別", menu: "選單",
     settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
+    saveAccent: "儲存顏色", accentSaved: "已儲存", accentSaveErr: "儲存唔到你揀嘅顏色：{msg}",
     ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
@@ -336,10 +338,12 @@ const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY
 // dark enough (WCAG luminance <= 0.179) to clear ~4.5:1 against white on its
 // own, not just as a fill. ACCENT_INK stays in place as a safety net, not
 // because this list currently needs the light-ink branch.
+// [0] is the default for anyone who's never picked one — a neutral grey, so a
+// fresh install doesn't look like it took a stance on colour.
 const ACCENT_COLORS = [
-  "#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D", "#636B74",
-  "#6A6890", "#726B4E", "#565B54", "#B14B52", "#6D3F49", "#8C6432",
-  "#656565", "#7A7281", "#965454", "#6B5152",
+  "#656565", "#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D",
+  "#636B74", "#6A6890", "#726B4E", "#565B54", "#B14B52", "#6D3F49", "#8C6432",
+  "#7A7281", "#965454", "#6B5152",
 ];
 // WCAG relative luminance -> pick whichever of white/near-black ink contrasts
 // better against that background. Crossover is ~0.179 (solving
@@ -386,10 +390,15 @@ const getTheme = () => {
   try { const s = localStorage.getItem("theme"); if (s === "light" || s === "dark") return s; } catch {}
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
+// The account (app_user.accent) is the source of truth — localStorage is only a
+// cache of it, so the app paints the right colour on load instead of flashing
+// the default while the profile fetch is in flight. A hex no longer in the
+// palette (renamed/removed) falls back to the default rather than being trusted.
 const getAccent = () => {
   try { const c = localStorage.getItem("accent"); if (c && ACCENT_COLORS.includes(c)) return c; } catch {}
   return ACCENT_COLORS[0];
 };
+const cacheAccent = (c) => { try { localStorage.setItem("accent", c); } catch {} };
 
 /* ============================ Root ================================= */
 export default function App() {
@@ -401,7 +410,10 @@ export default function App() {
   const changeTheme = (th) => { setTheme(th); try { localStorage.setItem("theme", th); } catch {} };
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
   const [accent, setAccent] = useState(getAccent);
-  const changeAccent = (c) => { setAccent(c); try { localStorage.setItem("accent", c); } catch {} };
+  // Unlike changeLang/changeTheme this one is preview-only: it repaints the app
+  // but doesn't persist. SettingsPanel owns the Save (and the revert-on-close),
+  // so a colour can be tried on the real UI before it sticks.
+  const changeAccent = setAccent;
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", accent);
     document.documentElement.style.setProperty("--accent-ink", accentInkFor(accent));
@@ -422,6 +434,21 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Whoever signs in brings their own saved colour, overriding whatever this
+  // browser had cached from the last account to use it. Failures are silent:
+  // the cached/default colour is already on screen and is good enough.
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    db.fetchMyAccent().then((c) => {
+      if (!live || !c || !ACCENT_COLORS.includes(c)) return;
+      setAccent(c);
+      cacheAccent(c);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [userId]);
 
   // No ledger picked = the picker is home. Exiting a ledger comes back here.
   const [ledger, setLedger] = useState(null);
@@ -2839,8 +2866,31 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
 // App-wide, not ledger-scoped — same panel opens from the picker or from
 // inside any ledger, which is why it only needs t/lang/theme, nothing here.
 function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onClose }) {
+  // Language and theme commit on tap; the accent doesn't. Tapping a swatch only
+  // previews it live on the app behind this panel — Save writes it to the
+  // account, closing without saving puts the stored colour back.
+  const [saved, setSaved] = useState(getAccent);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const dirty = accent !== saved;
+  const close = () => { if (dirty) changeAccent(saved); onClose(); };
+  const save = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      // Account first: the localStorage copy is only a cache of it, so it must
+      // not claim a colour the server rejected.
+      await db.saveMyAccent(accent);
+      cacheAccent(accent);
+      setSaved(accent);
+    } catch (e) {
+      setErr(e.message || String(e));
+    }
+    setBusy(false);
+  };
+
   return (
-    <Overlay title={t("settings")} onClose={onClose} t={t}>
+    <Overlay title={t("settings")} onClose={close} t={t}>
       <Field label={t("language")}>
         <LangToggle lang={lang} changeLang={changeLang} />
       </Field>
@@ -2865,6 +2915,12 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
             </button>
           ))}
         </div>
+        <button onClick={save} disabled={!dirty || busy}
+          style={{ ...addBtn, justifyContent: "center", opacity: dirty ? (busy ? 0.6 : 1) : 0.5, cursor: dirty && !busy ? "pointer" : "default" }}>
+          {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
+          {dirty ? t("saveAccent") : t("accentSaved")}
+        </button>
+        {err && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{t("accentSaveErr", { msg: err })}</div>}
       </Field>
     </Overlay>
   );
