@@ -320,15 +320,6 @@ const moneyFmt = (currency) => {
   return moneyFmts.get(currency);
 };
 const money = (n) => moneyFmt(activeCurrency).format(Number(n || 0));
-const moneyRoundedFmts = new Map();
-// Calendar day cells: "$2,300" not "$2,300.00" — decimals just add noise at
-// that size, and the exact figure is one tap away on the expense itself.
-const moneyRounded = (n) => {
-  if (!moneyRoundedFmts.has(activeCurrency)) {
-    moneyRoundedFmts.set(activeCurrency, new Intl.NumberFormat("en-CA", { style: "currency", currency: activeCurrency, maximumFractionDigits: 0 }));
-  }
-  return moneyRoundedFmts.get(activeCurrency).format(Number(n || 0));
-};
 const currencySymbol = (currency) =>
   moneyFmt(currency).formatToParts(0).find((p) => p.type === "currency")?.value || currency;
 const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY", "THB", "AUD", "SGD"];
@@ -1242,7 +1233,7 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
               </span>
               {amt > 0 && (
                 <span style={{ fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: isSelected ? ACCENT_INK : SUB }}>
-                  {moneyRounded(amt)}
+                  {money(amt)}
                 </span>
               )}
             </button>
