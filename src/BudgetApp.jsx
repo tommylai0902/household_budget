@@ -143,7 +143,7 @@ const STRINGS = {
     editCategories: "Edit categories", menu: "Menu",
     settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
     saveAccent: "Save colour", accentSaved: "Saved", accentSaveErr: "Couldn't save your colour: {msg}",
-    ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.",
+    ledgers: "Ledgers", ledgersHint: "Pick a ledger, or start a new one.", home: "Home",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
     manageAccess: "Manage members", currentMembers: "Who has access",
@@ -258,7 +258,7 @@ const STRINGS = {
     editCategories: "編輯類別", menu: "選單",
     settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
     saveAccent: "儲存顏色", accentSaved: "已儲存", accentSaveErr: "儲存唔到你揀嘅顏色：{msg}",
-    ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。",
+    ledgers: "帳簿", ledgersHint: "揀一本帳簿，或者開一本新嘅。", home: "主頁",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
     manageAccess: "管理成員", currentMembers: "邊個有權限",
@@ -376,7 +376,7 @@ const STRINGS = {
     editCategories: "编辑类别", menu: "菜单",
     settings: "设置", appearance: "外观", light: "浅色", dark: "深色", accentColor: "主题色",
     saveAccent: "保存颜色", accentSaved: "已保存", accentSaveErr: "无法保存你选的颜色：{msg}",
-    ledgers: "账本", ledgersHint: "选择一个账本，或新建一个。",
+    ledgers: "账本", ledgersHint: "选择一个账本，或新建一个。", home: "主页",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "创建账本",
     invitePeople: "邀请成员", inviteAccess: "权限",
     manageAccess: "管理成员", currentMembers: "谁有权限",
@@ -492,7 +492,7 @@ const STRINGS = {
     editCategories: "Modifier les catégories", menu: "Menu",
     settings: "Paramètres", appearance: "Apparence", light: "Clair", dark: "Sombre", accentColor: "Couleur d'accent",
     saveAccent: "Enregistrer la couleur", accentSaved: "Enregistré", accentSaveErr: "Impossible d'enregistrer votre couleur : {msg}",
-    ledgers: "Registres", ledgersHint: "Choisissez un registre ou créez-en un.",
+    ledgers: "Registres", ledgersHint: "Choisissez un registre ou créez-en un.", home: "Accueil",
     newLedgerPh: "ex. Voyage — Japon", createLedger: "Créer le registre",
     invitePeople: "Inviter des personnes", inviteAccess: "Leur accès",
     manageAccess: "Gérer les membres", currentMembers: "Qui a accès",
@@ -608,7 +608,7 @@ const STRINGS = {
     editCategories: "Editar categorías", menu: "Menú",
     settings: "Ajustes", appearance: "Apariencia", light: "Claro", dark: "Oscuro", accentColor: "Color de acento",
     saveAccent: "Guardar color", accentSaved: "Guardado", accentSaveErr: "No se pudo guardar tu color: {msg}",
-    ledgers: "Libros", ledgersHint: "Elige un libro o crea uno nuevo.",
+    ledgers: "Libros", ledgersHint: "Elige un libro o crea uno nuevo.", home: "Inicio",
     newLedgerPh: "p. ej. Viaje — Japón", createLedger: "Crear libro",
     invitePeople: "Invitar personas", inviteAccess: "Su acceso",
     manageAccess: "Gestionar miembros", currentMembers: "Quién tiene acceso",
@@ -3181,7 +3181,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
           {/* Absent on the picker itself — that page is where this leads. */}
           {onHome && (
             <button role="menuitem" onClick={() => { setOpen(false); onHome(); }} style={menuItem}>
-              <BookOpen size={15} /> {t("ledgers")}
+              <Home size={15} /> {t("home")}
             </button>
           )}
           {/* Ledger-scoped entries are absent on the picker, which has no ledger. */}
