@@ -154,6 +154,21 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 
 ---
 
+## 12a. Kid Ledger(新 template,`kid`)
+
+一個俾小朋友用嘅「儲蓄 vault」模式,同其他四個 template(household/travel/personal/blank)嗰種「月結、分帳」邏輯完全冇關係——`Ledger` component 一見 `ledger.template === "kid"` 就即刻 return `<KidLedgerDashboard>`,一個獨立成頁嘅 component,唔會行到底下嗰堆 month calendar/settle-up/budget 嘅 render code。
+
+- **Earn/spend 記帳**:冇整多一張表,直接用返 `expenses` 呢張表,新加咗一個 `kind` 欄(`'spend'`(default)/`'earn'`,migration 016)。`db.js` 嘅 `toAppExpense`/`toRowExpense` 加返呢個欄,其他 template 由頭到尾唔會寫 `'earn'`,所以係加法,冇改到現有行為。
+- **6 個 emoji 類別**(Chores🧹/Snacks🍦/Toys🧸/Games🎮/Gifts🎁/Allowance💰)其實就係 `db.TEMPLATES.kid` 嗰 6 個 category——同其他 template 一樣用返 `categories` 表,`kind` 先至決定係賺定使,類別本身冇分「賺嘅類別」定「使嘅類別」。撳「Earned Money」定「Bought Something」淨係決定會寫 `kind` 做邊個,兩個掣開返嗰個 tile grid 一樣。
+- **Treasure Vault 金額** = 成個 ledger 歷史所有 `expenses` 加埋(earn 做 `+`,spend 做 `-`),**唔係月結**(冇 month selector,`KidLedgerDashboard` 完全唔理 `month`)。
+- **Wishlist goal**:新表 `wishlist_goals`(migration 016),`ledger_id` 有 `unique` constraint,即係一本 kid ledger 淨係得一個目標,設定新嘅就直接覆蓋(冇歷史記錄)。撳個 progress bar 就開返 `KidGoalEditor` 改名/改金額。
+- **HeaderMenu 淨係得 Home/Settings/Sign out**——冇 Budget/Reports/Manage members/Currency(kid template 嘅 `TEMPLATE_FEATURES` 四個 flag 全部 false,呢啲項目本身就唔會 render)。
+- **顏色故意唔跟 `--accent`/dark mode**:`KID_PURPLE`/`KID_GREEN`/`KID_ORANGE`/`KID_YELLOW` 係寫死嘅 hex,唔係 `var(--xxx)`——呢個 dashboard 要睇落係獨立、鮮艷嘅嘢,唔係大人帳簿嗰套配色嘅變奏。
+- **必踩坑,已修好**:一開始 `Ledger` 嘅 `refresh()` 對**所有** template 都 unconditional 咁 fetch `wishlist_goals`——`kid` template 先有嘅嘢,但因為冇擋住,test 出嚟**成個 household ledger 直接爆晒**(`Couldn't reach the ledger`,支出全部消失)。而家改咗做 `ledger.template === "kid" ? db.fetchWishlistGoal(...) : Promise.resolve(null)`,四個舊 template 完全唔會掂到嗰張表。
+- **`ledgers.template` 呢欄有自己嘅 DB check constraint**(migration 005,同 `db.js` 嘅 `TEMPLATE_FEATURES` 係兩回事)——加 `kid` 呢個 template 一定要連埋 migration 016 嗰句 `alter table ledgers ... check (template in (...,'kid',...))`,唔係就撞板(insert 400)。之後如果再加第 6 個 template,記得呢個 constraint 又要改多次。
+
+---
+
 ## 12. 未驗證 / 已知限制(交低俾下一個對話)
 
 - `/api/scan-statement.js` 嘅 AI 讀 statement 路徑(需要真實相/PDF + 有效 Gemini key,呢邊環境驗唔到)。

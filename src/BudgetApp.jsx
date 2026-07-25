@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
-  Home, Plane, Repeat, Pause, Play,
+  Home, Plane, Repeat, Pause, Play, PiggyBank,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
-const LEDGER_ICONS = { household: Home, travel: Plane, personal: Users, blank: BookOpen };
+const LEDGER_ICONS = { household: Home, travel: Plane, personal: Users, kid: PiggyBank, blank: BookOpen };
 const ledgerIcon = (tpl) => LEDGER_ICONS[tpl] || BookOpen;
 const MEMBER_ICONS = { user: User, people: Users, home: Home, plane: Plane, book: BookOpen, tag: Tag };
 const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
@@ -168,12 +168,18 @@ const STRINGS = {
     noLedgers: "No ledgers yet. Create your first one below.",
     exit: "Exit", language: "Language", openLedger: "Open {name}",
     startWith: "Start with", tplHousehold: "Household", tplTravel: "Travel",
-    tplPersonal: "Personal", tplBlank: "Blank",
+    tplPersonal: "Personal", tplKid: "Kids", tplBlank: "Blank",
     tplHint: "{n} categories — you can rename or add more later",
     tplHintBlank: "No categories — add your own from inside the ledger",
     deleteLedger: "Delete ledger", renameLedger: "Rename ledger",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
     currency: "Currency",
+    vaultTitle: "Treasure Vault", earnedMoney: "Earned Money", boughtSomething: "Bought Something",
+    kidAdd: "Add it!", noGoalYet: "No goal yet — tap to set one!",
+    setGoalTitle: "Set a wishlist goal", goalNameLabel: "What are you saving for?",
+    goalNamePh: "e.g. Lego Star Wars", goalAmountLabel: "Target amount", saveGoal: "Save goal",
+    goalReached: "🎉 Goal reached!", recentActivity: "Recent Activity",
+    noKidActivity: "Nothing yet — earn or spend to see it here!",
   },
   zh: {
     eyebrow: "Monira",
@@ -283,12 +289,18 @@ const STRINGS = {
     noLedgers: "仲未有帳簿。喺下面建立第一本。",
     exit: "離開", language: "語言", openLedger: "開啟{name}",
     startWith: "起始類別", tplHousehold: "家用", tplTravel: "旅行",
-    tplPersonal: "個人", tplBlank: "空白",
+    tplPersonal: "個人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 個類別 — 之後可以改名或者加",
     tplHintBlank: "冇類別 — 入咗帳簿之後自己加",
     deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
     deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
     currency: "貨幣",
+    vaultTitle: "寶藏庫", earnedMoney: "賺咗錢", boughtSomething: "買咗嘢",
+    kidAdd: "加落去！", noGoalYet: "仲未有目標 — 撳呢度設定一個！",
+    setGoalTitle: "設定願望清單目標", goalNameLabel: "你想儲錢買咩？",
+    goalNamePh: "例如：Lego Star Wars", goalAmountLabel: "目標金額", saveGoal: "儲存目標",
+    goalReached: "🎉 達成目標喇！", recentActivity: "最近活動",
+    noKidActivity: "仲未有記錄 — 賺錢或者買嘢就會喺度顯示！",
   },
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
@@ -401,12 +413,18 @@ const STRINGS = {
     noLedgers: "还没有账本。在下面创建第一个。",
     exit: "退出", language: "语言", openLedger: "打开{name}",
     startWith: "起始类别", tplHousehold: "家用", tplTravel: "旅行",
-    tplPersonal: "个人", tplBlank: "空白",
+    tplPersonal: "个人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 个类别 — 之后可以改名或添加",
     tplHintBlank: "没有类别 — 进入账本后自己添加",
     deleteLedger: "删除账本", renameLedger: "重命名账本",
     deleteLedgerConfirm: "删除「{name}」及其中所有支出？此操作无法撤销。",
     currency: "货币",
+    vaultTitle: "宝藏库", earnedMoney: "赚到钱", boughtSomething: "买了东西",
+    kidAdd: "记一笔！", noGoalYet: "还没有目标 — 点这里设置一个！",
+    setGoalTitle: "设置心愿清单目标", goalNameLabel: "你想攒钱买什么？",
+    goalNamePh: "例如：乐高星球大战", goalAmountLabel: "目标金额", saveGoal: "保存目标",
+    goalReached: "🎉 达成目标啦！", recentActivity: "最近活动",
+    noKidActivity: "还没有记录 — 赚钱或买东西后会显示在这里！",
   },
   fr: {
     eyebrow: "Monira",
@@ -517,12 +535,18 @@ const STRINGS = {
     noLedgers: "Aucun registre. Créez le premier ci-dessous.",
     exit: "Quitter", language: "Langue", openLedger: "Ouvrir {name}",
     startWith: "Commencer avec", tplHousehold: "Ménage", tplTravel: "Voyage",
-    tplPersonal: "Personnel", tplBlank: "Vierge",
+    tplPersonal: "Personnel", tplKid: "Enfants", tplBlank: "Vierge",
     tplHint: "{n} catégories — renommables, et vous pouvez en ajouter",
     tplHintBlank: "Aucune catégorie — ajoutez les vôtres depuis le registre",
     deleteLedger: "Supprimer le registre", renameLedger: "Renommer le registre",
     deleteLedgerConfirm: "Supprimer « {name} » et toutes ses dépenses ? Action irréversible.",
     currency: "Devise",
+    vaultTitle: "Coffre au trésor", earnedMoney: "Argent gagné", boughtSomething: "Achat",
+    kidAdd: "Ajouter !", noGoalYet: "Pas encore d'objectif — touche ici pour en fixer un !",
+    setGoalTitle: "Fixer un objectif", goalNameLabel: "Pour quoi économises-tu ?",
+    goalNamePh: "ex. Lego Star Wars", goalAmountLabel: "Montant visé", saveGoal: "Enregistrer l'objectif",
+    goalReached: "🎉 Objectif atteint !", recentActivity: "Activité récente",
+    noKidActivity: "Rien pour l'instant — gagne ou dépense pour voir ça ici !",
   },
   es: {
     eyebrow: "Monira",
@@ -633,12 +657,18 @@ const STRINGS = {
     noLedgers: "Aún no hay libros. Crea el primero abajo.",
     exit: "Salir", language: "Idioma", openLedger: "Abrir {name}",
     startWith: "Empezar con", tplHousehold: "Hogar", tplTravel: "Viaje",
-    tplPersonal: "Personal", tplBlank: "En blanco",
+    tplPersonal: "Personal", tplKid: "Niños", tplBlank: "En blanco",
     tplHint: "{n} categorías — puedes renombrarlas o añadir más",
     tplHintBlank: "Sin categorías — añade las tuyas dentro del libro",
     deleteLedger: "Eliminar libro", renameLedger: "Renombrar libro",
     deleteLedgerConfirm: '¿Eliminar "{name}" y todos sus gastos? No se puede deshacer.',
     currency: "Moneda",
+    vaultTitle: "Cofre del tesoro", earnedMoney: "Dinero ganado", boughtSomething: "Compra",
+    kidAdd: "¡Añadir!", noGoalYet: "Aún no hay meta — ¡toca aquí para poner una!",
+    setGoalTitle: "Establecer una meta", goalNameLabel: "¿Para qué estás ahorrando?",
+    goalNamePh: "p. ej. Lego Star Wars", goalAmountLabel: "Monto objetivo", saveGoal: "Guardar meta",
+    goalReached: "🎉 ¡Meta alcanzada!", recentActivity: "Actividad reciente",
+    noKidActivity: "Nada todavía — ¡gana o gasta para verlo aquí!",
   },
 };
 // Order here is the order of the toggle in Settings. `zh` predates the others
@@ -666,6 +696,7 @@ const CATEGORY_ICONS = {
   "food delivery": "🛵", "dine in": "🍽️", entertainment: "🎬",
   flights: "✈️", accommodation: "🏨", food: "🍔", transport: "🚌",
   activities: "🎡", shopping: "🛍️", health: "💊", subscriptions: "📱", other: "🏷️",
+  chores: "🧹", snacks: "🍦", toys: "🧸", games: "🎮", gifts: "🎁", allowance: "💰",
 };
 const categoryIcon = (c) => (c ? CATEGORY_ICONS[catName(c).toLowerCase()] || "🏷️" : "❔");
 
@@ -1108,7 +1139,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                   {/* Icon is editable here too, otherwise ledgers made before this
                       existed would be stuck with the default mark. */}
                   <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                    {["household", "travel", "personal", "blank"].map((k) => {
+                    {["household", "travel", "personal", "kid", "blank"].map((k) => {
                       const Icon = ledgerIcon(k);
                       return (
                         <button key={k} onClick={() => setDraftTpl(k)} aria-label={t("tpl" + k[0].toUpperCase() + k.slice(1))}
@@ -1147,7 +1178,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
         <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("startWith")}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {["household", "travel", "personal", "blank"].map((k) => (
+            {["household", "travel", "personal", "kid", "blank"].map((k) => (
               <button key={k} onClick={() => setTemplate(k)} style={selectablePill(TEAL, template === k)}>
                 {t("tpl" + k[0].toUpperCase() + k.slice(1))}
               </button>
@@ -1178,6 +1209,237 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
 // read like ledger.features rather than reaching into db directly.
 function useLedgerFeatures(ledger) {
   return useMemo(() => db.featuresFor(ledger.template), [ledger.template]);
+}
+
+/* ========================= Kid Ledger ============================== */
+// Deliberately its own bright, fixed palette rather than the app's --accent/
+// --ink theme vars: the brief calls for a gamified look that reads as its own
+// thing next to the grown-up ledgers, not a tinted variant of them. Doesn't
+// respond to the user's chosen accent or dark mode by design.
+const KID_PURPLE = "#7C3AED";
+const KID_PURPLE_DARK = "#5B21B6";
+const KID_YELLOW = "#FACC15";
+const KID_GREEN = "#16A34A";
+const KID_ORANGE = "#F97316";
+
+const kidActionBtn = (color) => ({
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+  padding: "18px 10px", borderRadius: 20, border: "none", background: color, color: "#fff",
+  fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", lineHeight: 1.3,
+  boxShadow: `0 8px 20px ${color}55`,
+});
+
+function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAddExpense, onSaveGoal, error,
+  lang, changeLang, t, theme, changeTheme, accent, changeAccent, onExit, onSwitchLedger }) {
+  const [actionKind, setActionKind] = useState(null); // null | "earn" | "spend"
+  const [editingGoal, setEditingGoal] = useState(false);
+
+  // All-time, not month-scoped — a vault is a running total, not a monthly one.
+  const balance = useMemo(
+    () => expenses.reduce((sum, e) => sum + (e.kind === "earn" ? 1 : -1) * (Number(e.amount) || 0), 0),
+    [expenses]
+  );
+  const recent = useMemo(
+    () => expenses.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 15),
+    [expenses]
+  );
+  const raised = goal ? Math.max(0, Math.min(balance, goal.targetAmount)) : 0;
+  const pct = goal ? Math.round((raised / goal.targetAmount) * 100) : 0;
+  const reached = goal && balance >= goal.targetAmount;
+
+  return (
+    <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+
+        {/* Header — same chrome as every other ledger (switcher, exit, menu),
+            so navigation stays consistent; only the content below is the
+            gamified skin. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+          <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+            <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}><ArrowLeft size={15} /> {t("exit")}</button>
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
+              accent={accent} changeAccent={changeAccent} onHome={onExit} />
+          </div>
+        </div>
+
+        {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
+
+        {/* Vault banner */}
+        <div style={{ background: `linear-gradient(135deg, ${KID_PURPLE}, ${KID_PURPLE_DARK})`, borderRadius: 24, padding: "24px 22px", boxShadow: `0 12px 30px ${KID_PURPLE}59`, color: "#fff" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", opacity: 0.85 }}>{t("vaultTitle")}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+            <span style={{ fontSize: 40 }} aria-hidden="true">🪙</span>
+            <span style={{ fontSize: 44, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{money(balance)}</span>
+          </div>
+
+          {/* Wishlist goal progress — tap it to set/edit the goal, since there's
+              no other entry point for something this small a feature needs. */}
+          <div role="button" tabIndex={0} onClick={() => setEditingGoal(true)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditingGoal(true); } }}
+            style={{ marginTop: 18, background: "rgba(255,255,255,0.16)", borderRadius: 16, padding: 14, cursor: "pointer" }}>
+            {goal ? (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, fontWeight: 700 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🎯 {goal.name}</span>
+                  <span style={{ flexShrink: 0 }}>{money(raised)} / {money(goal.targetAmount)}</span>
+                </div>
+                <div style={{ marginTop: 8, height: 14, borderRadius: 99, background: "rgba(255,255,255,0.25)", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: KID_YELLOW, borderRadius: 99, transition: "width .3s ease" }} />
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, opacity: 0.9 }}>{reached ? t("goalReached") : `${pct}%`}</div>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, fontWeight: 700, textAlign: "center" }}>🎯 {t("noGoalYet")}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Big emoji action buttons */}
+        <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
+          <button onClick={() => setActionKind("earn")} style={kidActionBtn(KID_GREEN)}>
+            <span style={{ fontSize: 22 }} aria-hidden="true">➕</span>{t("earnedMoney")}
+          </button>
+          <button onClick={() => setActionKind("spend")} style={kidActionBtn(KID_ORANGE)}>
+            <span style={{ fontSize: 22 }} aria-hidden="true">➖</span>{t("boughtSomething")}
+          </button>
+        </div>
+
+        {/* Simplified activity list */}
+        <div style={{ marginTop: 22 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{t("recentActivity")}</div>
+          {recent.length === 0 ? (
+            <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13, fontWeight: 600 }}>{t("noKidActivity")}</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {recent.map((e) => {
+                const cat = categories.find((c) => c.id === e.categoryId);
+                const earn = e.kind === "earn";
+                return (
+                  <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, borderRadius: 18, padding: "12px 14px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}>
+                    <span style={{ fontSize: 26 }} aria-hidden="true">{categoryIcon(cat)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.description}</div>
+                      <div style={{ fontSize: 12, color: SUB }}>{shortDate(e.date, lang)}</div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: earn ? KID_GREEN : KID_ORANGE, flexShrink: 0 }}>
+                      {earn ? "+" : "-"}{money(Math.abs(Number(e.amount) || 0))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {actionKind && (
+        <KidActionModal kind={actionKind} categories={categories} members={members} t={t}
+          onSave={onAddExpense} onClose={() => setActionKind(null)} />
+      )}
+      {editingGoal && (
+        <KidGoalEditor goal={goal} t={t} onSave={onSaveGoal} onClose={() => setEditingGoal(false)} />
+      )}
+    </div>
+  );
+}
+
+// The "modal with 6 emoji tiles" from the brief: tap a category, an amount
+// field appears, Save logs it. `kind` (earn/spend) comes from which of the two
+// big buttons opened this, not from the category — Chores and Allowance read
+// as "earn" reasons, Snacks/Toys/Games/Gifts as "spend" ones, but the tile
+// grid itself is the same seeded category list either way (db.TEMPLATES.kid).
+function KidActionModal({ kind, categories, members, t, onSave, onClose }) {
+  const [categoryId, setCategoryId] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const amt = Number(amount) || 0;
+  const valid = categoryId && amt > 0 && !busy;
+
+  const save = async () => {
+    if (!valid) return;
+    setBusy(true);
+    const cat = categories.find((c) => c.id === categoryId);
+    // No separate description field — kid-friendly means tap, type an amount,
+    // done. The category name doubles as the activity list's entry title.
+    await onSave({
+      description: catName(cat), amount: amt, categoryId, date: todayISO(), note: "",
+      paidById: members[0]?.id || null, split: "personal", sharedWith: [], kind,
+    });
+    setBusy(false);
+    onClose();
+  };
+
+  return (
+    <Overlay title={kind === "earn" ? t("earnedMoney") : t("boughtSomething")} onClose={onClose} t={t}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        {categories.map((c) => (
+          <button key={c.id} onClick={() => setCategoryId(c.id)}
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "16px 6px",
+              borderRadius: 18, border: categoryId === c.id ? `3px solid ${KID_PURPLE}` : `2px solid ${LINE}`,
+              background: categoryId === c.id ? `${KID_PURPLE}14` : CARD, cursor: "pointer", fontFamily: "inherit",
+            }}>
+            <span style={{ fontSize: 32 }} aria-hidden="true">{categoryIcon(c)}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: INK, textAlign: "center" }}>{catName(c)}</span>
+          </button>
+        ))}
+      </div>
+      {categoryId && (
+        <div style={{ marginTop: 16 }}>
+          <Field label={t("amount")}>
+            <div style={{ ...input, display: "flex", alignItems: "center", gap: 4, fontSize: 22, fontWeight: 800 }}>
+              <span>{currencySymbol(activeCurrency)}</span>
+              <input autoFocus type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && save()}
+                style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
+            </div>
+          </Field>
+          <button onClick={save} disabled={!valid}
+            style={{ ...addBtn, background: kind === "earn" ? KID_GREEN : KID_ORANGE, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+            {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("kidAdd")}
+          </button>
+        </div>
+      )}
+    </Overlay>
+  );
+}
+
+// One goal per ledger, overwritten rather than archived (see saveWishlistGoal)
+// — simple on purpose, no goal history to manage.
+function KidGoalEditor({ goal, t, onSave, onClose }) {
+  const [name, setName] = useState(goal?.name || "");
+  const [amount, setAmount] = useState(goal ? String(goal.targetAmount) : "");
+  const [busy, setBusy] = useState(false);
+  const valid = name.trim() && Number(amount) > 0 && !busy;
+
+  const save = async () => {
+    if (!valid) return;
+    setBusy(true);
+    await onSave(name.trim(), Number(amount));
+    setBusy(false);
+    onClose();
+  };
+
+  return (
+    <Overlay title={t("setGoalTitle")} onClose={onClose} t={t}>
+      <Field label={t("goalNameLabel")}>
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t("goalNamePh")}
+          onKeyDown={(e) => e.key === "Enter" && save()} style={input} />
+      </Field>
+      <Field label={t("goalAmountLabel")}>
+        <div style={{ ...input, display: "flex", alignItems: "center", gap: 4 }}>
+          <span>{currencySymbol(activeCurrency)}</span>
+          <input type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
+        </div>
+      </Field>
+      <button onClick={save} disabled={!valid} style={{ ...addBtn, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+        {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveGoal")}
+      </button>
+    </Overlay>
+  );
 }
 
 // Loads every ledger the signed-in user can open (RLS already scopes this to
@@ -1268,6 +1530,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [merchants, setMerchants] = useState([]);
   const [managingStores, setManagingStores] = useState(false);
   const [allLedgers, setAllLedgers] = useState([]);
+  const [goal, setGoal] = useState(null); // Kid Ledger's wishlist goal, null elsewhere
 
   const refresh = useCallback(async () => {
     try {
@@ -1278,10 +1541,14 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       await db.generateDueRecurring(ledger.id).catch(() => {});
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
-      const [cats, exps, mems, buds, shops, leds] = await Promise.all([
+      // Wishlist goal is Kid-Ledger-only — every other template skips the query
+      // entirely, so this table existing (migration 016) is only a prerequisite
+      // for that one template, never a trip hazard for the other four.
+      const [cats, exps, mems, buds, shops, leds, wish] = await Promise.all([
         db.fetchCategories(ledger.id), db.fetchExpenses(ledger.id),
         db.fetchMembers(ledger.id), db.fetchBudgets(ledger.id), db.fetchMerchants(ledger.id),
         db.fetchLedgers(), // for sending personal receipt items elsewhere
+        ledger.template === "kid" ? db.fetchWishlistGoal(ledger.id) : Promise.resolve(null),
       ]);
       setAllLedgers(leds);
       setMembers(mems);
@@ -1289,6 +1556,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       setMerchants(shops);
       setCategories(cats);
       setExpenses(exps);
+      setGoal(wish);
       setReady(true);
     } catch (e) {
       setError(e.message || String(e));
@@ -1323,6 +1591,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       for (const { categoryId, amount } of entries) await db.setBudget(ledger.id, categoryId, month, amount);
       setBudgets(await db.fetchBudgets(ledger.id));
     } catch (e) { setError(e.message); }
+  };
+  const saveGoal = async (name, targetAmount) => {
+    try { await db.saveWishlistGoal(ledger.id, { name, targetAmount }); setGoal(await db.fetchWishlistGoal(ledger.id)); }
+    catch (e) { setError(e.message); }
   };
 
   const upsertExpense = async (draft, rememberName, personal) => {
@@ -1386,6 +1658,20 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   }, [rows, members]);
 
   if (!ready) return <Centered>{t("connecting")}</Centered>;
+
+  // Its own dashboard entirely, not another branch inside the household/travel/
+  // personal UI below — a kid's vault/goal/activity view has nothing in common
+  // with month grids and settle-up, so bolting it on here would mean threading
+  // template checks through code that has nothing to do with it.
+  if (ledger.template === "kid") {
+    return (
+      <KidLedgerDashboard ledger={ledger} categories={categories} expenses={expenses} members={members}
+        goal={goal} onAddExpense={upsertExpense} onSaveGoal={saveGoal} error={error}
+        lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme}
+        accent={accent} changeAccent={changeAccent} onExit={onExit} onSwitchLedger={onSwitchLedger} />
+    );
+  }
+
   const label = monthName(month, lang);
 
   return (
