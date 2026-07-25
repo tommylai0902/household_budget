@@ -2422,6 +2422,7 @@ function categoryTotalsFor(targetMonth, expenses, categories, lang, t) {
     return {
       id,
       amount,
+      category,
       name: category ? catName(category, lang) : t("reportUncategorised"),
       color: category?.color || "#94A3B8",
     };
@@ -2502,14 +2503,17 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
               <text x="50" y="57" textAnchor="middle" fontSize="7" fontWeight="800" fill={INK}>{money(total)}</text>
             </svg>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {breakdown.map((item) => (
-              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 99, background: item.color, flexShrink: 0 }} />
-                <button onClick={() => setSelectedCategory(item)} style={{ ...categoryLink, flex: 1 }}>{item.name}</button>
-                <span style={{ color: SUB, fontSize: 12 }}>{Math.round((item.amount / total) * 100)}%</span>
-                <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", minWidth: 76, textAlign: "right" }}>{money(item.amount)}</span>
-              </div>
+              <button key={item.id} onClick={() => setSelectedCategory(item)}
+                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "10px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                <span style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 999, background: item.color, fontSize: 16, flexShrink: 0 }} aria-hidden="true">
+                  {categoryIcon(item.category)}
+                </span>
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 14, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                <span style={{ color: SUB, fontSize: 12, flexShrink: 0 }}>{Math.round((item.amount / total) * 100)}%</span>
+                <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", minWidth: 70, textAlign: "right", flexShrink: 0 }}>{money(item.amount)}</span>
+              </button>
             ))}
           </div>
         </>
