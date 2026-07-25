@@ -3333,12 +3333,18 @@ function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel }) {
   );
 }
 
+// A div, not a label: most fields here wrap a *group* of controls (the swatch
+// grid, the light/dark pair, the language row), and a label forwards a click on
+// its caption to the first control inside it. Tapping the words "Accent colour"
+// silently picked the first swatch — one Save away from being written to the
+// account. Cost of the div: clicking a caption no longer focuses the input in
+// the single-input fields.
 function Field({ label, children, style }) {
   return (
-    <label style={{ display: "block", ...style }}>
+    <div style={{ display: "block", ...style }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{label}</div>
       {children}
-    </label>
+    </div>
   );
 }
 
