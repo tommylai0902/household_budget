@@ -96,7 +96,7 @@ const STRINGS = {
     sharedLine: "Split {n} ways — {amount} each",
     members: "Members", manageMembers: "Edit members",
     memberHasExpenses: "That member still has expenses in this ledger. Reassign or delete them first.",
-    budget: "Budget", budgetFor: "Budget for {month}", budgetTotal: "All categories",
+    budget: "Budget", budgetFor: "Budget for {month}", budgetTotal: "All categories", editBudget: "Edit budget",
     budgetNone: "No budgets set for {month}. Give any category an amount below.",
     budgetSpent: "Spent", budgetLeft: "Left", budgetOver: "Over budget",
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget", setBudgetPh: "Set budget",
@@ -211,7 +211,7 @@ const STRINGS = {
     sharedLine: "{n} 人平分 — 每人 {amount}",
     members: "成員", manageMembers: "編輯成員",
     memberHasExpenses: "呢位成員喺呢本帳簿仲有支出，要先改咗付款人或者刪走嗰啲支出。",
-    budget: "預算", budgetFor: "{month}預算", budgetTotal: "所有類別",
+    budget: "預算", budgetFor: "{month}預算", budgetTotal: "所有類別", editBudget: "編輯預算",
     budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
     budgetSpent: "已用", budgetLeft: "剩餘", budgetOver: "超出預算",
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算", setBudgetPh: "設定預算",
@@ -869,6 +869,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [managingCats, setManagingCats] = useState(false);
   const [managingMembers, setManagingMembers] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
+  const [showEditBudget, setShowEditBudget] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
@@ -1145,7 +1146,15 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       {showBudget && (
         <BudgetPanel month={month} monthLabel={label} categories={categories} expenses={expenses} budgets={budgets} lang={lang}
           spentByCategory={spentByCategory} spent={summary.total} t={t}
-          onSave={saveBudgets} onClose={() => setShowBudget(false)} />
+          onEditBudget={() => setShowEditBudget(true)} onClose={() => setShowBudget(false)} />
+      )}
+      {/* Rendered after BudgetPanel — same fixed z-index everywhere, later in
+          the DOM wins, so opening this from BudgetPanel's "Edit budget" badge
+          stacks on top instead of behind it (same fix as the batch-import/
+          member-manager stacking issue). */}
+      {showEditBudget && (
+        <EditBudgetPanel month={month} monthLabel={label} categories={categories} budgets={budgets} t={t}
+          onSave={saveBudgets} onClose={() => setShowEditBudget(false)} />
       )}
       {showReport && (
         <MonthlyReport month={month} months={monthsAvailable} expenses={expenses} categories={categories}
@@ -2303,18 +2312,13 @@ function BudgetBar({ spent, budget, height = 8, pace }) {
   );
 }
 
-function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onSave, onClose }) {
-  // One draft per category; the month's budget is their sum, not its own field.
-  const [drafts, setDrafts] = useState(() =>
-    Object.fromEntries(categories.map((c) => {
-      const v = budgets.get(db.budgetKey(month, c.id));
-      return [c.id, v == null ? "" : String(v)];
-    })),
-  );
-  const [busy, setBusy] = useState(false);
+// Read-only — editing moved to EditBudgetPanel, reached via the "Edit
+// budget" badge. Budget figures here come straight from the saved `budgets`
+// map, not from a local draft, since there's nothing to draft.
+function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onEditBudget, onClose }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const budgetOf = (id) => Number(drafts[id]) || 0;
+  const budgetOf = (id) => budgets.get(db.budgetKey(month, id)) || 0;
   const totalBudget = categories.reduce((sum, c) => sum + budgetOf(c.id), 0);
   const left = totalBudget - spent;
   const over = left < 0;
@@ -2326,21 +2330,18 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
     ? (Number(today.slice(-2)) / new Date(...month.split("-").map(Number), 0).getDate()) * 100
     : null;
 
-  const save = async () => {
-    setBusy(true);
-    await onSave(categories.map((c) => ({ categoryId: c.id, amount: drafts[c.id].trim() === "" ? null : budgetOf(c.id) })));
-    setBusy(false);
-  };
-
   return (
     <Overlay onClose={onClose} title={t("budget")} t={t}>
       <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
 
       {/* Whole-month roll-up */}
       <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 15, fontWeight: 700 }}>{t("budgetTotal")}</span>
-          {totalBudget > 0 && <span style={{ fontSize: 13, color: SUB }}>{t("budgetAmountLabel", { amount: money(totalBudget) })}</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {totalBudget > 0 && <span style={{ fontSize: 13, color: SUB }}>{t("budgetAmountLabel", { amount: money(totalBudget) })}</span>}
+            <button onClick={onEditBudget} style={pill(TEAL)}>{t("editBudget")}</button>
+          </div>
         </div>
         <BudgetBar spent={spent} budget={totalBudget} height={12} pace={pace} />
         {totalBudget > 0 ? (
@@ -2354,27 +2355,20 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
       </div>
 
       {/* Per-category — each its own card, same spent/budget/remaining shape
-          as the roll-up above it, since that's just their sum. */}
+          as the roll-up above it, since that's just their sum. Read-only:
+          the amount is just displayed, not an input — see EditBudgetPanel. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {categories.map((c) => {
           const s = spentByCategory.get(c.id) || 0;
           const b = budgetOf(c.id);
-          const hasBudget = drafts[c.id] != null && drafts[c.id] !== "";
+          const hasBudget = budgets.has(db.budgetKey(month, c.id));
           const catLeft = b - s;
           const catOver = catLeft < 0;
           return (
             <div key={c.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <button onClick={() => setSelectedCategory(c)} style={{ ...categoryLink, flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{catName(c)}</button>
-                <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 104, flexShrink: 0, padding: "7px 8px", fontSize: 13 }}>
-                  {/* Dollar sign only once there's a value, so an unset field reads as
-                      "Set budget" rather than a misleading "$ 0.00". */}
-                  {hasBudget && <span style={{ color: SUB, flexShrink: 0 }}>{currencySymbol(activeCurrency)}</span>}
-                  <input type="number" inputMode="decimal" value={drafts[c.id] ?? ""}
-                    onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })}
-                    onKeyDown={(e) => e.key === "Enter" && save()}
-                    placeholder={t("setBudgetPh")} style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
-                </div>
+                {hasBudget && <span style={{ fontSize: 13, color: SUB, fontWeight: 600, flexShrink: 0 }}>{money(b)}</span>}
               </div>
               <BudgetBar spent={s} budget={b} pace={pace} />
               <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
@@ -2388,15 +2382,59 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
         })}
       </div>
 
-      <div style={{ fontSize: 12, color: SUB }}>
-        {t("budgetClearHint")}
-        {uncategorised > 0.005 && <> · {t("budgetUncat")}</>}
-      </div>
+      {uncategorised > 0.005 && <div style={{ fontSize: 12, color: SUB }}>{t("budgetUncat")}</div>}
 
+      {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
+    </Overlay>
+  );
+}
+
+// The only place budgets are actually editable, reached via BudgetPanel's
+// "Edit budget" badge. Same per-category draft-then-save shape the old
+// combined panel used, just on its own page.
+function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, onClose }) {
+  const [drafts, setDrafts] = useState(() =>
+    Object.fromEntries(categories.map((c) => {
+      const v = budgets.get(db.budgetKey(month, c.id));
+      return [c.id, v == null ? "" : String(v)];
+    })),
+  );
+  const [busy, setBusy] = useState(false);
+  const budgetOf = (id) => Number(drafts[id]) || 0;
+
+  const save = async () => {
+    setBusy(true);
+    await onSave(categories.map((c) => ({ categoryId: c.id, amount: drafts[c.id].trim() === "" ? null : budgetOf(c.id) })));
+    setBusy(false);
+    onClose();
+  };
+
+  return (
+    <Overlay onClose={onClose} title={t("editBudget")} t={t}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {categories.map((c) => {
+          const hasBudget = drafts[c.id] != null && drafts[c.id] !== "";
+          return (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catName(c)}</span>
+              <div style={{ ...input, display: "flex", alignItems: "center", gap: 3, width: 104, flexShrink: 0, padding: "7px 8px", fontSize: 13 }}>
+                {/* Dollar sign only once there's a value, so an unset field reads as
+                    "Set budget" rather than a misleading "$ 0.00". */}
+                {hasBudget && <span style={{ color: SUB, flexShrink: 0 }}>{currencySymbol(activeCurrency)}</span>}
+                <input type="number" inputMode="decimal" value={drafts[c.id] ?? ""}
+                  onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })}
+                  onKeyDown={(e) => e.key === "Enter" && save()}
+                  placeholder={t("setBudgetPh")} style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 12, color: SUB }}>{t("budgetClearHint")}</div>
       <button onClick={save} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
         {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("budgetSave")}
       </button>
-      {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
     </Overlay>
   );
 }
