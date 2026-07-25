@@ -60,9 +60,9 @@ const memberById = (members, id) => members.find((m) => m.id === id) || null;
 /* --------------------------- i18n ---------------------------------- */
 const STRINGS = {
   en: {
-    eyebrow: "Household Ledger",
+    eyebrow: "Monira",
     signInTitle: "Sign in",
-    signInHint: "Use the account set up for your household.",
+    signInHint: "One simple step toward a better financial life.",
     signUpTitle: "Create account", signUpHint: "Sign up, then create or join a ledger.",
     nameLabel: "Name", namePh: "How you'll show up in a ledger",
     signUpBtn: "Create account", toSignUp: "New here? Create an account", toSignIn: "Already have an account? Sign in",
@@ -176,9 +176,9 @@ const STRINGS = {
     currency: "Currency",
   },
   zh: {
-    eyebrow: "家庭帳簿",
+    eyebrow: "Monira",
     signInTitle: "登入",
-    signInHint: "使用為你們家庭設定的帳戶登入。",
+    signInHint: "向更好嘅財務生活，行前一小步。",
     signUpTitle: "建立帳戶", signUpHint: "註冊後，建立或加入帳簿。",
     nameLabel: "名稱", namePh: "你喺帳簿入面顯示嘅名",
     signUpBtn: "建立帳戶", toSignUp: "未有帳戶？建立一個", toSignIn: "已經有帳戶？登入",
@@ -293,9 +293,9 @@ const STRINGS = {
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
   "zh-Hans": {
-    eyebrow: "家庭账本",
+    eyebrow: "Monira",
     signInTitle: "登录",
-    signInHint: "使用为你家庭创建的账户登录。",
+    signInHint: "迈向更好财务生活的一小步。",
     signUpTitle: "创建账户", signUpHint: "注册后，创建或加入账本。",
     nameLabel: "名称", namePh: "你在账本中显示的名字",
     signUpBtn: "创建账户", toSignUp: "还没有账户？创建一个", toSignIn: "已有账户？登录",
@@ -409,9 +409,9 @@ const STRINGS = {
     currency: "货币",
   },
   fr: {
-    eyebrow: "Registre du ménage",
+    eyebrow: "Monira",
     signInTitle: "Connexion",
-    signInHint: "Utilisez le compte créé pour votre ménage.",
+    signInHint: "Un petit pas simple vers une vie financière meilleure.",
     signUpTitle: "Créer un compte", signUpHint: "Inscrivez-vous, puis créez ou rejoignez un registre.",
     nameLabel: "Nom", namePh: "Le nom affiché dans le registre",
     signUpBtn: "Créer un compte", toSignUp: "Nouveau ici ? Créez un compte", toSignIn: "Vous avez déjà un compte ? Connectez-vous",
@@ -525,9 +525,9 @@ const STRINGS = {
     currency: "Devise",
   },
   es: {
-    eyebrow: "Libro del hogar",
+    eyebrow: "Monira",
     signInTitle: "Iniciar sesión",
-    signInHint: "Usa la cuenta creada para tu hogar.",
+    signInHint: "Un paso simple hacia una mejor vida financiera.",
     signUpTitle: "Crear cuenta", signUpHint: "Regístrate y luego crea o únete a un libro.",
     nameLabel: "Nombre", namePh: "Cómo aparecerás en el libro",
     signUpBtn: "Crear cuenta", toSignUp: "¿Nuevo aquí? Crea una cuenta", toSignIn: "¿Ya tienes cuenta? Inicia sesión",
@@ -1068,7 +1068,10 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>{t("ledgers")}</h1>
+          {/* App name, not t("ledgers") — this is the home page's brand header, not
+              a description of the list below it (that's ledgersHint). Same string
+              in every language, like the eyebrow on the sign-in screen. */}
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>Monira</h1>
           {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
           <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
         </div>
