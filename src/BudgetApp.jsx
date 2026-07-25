@@ -1125,7 +1125,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         <ExpenseForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
           merchants={merchants} expenses={expenses} ledgers={allLedgers} lang={lang} t={t}
           onClose={() => setEditing(null)} onSave={upsertExpense} onEditMembers={() => setManagingMembers(true)}
-          onEditCategories={() => setManagingCats(true)} defaultMonth={month}
+          onEditCategories={() => setManagingCats(true)} defaultMonth={month} defaultDate={selectedDay}
           onBatchImport={(transactions) => { setEditing(null); setBatchRows(transactions); }} />
       )}
       {/* Rendered before MemberManager below (same fixed z-index everywhere —
@@ -1880,13 +1880,14 @@ async function fileToUpload(file) {
   return { image: await toScaledJpegBase64(file), mediaType: "image/jpeg" };
 }
 
-function ExpenseForm({ initial, categories, members, merchants, expenses = [], ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, features, onBatchImport }) {
+function ExpenseForm({ initial, categories, members, merchants, expenses = [], ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, defaultDate, features, onBatchImport }) {
   // Personal-template ledgers (features.showSplit false) have no one to split
   // with — the payer is just whoever's account this is, silently the first
   // member, and every expense is personal. Nothing left to ask about.
   const [d, setD] = useState(() => initial || {
+    // A day tapped on the calendar wins over the usual mid-month guess.
     description: "", amount: "", categoryId: categories[0]?.id || null,
-    date: `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
+    date: defaultDate || `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
     split: features.showSplit ? "shared" : "personal",
     sharedWith: members.map((m) => m.id), // everyone by default; untick who wasn't there
   });
