@@ -1062,6 +1062,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
               ))}
             </select>
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
+              onHome={onExit}
               onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
               onStores={() => setManagingStores(true)}
               onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
@@ -2778,7 +2779,7 @@ function useMyProfile() {
   return profile;
 }
 
-function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
+function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const profile = useMyProfile();
@@ -2815,6 +2816,12 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
               </div>
             </div>
           )}
+          {/* Absent on the picker itself — that page is where this leads. */}
+          {onHome && (
+            <button role="menuitem" onClick={() => { setOpen(false); onHome(); }} style={menuItem}>
+              <BookOpen size={15} /> {t("ledgers")}
+            </button>
+          )}
           {/* Ledger-scoped entries are absent on the picker, which has no ledger. */}
           {onBudget && (
             <button role="menuitem" onClick={() => { setOpen(false); onBudget(); }} style={menuItem}>
@@ -2850,7 +2857,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
               </select>
             </div>
           )}
-          {(onBudget || onReport || onStores || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onHome || onBudget || onReport || onStores || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           <button role="menuitem" onClick={() => { setOpen(false); setShowSettings(true); }} style={menuItem}>
             <Settings size={15} /> {t("settings")}
           </button>
