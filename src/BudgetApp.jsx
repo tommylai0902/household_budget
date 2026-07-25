@@ -1012,11 +1012,10 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   return (
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <style>{`
-        .exp-row { display:grid !important; grid-template-columns:auto minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:10px; row-gap:7px; transition:background .12s ease; }
-        .exp-icon { grid-column:1; grid-row:1 / span 2; align-self:center; }
-        .exp-main { grid-column:2; grid-row:1; min-width:0; }
-        .exp-meta { grid-column:2 / -1; grid-row:2; min-width:0; }
-        .exp-total { grid-column:3; grid-row:1; align-self:center; }
+        .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; transition:background .12s ease; }
+        .exp-main { grid-column:1; grid-row:1; min-width:0; }
+        .exp-meta { grid-column:1 / -1; grid-row:2; min-width:0; }
+        .exp-total { grid-column:2; grid-row:1; align-self:center; }
         .exp-row:hover { background: ${MUTED_BG}; }
         .exp-row:focus-visible { background: ${MUTED_BG}; box-shadow: inset 3px 0 0 ${TEAL}; }
         @media (max-width: 560px) {
@@ -1077,7 +1076,6 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                   onClick={() => setDetail(e)}
                   onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
                   style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
-                  <span className="exp-icon" style={{ fontSize: 20, lineHeight: 1 }} aria-hidden="true">{categoryIcon(cat)}</span>
                   <div className="exp-main">
                     <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.description}</div>
                   </div>
@@ -1086,7 +1084,8 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                     <ChevronRight size={17} style={{ color: SUB }} />
                   </div>
                   <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 8px", borderRadius: 99, background: OK_BG, color: OK_INK, fontSize: 11, fontWeight: 700 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 8px", borderRadius: 99, background: OK_BG, color: OK_INK, fontSize: 11, fontWeight: 700 }}>
+                      <span aria-hidden="true">{categoryIcon(cat)}</span>
                       {cat ? catName(cat, lang) : t("uncategorised")}
                     </span>
                     <span aria-hidden="true">·</span>
