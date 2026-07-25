@@ -1470,19 +1470,27 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{shortDate(e.date, lang)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
-                      {payer?.name || "—"}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    {/* Plain SUB, matching the date/payer either side — it stood
-                        out as the one accent-coloured thing in an otherwise
-                        neutral metadata row. */}
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: SUB }}>
-                      {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
-                      {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
-                    </span>
+                    {/* Who-paid and split-mode are both meaningless on a Personal
+                        ledger — there's exactly one (silent) payer and every
+                        expense is personal, so the badges would just repeat
+                        the same two things on every single row. */}
+                    {features.showSplit && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
+                          {payer?.name || "—"}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        {/* Plain SUB, matching the date/payer either side — it stood
+                            out as the one accent-coloured thing in an otherwise
+                            neutral metadata row. */}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: SUB }}>
+                          {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
+                          {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
+                        </span>
+                      </>
+                    )}
                     {e.recurringRuleId && (
                       <span title={t("recurring")} aria-label={t("recurring")} style={{ display: "inline-flex", alignItems: "center", color: "#94A3B8" }}>
                         <Repeat size={12} />
