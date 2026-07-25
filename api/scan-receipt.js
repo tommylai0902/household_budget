@@ -33,7 +33,9 @@ export default async function handler(req, res) {
     const names = Array.isArray(categories) ? categories.filter((c) => typeof c === "string" && c) : [];
     if (!names.length) return res.status(400).json({ error: "categories required" });
     // Whitelisted, not interpolated raw — this string lands inside the model prompt.
-    const targetLanguage = lang === "zh" ? "Traditional Chinese" : "English";
+    const targetLanguage = {
+      zh: "Traditional Chinese", "zh-Hans": "Simplified Chinese", fr: "French", es: "Spanish",
+    }[lang] || "English";
 
     // ---- authorize: this endpoint calls a metered API, so it can't be open to the world.
     // The caller's Supabase token must belong to somebody on the `members` allowlist.
