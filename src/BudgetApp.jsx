@@ -1924,7 +1924,11 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
     // A day tapped on the calendar wins over the usual mid-month guess.
     description: "", amount: "", categoryId: categories[0]?.id || null,
     date: defaultDate || `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
-    split: features.showSplit ? "shared" : "personal",
+    // Follows this ledger's last entry (expenses come back newest-first), so a
+    // household that doesn't split taps Personal once instead of on every
+    // expense. Ticking nobody is not the way to say "don't split" — that's a
+    // blocked state, see `valid` below; Personal is.
+    split: features.showSplit ? (expenses[0]?.split || "shared") : "personal",
     sharedWith: members.map((m) => m.id), // everyone by default; untick who wasn't there
   });
   const [addHst, setAddHst] = useState(false);
