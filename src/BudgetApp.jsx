@@ -1194,10 +1194,10 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
   const today = todayISO();
   const cells = Array(startWeekday).fill(null)
     .concat(Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`));
-  // Heatmap intensity is relative to this month's own busiest day, not some
-  // fixed dollar scale — a $200 day should read as "high" in a quiet month
-  // and merely average in an expensive one.
-  const maxDaily = Math.max(1, ...totals.values());
+  // Fixed, not scaled by amount — this is "did you spend that day", not a
+  // heatmap of how much. A flat tint is easier to read at a glance across a
+  // whole month than a gradient is at this size.
+  const SPEND_TINT = `color-mix(in srgb, ${WARN} 12%, transparent)`;
 
   return (
     <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: 14, marginTop: 14 }}>
@@ -1212,26 +1212,24 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
           const amt = totals.get(iso) || 0;
           const isToday = iso === today;
           const isSelected = iso === selectedDay;
-          // Today/selected get their own solid badge instead — heatmap is only
-          // for plain days, so the two treatments never have to blend.
-          const heatPct = !isToday && !isSelected && amt > 0 ? 8 + Math.min(1, amt / maxDaily) * 28 : 0;
-          const badgeBg = isSelected ? TEAL : isToday ? OK_BG : "transparent";
-          const badgeInk = isSelected ? ACCENT_INK : isToday ? OK_INK : INK;
+          // Selected wins the whole cell (solid square, like before this
+          // round of tweaks); today and "spent that day" are both a small
+          // circle behind just the number, so they can't visually collide
+          // with the selected state.
+          const badgeBg = isToday ? OK_BG : amt > 0 ? SPEND_TINT : "transparent";
+          const badgeInk = isToday ? OK_INK : INK;
           return (
             <button key={iso} onClick={() => onSelectDay(isSelected ? null : iso)}
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
                 minHeight: 46, borderRadius: 9, cursor: "pointer", fontFamily: "inherit", padding: 0, border: "none",
-                // color-mix keeps the heat tint independent of the day-number
-                // badge's own colour — WARN is a CSS var, not a literal hex,
-                // so alpha has to come from color-mix rather than an rgba().
-                background: heatPct ? `color-mix(in srgb, ${WARN} ${heatPct}%, transparent)` : "transparent",
+                background: isSelected ? TEAL : "transparent", color: isSelected ? ACCENT_INK : INK,
               }}>
-              <span style={{ display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 999, fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600, background: badgeBg, color: badgeInk }}>
+              <span style={{ display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 999, fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600, background: isSelected ? "transparent" : badgeBg, color: isSelected ? ACCENT_INK : badgeInk }}>
                 {Number(iso.slice(-2))}
               </span>
               {amt > 0 && (
-                <span style={{ fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: SUB }}>
+                <span style={{ fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: isSelected ? ACCENT_INK : SUB }}>
                   {moneyRounded(amt)}
                 </span>
               )}
