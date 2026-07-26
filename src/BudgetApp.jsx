@@ -144,7 +144,7 @@ const STRINGS = {
     editCategories: "Edit categories", menu: "Menu",
     settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
     saveAccent: "Save colour", accentSaved: "Saved", accentSaveErr: "Couldn't save your colour: {msg}",
-    profile: "Profile", saveName: "Save name", nameSaved: "Saved", nameSaveErr: "Couldn't save your name: {msg}",
+    profile: "Profile", editName: "Edit name", saveName: "Save name", nameSaved: "Saved", nameSaveErr: "Couldn't save your name: {msg}",
     currentPasswordLabel: "Current password", newPasswordLabel: "New password", confirmPasswordLabel: "Confirm new password",
     changePassword: "Change password", passwordChanged: "Password updated.", passwordSaveErr: "Couldn't update your password: {msg}",
     passwordMismatchErr: "New passwords don't match.", currentPasswordWrongErr: "Current password is incorrect.",
@@ -283,7 +283,7 @@ const STRINGS = {
     editCategories: "編輯類別", menu: "選單",
     settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
     saveAccent: "儲存顏色", accentSaved: "已儲存", accentSaveErr: "儲存唔到你揀嘅顏色：{msg}",
-    profile: "個人資料", saveName: "儲存名稱", nameSaved: "已儲存", nameSaveErr: "儲存唔到你嘅名：{msg}",
+    profile: "個人資料", editName: "編輯名稱", saveName: "儲存名稱", nameSaved: "已儲存", nameSaveErr: "儲存唔到你嘅名：{msg}",
     currentPasswordLabel: "目前密碼", newPasswordLabel: "新密碼", confirmPasswordLabel: "確認新密碼",
     changePassword: "更改密碼", passwordChanged: "密碼已更新。", passwordSaveErr: "更改唔到密碼：{msg}",
     passwordMismatchErr: "兩次輸入嘅新密碼唔一致。", currentPasswordWrongErr: "目前密碼唔啱。",
@@ -421,7 +421,7 @@ const STRINGS = {
     editCategories: "编辑类别", menu: "菜单",
     settings: "设置", appearance: "外观", light: "浅色", dark: "深色", accentColor: "主题色",
     saveAccent: "保存颜色", accentSaved: "已保存", accentSaveErr: "无法保存你选的颜色：{msg}",
-    profile: "个人资料", saveName: "保存名字", nameSaved: "已保存", nameSaveErr: "无法保存你的名字：{msg}",
+    profile: "个人资料", editName: "编辑名字", saveName: "保存名字", nameSaved: "已保存", nameSaveErr: "无法保存你的名字：{msg}",
     currentPasswordLabel: "当前密码", newPasswordLabel: "新密码", confirmPasswordLabel: "确认新密码",
     changePassword: "更改密码", passwordChanged: "密码已更新。", passwordSaveErr: "无法更改密码：{msg}",
     passwordMismatchErr: "两次输入的新密码不一致。", currentPasswordWrongErr: "当前密码不正确。",
@@ -557,7 +557,7 @@ const STRINGS = {
     editCategories: "Modifier les catégories", menu: "Menu",
     settings: "Paramètres", appearance: "Apparence", light: "Clair", dark: "Sombre", accentColor: "Couleur d'accent",
     saveAccent: "Enregistrer la couleur", accentSaved: "Enregistré", accentSaveErr: "Impossible d'enregistrer votre couleur : {msg}",
-    profile: "Profil", saveName: "Enregistrer le nom", nameSaved: "Enregistré", nameSaveErr: "Impossible d'enregistrer votre nom : {msg}",
+    profile: "Profil", editName: "Modifier le nom", saveName: "Enregistrer le nom", nameSaved: "Enregistré", nameSaveErr: "Impossible d'enregistrer votre nom : {msg}",
     currentPasswordLabel: "Mot de passe actuel", newPasswordLabel: "Nouveau mot de passe", confirmPasswordLabel: "Confirmer le nouveau mot de passe",
     changePassword: "Changer le mot de passe", passwordChanged: "Mot de passe mis à jour.", passwordSaveErr: "Impossible de changer le mot de passe : {msg}",
     passwordMismatchErr: "Les nouveaux mots de passe ne correspondent pas.", currentPasswordWrongErr: "Le mot de passe actuel est incorrect.",
@@ -693,7 +693,7 @@ const STRINGS = {
     editCategories: "Editar categorías", menu: "Menú",
     settings: "Ajustes", appearance: "Apariencia", light: "Claro", dark: "Oscuro", accentColor: "Color de acento",
     saveAccent: "Guardar color", accentSaved: "Guardado", accentSaveErr: "No se pudo guardar tu color: {msg}",
-    profile: "Perfil", saveName: "Guardar nombre", nameSaved: "Guardado", nameSaveErr: "No se pudo guardar tu nombre: {msg}",
+    profile: "Perfil", editName: "Editar nombre", saveName: "Guardar nombre", nameSaved: "Guardado", nameSaveErr: "No se pudo guardar tu nombre: {msg}",
     currentPasswordLabel: "Contraseña actual", newPasswordLabel: "Nueva contraseña", confirmPasswordLabel: "Confirmar nueva contraseña",
     changePassword: "Cambiar contraseña", passwordChanged: "Contraseña actualizada.", passwordSaveErr: "No se pudo cambiar la contraseña: {msg}",
     passwordMismatchErr: "Las nuevas contraseñas no coinciden.", currentPasswordWrongErr: "La contraseña actual es incorrecta.",
@@ -3832,12 +3832,16 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showReminders, setShowReminders] = useState(false);
-  // Same row style as Manage reminders/Saved shops below, but these five
+  // Same row style as Manage reminders/Saved shops below, but these four
   // expand in place instead of opening a new stacked panel — quick tweaks,
   // not screens with their own data. Accordion, not independent toggles, so
   // the panel doesn't just go back to "everything open" (today's design).
-  const [openSection, setOpenSection] = useState(null); // null | "language" | "appearance" | "accent" | "name" | "password"
+  const [openSection, setOpenSection] = useState(null); // null | "profile" | "language" | "appearance" | "accent"
   const toggleSection = (key) => setOpenSection((s) => (s === key ? null : key));
+  // Nested accordion inside Profile — its own name/password rows, independent
+  // of the top-level openSection above.
+  const [profileSection, setProfileSection] = useState(null); // null | "name" | "password"
+  const toggleProfileSection = (key) => setProfileSection((s) => (s === key ? null : key));
   const dirty = accent !== saved;
   const close = () => { if (dirty) changeAccent(saved); onClose(); };
   const save = async () => {
@@ -3902,38 +3906,42 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
 
   return (
     <Overlay title={t("settings")} onClose={close} t={t}>
-      <AccordionRow icon={User} label={t("profile")} open={openSection === "name"} onToggle={() => toggleSection("name")}>
-        <Field label={t("email")}>
-          <div style={{ ...input, color: SUB }}>{profile?.email || ""}</div>
-        </Field>
-        <Field label={t("nameLabel")}>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && saveName()} style={input} />
-        </Field>
-        <button onClick={saveName} disabled={!nameDirty || nameBusy}
-          style={{ ...addBtn, justifyContent: "center", opacity: nameDirty ? (nameBusy ? 0.6 : 1) : 0.5, cursor: nameDirty && !nameBusy ? "pointer" : "default" }}>
-          {nameBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
-          {nameDirty ? t("saveName") : t("nameSaved")}
-        </button>
-        {nameErr && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{t("nameSaveErr", { msg: nameErr })}</div>}
-      </AccordionRow>
-      <AccordionRow icon={Lock} label={t("changePassword")} open={openSection === "password"} onToggle={() => toggleSection("password")}>
-        <Field label={t("currentPasswordLabel")}>
-          <input type="password" autoComplete="current-password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} style={input} />
-        </Field>
-        <Field label={t("newPasswordLabel")}>
-          <input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} style={input} />
-        </Field>
-        <Field label={t("confirmPasswordLabel")}>
-          <input type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && changePassword()} style={input} />
-        </Field>
-        <button onClick={changePassword} disabled={pwBusy || !currentPw || !newPw || !confirmPw}
-          style={{ ...addBtn, justifyContent: "center", opacity: (pwBusy || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
-          {pwBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("changePassword")}
-        </button>
-        {pwErr && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{pwErr}</div>}
-        {pwDone && <div style={{ color: OK_INK, fontSize: 12, marginTop: 6 }}>{t("passwordChanged")}</div>}
+      <AccordionRow icon={User} label={t("profile")} open={openSection === "profile"} onToggle={() => toggleSection("profile")}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <AccordionRow icon={Pencil} label={t("editName")} open={profileSection === "name"} onToggle={() => toggleProfileSection("name")}>
+            <Field label={t("email")}>
+              <div style={{ ...input, color: SUB }}>{profile?.email || ""}</div>
+            </Field>
+            <Field label={t("nameLabel")}>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveName()} style={input} />
+            </Field>
+            <button onClick={saveName} disabled={!nameDirty || nameBusy}
+              style={{ ...addBtn, justifyContent: "center", opacity: nameDirty ? (nameBusy ? 0.6 : 1) : 0.5, cursor: nameDirty && !nameBusy ? "pointer" : "default" }}>
+              {nameBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
+              {nameDirty ? t("saveName") : t("nameSaved")}
+            </button>
+            {nameErr && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{t("nameSaveErr", { msg: nameErr })}</div>}
+          </AccordionRow>
+          <AccordionRow icon={Lock} label={t("changePassword")} open={profileSection === "password"} onToggle={() => toggleProfileSection("password")}>
+            <Field label={t("currentPasswordLabel")}>
+              <input type="password" autoComplete="current-password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} style={input} />
+            </Field>
+            <Field label={t("newPasswordLabel")}>
+              <input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} style={input} />
+            </Field>
+            <Field label={t("confirmPasswordLabel")}>
+              <input type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && changePassword()} style={input} />
+            </Field>
+            <button onClick={changePassword} disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+              style={{ ...addBtn, justifyContent: "center", opacity: (pwBusy || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
+              {pwBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("changePassword")}
+            </button>
+            {pwErr && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{pwErr}</div>}
+            {pwDone && <div style={{ color: OK_INK, fontSize: 12, marginTop: 6 }}>{t("passwordChanged")}</div>}
+          </AccordionRow>
+        </div>
       </AccordionRow>
       <AccordionRow icon={Languages} label={t("language")} open={openSection === "language"} onToggle={() => toggleSection("language")}>
         <LangToggle lang={lang} changeLang={changeLang} t={t} />
