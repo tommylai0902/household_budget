@@ -188,15 +188,28 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 
 ## 12c. 自動「即將扣款」提醒(migration 018,recurring_rule_id)
 
-同 12b 嗰個手動 cancellation reminder獨立嘅第二種 reminder——**冇 toggle**,自動幫每條符合條件嘅 recurring rule 出。
+同 12b 嗰個手動 cancellation reminder獨立嘅第二種 reminder——每條符合條件嘅 recurring rule 自動出,唔使逐個 expense 咁樣手動 toggle(但 rule 層面本身而家可以 toggle,見 12d)。
 
-- **邊條 rule 會有**:`RecurringPanel` 入面,冇 paused、類別個名係 `"Subscriptions"` 嘅 rule,自動有一個「下次幾時扣錢前 2 日」嘅提醒,唔使入去 rule 度撳任何嘢。
+- **邊條 rule 會有**:`RecurringPanel` 入面,冇 paused、類別個名係 `"Subscriptions"` 嘅 rule,自動有一個「下次幾時扣錢前 N 日」(N 而家可以自己揀,見 12d)嘅提醒。
 - **點計「下次」**:同 `RecurringPanel` 顯示嘅「Next due」一樣條數(`last_generated_date ? nextOccurrence(...) : start_date`),`db.syncUpcomingChargeReminders()` 喺 `Ledger.refresh()` 入面同 `generateDueRecurring` 一齊跑(`addDays` 而家搬咗去 `src/lib/recurring.js`,`db.js`/`BudgetApp.jsx` 兩邊都 import 返嚟用,唔使兩份一樣嘅代碼)。
 - **唔會將已讀變返做未讀**:淨係當計出嚟嘅「下次」日期同上次記錄嘅**唔一樣**(即係 rule 行咗去下一個 cycle)先至 upsert(順便將 `read` 重設做 false)——如果日期冇變,乜都唔做,唔會將你剔咗嘅「已讀」靜雞雞打返做未讀。
 - **`notifications.expense_id`/`recurring_rule_id` 兩個都係 nullable + unique**:靠邊個掣咗嚟分係邊種 reminder,冇加多一個 `type` 欄。
-- **Pause/刪類別/刪 rule 就會冇咗**:rule paused,或者類別唔叫 Subscriptions,`syncUpcomingChargeReminders` 會自己刪走張 reminder;成條 rule 刪咗就靠 `on delete cascade`。
-- **Manage Reminders 度改唔到、刪唔到**:因為每次 refresh 都會重新算「下次」,你手動改嘅日期/刪走嘅行,落次 refresh 就會俾佢覆蓋/整返出嚟——所以呢類 reminder 喺 Manage Reminders 度淨係顯示(日期 + 一句「Auto-managed」提示),真正想停就要去 pause 嗰條 recurring rule(呢個 app 冇得刪 recurring rule,淨係得 pause,冇 delete 掣)。
+- **Pause/刪類別/唔要 reminder 就會冇咗**:rule paused、類別唔叫 Subscriptions,或者 `has_reminder` 關咗(見 12d),`syncUpcomingChargeReminders` 會自己刪走張 reminder;成條 rule 刪咗就靠 `on delete cascade`。
+- **Manage Reminders 度改唔到、刪唔到**:因為每次 refresh 都會重新算「下次」,你手動改嘅日期/刪走嘅行,落次 refresh 就會俾佢覆蓋/整返出嚟——所以呢類 reminder 喺 Manage Reminders 度淨係顯示(日期 + 一句「Auto-managed」提示),真正想停就要去該條 recurring rule 度剔走個 toggle(見 12d),或者(如果純粹想停成條 rule)撳個 rule 自己嘅刪除掣——**同之前份摘要寫錯嘅唔同,recurring rule 本身係有刪除掣㗎**,唔淨係得 pause。
 - **必踩坑,已修好**:`fetchAllReminders()`(Manage Reminders 用嗰個)一開始淨係 `.not("expense_id", "is", null)`,將全部 `recurring_rule_id`-anchor 嘅 reminder 篩走晒——測試嗰陣 Bell 明明有嘢,Manage Reminders 度就話「No reminders set.」。而家改咗做 `expense_id` 或 `recurring_rule_id` 隨便一個唔係 null 就算。
+
+---
+
+## 12d. Recurring rule 自己嘅 reminder toggle + 可調日數(migration 019)
+
+12c 一開始係「淨係 Subscriptions category 就自動有,冇得關」,用戶話想喺 `RecurringForm`(New/Edit recurring expense)度都見到、可以自己 toggle——即係將 12c 嘅自動邏輯加返一層人手控制。
+
+- **新欄**:`recurring_rules.has_reminder`(boolean,預設 `true`)、`recurring_rules.reminder_lead_days`(int,預設 `2`,check > 0)。預設值刻意保持同之前一樣嘅行為,行完 migration 唔會有現存 rule 突然停晒提醒。
+- **UI 位置**:`RecurringForm` 入面,揀咗 Subscriptions category 先會見到「Upcoming Charge Reminder」呢個 Field(同 ExpenseForm 嘅 cancellation reminder toggle 擺喺同一個位置——Category 之後,Who paid/Split 之前),入面係一個 checkbox(`remindMeUpcoming`)+一個「N days before」數字輸入(`reminderLeadDays`,唔係好似 ExpenseForm 嗰種絕對日期,因為 recurring 冇一個固定日期,淨係得「早幾多日」呢個相對數)。
+- **`syncUpcomingChargeReminders` 讀返呢兩個欄**:唔再係寫死 `addDays(next, -2)`,而係 `addDays(next, -(rule.reminder_lead_days || 2))`;`rule.has_reminder === false` 都會令佢當呢條 rule 冇資格,同 paused/唔係 Subscriptions 果種一樣要刪走現有 reminder。
+- **notification 個 title 都要跟住動態**:`upcomingChargeTitle` 由寫死「in 2 days」改做 `{days}` 做 placeholder,`buildTitle` 呢個由 `Ledger.refresh()` 傳落 db.js 嘅 callback,而家係 `(name, days) => t(...)` 兩個參數,`db.js` 個 upsert 果句傳返 `rule.reminder_lead_days`。
+- **必踩坑,已修好(寫嘅時候即刻試,冇等用戶報)**:`toRowRule()` 一改咗就**無條件**幫所有 recurring rule(唔止 Subscriptions 嗰啲)加返 `has_reminder`/`reminder_lead_days` 呢兩個欄落去 update/insert 嘅 payload——即係話行 migration 019 之前,連 Household 個「Rent」呢類完全同 reminder 冇關嘅 rule,一撳 Save 都會因為個欄唔存在而失敗。試過真係會咁(response 話 `Could not find the 'has_reminder' column`)。
+- **順手執咗嘅第二個舊 bug**:`RecurringPanel` 撞見 `editing !== null` 就會 `return <RecurringForm ...>`,即係完全冚蓋自己個 render(包括自己嗰句 `{err && ...}`)——所以之前如果 save 失敗,個 form 會乜反應都冇咁企喺度,錯誤訊息永遠冇機會顯示。而家 `RecurringForm` 自己攞埋一份 `err` state,`RecurringPanel.save()` catch 完之後會 `throw` 返出去畀 `RecurringForm.submit()` 收,先至有得喺個 form 度直接顯示個錯誤。
 
 ---
 

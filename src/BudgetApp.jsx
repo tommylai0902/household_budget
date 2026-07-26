@@ -182,7 +182,9 @@ const STRINGS = {
     noKidActivity: "Nothing yet — earn or spend to see it here!",
     cancellationReminder: "Cancellation Reminder", remindMeToCancel: "Remind me to cancel",
     cancellationReminderTitle: "Cancel {name} before it renews",
-    upcomingChargeTitle: "Upcoming charge for {name} in 2 days",
+    upcomingChargeTitle: "Upcoming charge for {name} in {days} days",
+    upcomingChargeReminder: "Upcoming Charge Reminder", remindMeUpcoming: "Remind me before each charge",
+    daysBeforeLabel: "days before",
     notifications: "Notifications", noNotifications: "You're all caught up!",
     markAllRead: "Mark all as read", markAsRead: "Mark as read", dismiss: "Dismiss",
     manageReminders: "Manage reminders", noReminders: "No reminders set.",
@@ -310,7 +312,9 @@ const STRINGS = {
     noKidActivity: "仲未有記錄 — 賺錢或者買嘢就會喺度顯示！",
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "續約前記得取消{name}",
-    upcomingChargeTitle: "{name} 兩日後扣款",
+    upcomingChargeTitle: "{name} {days} 日後扣款",
+    upcomingChargeReminder: "扣款提醒", remindMeUpcoming: "每次扣款前提醒我",
+    daysBeforeLabel: "日前",
     notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
     markAllRead: "全部標記為已讀", markAsRead: "標記為已讀", dismiss: "移除",
     manageReminders: "管理提醒", noReminders: "仲未設定任何提醒。",
@@ -441,7 +445,9 @@ const STRINGS = {
     noKidActivity: "还没有记录 — 赚钱或买东西后会显示在这里！",
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "续约前记得取消{name}",
-    upcomingChargeTitle: "{name} 将在 2 天后扣款",
+    upcomingChargeTitle: "{name} 将在 {days} 天后扣款",
+    upcomingChargeReminder: "扣款提醒", remindMeUpcoming: "每次扣款前提醒我",
+    daysBeforeLabel: "天前",
     notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
     markAllRead: "全部标记为已读", markAsRead: "标记为已读", dismiss: "移除",
     manageReminders: "管理提醒", noReminders: "还没有设置任何提醒。",
@@ -570,7 +576,9 @@ const STRINGS = {
     noKidActivity: "Rien pour l'instant — gagne ou dépense pour voir ça ici !",
     cancellationReminder: "Rappel d'annulation", remindMeToCancel: "Me rappeler d'annuler",
     cancellationReminderTitle: "Annuler {name} avant le renouvellement",
-    upcomingChargeTitle: "Prélèvement de {name} dans 2 jours",
+    upcomingChargeTitle: "Prélèvement de {name} dans {days} jours",
+    upcomingChargeReminder: "Rappel de prélèvement", remindMeUpcoming: "Me rappeler avant chaque prélèvement",
+    daysBeforeLabel: "jours avant",
     notifications: "Notifications", noNotifications: "Tout est à jour !",
     markAllRead: "Tout marquer comme lu", markAsRead: "Marquer comme lu", dismiss: "Ignorer",
     manageReminders: "Gérer les rappels", noReminders: "Aucun rappel défini.",
@@ -699,7 +707,9 @@ const STRINGS = {
     noKidActivity: "Nada todavía — ¡gana o gasta para verlo aquí!",
     cancellationReminder: "Recordatorio de cancelación", remindMeToCancel: "Recuérdame cancelar",
     cancellationReminderTitle: "Cancela {name} antes de que se renueve",
-    upcomingChargeTitle: "Cargo próximo de {name} en 2 días",
+    upcomingChargeTitle: "Cargo próximo de {name} en {days} días",
+    upcomingChargeReminder: "Recordatorio de cargo", remindMeUpcoming: "Recuérdame antes de cada cargo",
+    daysBeforeLabel: "días antes",
     notifications: "Notificaciones", noNotifications: "¡Estás al día!",
     markAllRead: "Marcar todo como leído", markAsRead: "Marcar como leído", dismiss: "Descartar",
     manageReminders: "Gestionar recordatorios", noReminders: "No hay recordatorios.",
@@ -1581,7 +1591,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       await db.generateDueRecurring(ledger.id).catch(() => {});
       // Auto-managed upcoming-charge reminders for recurring Subscriptions
       // rules — no toggle, just kept current alongside the generation above.
-      await db.syncUpcomingChargeReminders(ledger.id, (name) => t("upcomingChargeTitle", { name })).catch(() => {});
+      await db.syncUpcomingChargeReminders(ledger.id, (name, days) => t("upcomingChargeTitle", { name, days })).catch(() => {});
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
       // Wishlist goal is Kid-Ledger-only — every other template skips the query
@@ -2224,8 +2234,13 @@ function RecurringPanel({ ledger, categories, members, features, lang, t, onClos
   // AFTER it runs — otherwise the card's "next due" shows the pre-generation value.
   const after = async () => { await onChanged(); load(); };
   const save = async (rule) => {
+    setErr("");
     try { await db.upsertRecurringRule(rule, ledger.id); setEditing(null); await after(); }
-    catch (e) { setErr(e.message || String(e)); }
+    // Re-thrown so RecurringForm (which replaces this panel's own render while
+    // open — see the early return above) can show the failure itself; this
+    // still sets `err` too, for the rarer case something goes wrong on the
+    // list view (pause/delete) instead.
+    catch (e) { setErr(e.message || String(e)); throw e; }
   };
   const togglePause = async (r) => {
     setBusyId(r.id);
@@ -2246,6 +2261,10 @@ function RecurringPanel({ ledger, categories, members, features, lang, t, onClos
   const nextDue = (r) => (r.paused ? null : r.lastGeneratedDate ? nextOccurrence(r.lastGeneratedDate, r.frequency) : r.startDate);
 
   if (editing !== null) {
+    // This early-return replaces RecurringPanel's own render entirely, so its
+    // {err && ...} banner below is unreachable from here — RecurringForm keeps
+    // its own error state instead (fresh on every mount), or a failed save
+    // would fail silently with the form just sitting there.
     return <RecurringForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
       lang={lang} t={t} onClose={() => setEditing(null)} onSave={save} />;
   }
@@ -2306,17 +2325,25 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
     split: features.showSplit ? "shared" : "personal",
     sharedWith: features.showSplit ? members.map((m) => m.id) : [],
     frequency: "monthly", startDate: todayISO(),
+    // Same default as the DB column (migration 019) — on by default, so a
+    // Subscriptions rule reminds you unless you turn it off.
+    hasReminder: true, reminderLeadDays: 2,
   });
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const isSubscription = catName(categories.find((c) => c.id === d.categoryId)) === "Subscriptions";
 
   const sharerCount = d.split === "shared" ? (d.sharedWith || []).length : 0;
   const valid = d.description.trim() && Number(d.amount) > 0 && d.startDate && d.paidById
-    && (d.split !== "shared" || sharerCount > 0) && !busy;
+    && (d.split !== "shared" || sharerCount > 0)
+    && (!isSubscription || !d.hasReminder || Number(d.reminderLeadDays) > 0) && !busy;
 
   const submit = async () => {
     if (!valid) return;
     setBusy(true);
-    await onSave({ ...d, description: d.description.trim(), amount: Number(d.amount) });
+    setErr("");
+    try { await onSave({ ...d, description: d.description.trim(), amount: Number(d.amount) }); }
+    catch (e) { setErr(e.message || String(e)); }
     setBusy(false);
   };
 
@@ -2350,6 +2377,22 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
           ))}
         </div>
       </Field>
+      {isSubscription && (
+        <Field label={t("upcomingChargeReminder")}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
+            <input type="checkbox" checked={d.hasReminder} onChange={(e) => setD({ ...d, hasReminder: e.target.checked })} />
+            {t("remindMeUpcoming")}
+          </label>
+          {d.hasReminder && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <input type="number" inputMode="numeric" min={1} value={d.reminderLeadDays}
+                onChange={(e) => setD({ ...d, reminderLeadDays: e.target.value })}
+                style={{ ...input, width: 70 }} />
+              <span style={{ fontSize: 13, color: SUB }}>{t("daysBeforeLabel")}</span>
+            </div>
+          )}
+        </Field>
+      )}
       {features.showSplit && (
         <>
           <Field label={t("whoPaid")}>
@@ -2380,6 +2423,7 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
           </Field>
         </>
       )}
+      {err && <div style={errorBox}>{err}</div>}
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
         <button onClick={submit} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>

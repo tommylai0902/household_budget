@@ -338,12 +338,17 @@ const toAppRule = (r) => ({
   paidById: r.paid_by_id, split: r.split_type === "shared_50" ? "shared" : "personal",
   sharedWith: r.shared_with || [], frequency: r.frequency, startDate: r.start_date,
   paused: r.paused, lastGeneratedDate: r.last_generated_date || null,
+  // Manual override for the automatic upcoming-charge reminder (migration 019)
+  // — only meaningful for Subscriptions-category rules, but harmless to carry
+  // on every rule rather than special-casing the mapper.
+  hasReminder: r.has_reminder !== false, reminderLeadDays: r.reminder_lead_days || 2,
 });
 const toRowRule = (r) => ({
   description: r.description, amount: Number(r.amount), category_id: r.categoryId || null,
   paid_by_id: r.paidById || null, split_type: r.split === "shared" ? "shared_50" : "personal",
   shared_with: r.split === "shared" ? [...new Set(r.sharedWith || [])] : [],
   frequency: r.frequency, start_date: r.startDate,
+  has_reminder: r.hasReminder !== false, reminder_lead_days: Number(r.reminderLeadDays) || 2,
 });
 
 export async function fetchRecurringRules(ledgerId) {
@@ -429,17 +434,20 @@ export async function generateDueRecurring(ledgerId) {
   }
 }
 
-// Automatic, unlike the manual per-expense cancellation reminder — every
-// non-paused recurring rule whose category is named "Subscriptions" gets an
-// "upcoming charge" notification 2 days before whichever occurrence it's
-// about to generate next (same cursor math as generateDueRecurring, run right
-// alongside it). `buildTitle` is a (description) => string the caller
+// Every non-paused recurring rule whose category is named "Subscriptions"
+// *and* has its own has_reminder toggle on (migration 019 — on by default,
+// same as the original always-on behaviour) gets an "upcoming charge"
+// notification reminder_lead_days before whichever occurrence it's about to
+// generate next (same cursor math as generateDueRecurring, run right
+// alongside it). `buildTitle` is a (description, leadDays) => string the caller
 // supplies so this stays free of i18n concerns; only re-upserts when the
 // tracked occurrence actually advances, so marking one read doesn't get
 // silently undone by the very next refresh.
 export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
   const [{ data: rules, error: rerr }, cats, { data: existing, error: eerr }] = await Promise.all([
-    supabase.from("recurring_rules").select("id, description, category_id, frequency, start_date, last_generated_date, paused").eq("ledger_id", ledgerId),
+    supabase.from("recurring_rules")
+      .select("id, description, category_id, frequency, start_date, last_generated_date, paused, has_reminder, reminder_lead_days")
+      .eq("ledger_id", ledgerId),
     fetchCategories(ledgerId),
     supabase.from("notifications").select("recurring_rule_id, remind_at").eq("ledger_id", ledgerId).not("recurring_rule_id", "is", null),
   ]);
@@ -449,15 +457,15 @@ export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
   const trackedRemindAt = new Map((existing || []).map((r) => [r.recurring_rule_id, r.remind_at]));
 
   for (const rule of rules) {
-    if (rule.paused || !subsCategoryIds.has(rule.category_id)) {
+    if (rule.paused || rule.has_reminder === false || !subsCategoryIds.has(rule.category_id)) {
       if (trackedRemindAt.has(rule.id)) await supabase.from("notifications").delete().eq("recurring_rule_id", rule.id);
       continue;
     }
     const next = rule.last_generated_date ? nextOccurrence(rule.last_generated_date, rule.frequency) : rule.start_date;
-    const remindAt = addDays(next, -2);
+    const remindAt = addDays(next, -(rule.reminder_lead_days || 2));
     if (trackedRemindAt.get(rule.id) === remindAt) continue; // same occurrence already tracked
     const { error } = await supabase.from("notifications").upsert(
-      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description), remind_at: remindAt, read: false },
+      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description, rule.reminder_lead_days || 2), remind_at: remindAt, read: false },
       { onConflict: "recurring_rule_id" },
     );
     if (error) throw error;
