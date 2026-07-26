@@ -205,11 +205,20 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 12c 一開始係「淨係 Subscriptions category 就自動有,冇得關」,用戶話想喺 `RecurringForm`(New/Edit recurring expense)度都見到、可以自己 toggle——即係將 12c 嘅自動邏輯加返一層人手控制。
 
 - **新欄**:`recurring_rules.has_reminder`(boolean,預設 `true`)、`recurring_rules.reminder_lead_days`(int,預設 `2`,check > 0)。預設值刻意保持同之前一樣嘅行為,行完 migration 唔會有現存 rule 突然停晒提醒。
-- **UI 位置**:`RecurringForm` 入面,揀咗 Subscriptions category 先會見到「Upcoming Charge Reminder」呢個 Field(同 ExpenseForm 嘅 cancellation reminder toggle 擺喺同一個位置——Category 之後,Who paid/Split 之前),入面係一個 checkbox(`remindMeUpcoming`)+一個「N days before」數字輸入(`reminderLeadDays`,唔係好似 ExpenseForm 嗰種絕對日期,因為 recurring 冇一個固定日期,淨係得「早幾多日」呢個相對數)。
+- **UI 位置**:`RecurringForm` 入面(所有 category 都見到,見 12e),「Upcoming Charge Reminder」呢個 Field 擺喺同 ExpenseForm 嘅 cancellation reminder toggle 一樣嘅位置——Category 之後,Who paid/Split 之前,入面係一個 checkbox(`remindMeUpcoming`)+一個「N days before」數字輸入(`reminderLeadDays`,唔係好似 ExpenseForm 嗰種絕對日期,因為 recurring 冇一個固定日期,淨係得「早幾多日」呢個相對數)。
 - **`syncUpcomingChargeReminders` 讀返呢兩個欄**:唔再係寫死 `addDays(next, -2)`,而係 `addDays(next, -(rule.reminder_lead_days || 2))`;`rule.has_reminder === false` 都會令佢當呢條 rule 冇資格,同 paused/唔係 Subscriptions 果種一樣要刪走現有 reminder。
 - **notification 個 title 都要跟住動態**:`upcomingChargeTitle` 由寫死「in 2 days」改做 `{days}` 做 placeholder,`buildTitle` 呢個由 `Ledger.refresh()` 傳落 db.js 嘅 callback,而家係 `(name, days) => t(...)` 兩個參數,`db.js` 個 upsert 果句傳返 `rule.reminder_lead_days`。
 - **必踩坑,已修好(寫嘅時候即刻試,冇等用戶報)**:`toRowRule()` 一改咗就**無條件**幫所有 recurring rule(唔止 Subscriptions 嗰啲)加返 `has_reminder`/`reminder_lead_days` 呢兩個欄落去 update/insert 嘅 payload——即係話行 migration 019 之前,連 Household 個「Rent」呢類完全同 reminder 冇關嘅 rule,一撳 Save 都會因為個欄唔存在而失敗。試過真係會咁(response 話 `Could not find the 'has_reminder' column`)。
 - **順手執咗嘅第二個舊 bug**:`RecurringPanel` 撞見 `editing !== null` 就會 `return <RecurringForm ...>`,即係完全冚蓋自己個 render(包括自己嗰句 `{err && ...}`)——所以之前如果 save 失敗,個 form 會乜反應都冇咁企喺度,錯誤訊息永遠冇機會顯示。而家 `RecurringForm` 自己攞埋一份 `err` state,`RecurringPanel.save()` catch 完之後會 `throw` 返出去畀 `RecurringForm.submit()` 收,先至有得喺個 form 度直接顯示個錯誤。
+
+---
+
+## 12e. 除返 Subscriptions category 嘅 gate(RecurringForm + syncUpcomingChargeReminders)
+
+用戶問「如果個 category 用戶自己改咗名/串錯咗/用短寫(例如 SUB)點算?」——12c/12d 一開始都係靠 `catName(c) === "Subscriptions"` 嗰句**逐隻字比對**,改錯名就會令個 reminder 完全隱形,冇錯誤、冇提示。答案唔係整鬆條 matching 規則(大小寫/trim/alias list),而係**成個 category gate 直接刪咗**——而家 `RecurringForm` 嘅「Upcoming Charge Reminder」Field 對住邊個 category 都會顯示,`db.js` 嘅 `syncUpcomingChargeReminders` 都唔會再 fetch categories 嚟比對(少咗一個 query),淨係睇 `rule.has_reminder`(即係 12d 嗰個 toggle)嚟決定使唔使幫呢條 rule 出 reminder。
+
+- **`ExpenseForm` 個一次性 cancellation reminder(12b)冇改**:嗰個仍然係靠 `catName(c) === "Subscriptions"` 嚟決定顯唔顯示——因為原本 spec 就係咁寫(「when category === 'Subscriptions'」),而且呢次用戶淨係話「all recurring expenses」,冇提到一次性嗰個 expense 表格,所以冇一齊改。如果之後想連嗰邊都撇除 category gate,做法一樣(刪咗 `isSubscription` 嗰句就得)。
+- **依家嘅心智模型**:recurring rule 嘅 upcoming-charge reminder,由「Subscriptions 專屬功能」變成「任何 recurring rule 都可以揀開唔開嘅一個選項」——同「Subscriptions」呢個字冧完全冇關係,唔使再擔心串錯字/短寫嘅問題。
 
 ---
 

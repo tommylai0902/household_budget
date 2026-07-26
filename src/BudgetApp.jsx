@@ -2326,17 +2326,16 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
     sharedWith: features.showSplit ? members.map((m) => m.id) : [],
     frequency: "monthly", startDate: todayISO(),
     // Same default as the DB column (migration 019) — on by default, so a
-    // Subscriptions rule reminds you unless you turn it off.
+    // rule reminds you unless you turn it off.
     hasReminder: true, reminderLeadDays: 2,
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const isSubscription = catName(categories.find((c) => c.id === d.categoryId)) === "Subscriptions";
 
   const sharerCount = d.split === "shared" ? (d.sharedWith || []).length : 0;
   const valid = d.description.trim() && Number(d.amount) > 0 && d.startDate && d.paidById
     && (d.split !== "shared" || sharerCount > 0)
-    && (!isSubscription || !d.hasReminder || Number(d.reminderLeadDays) > 0) && !busy;
+    && (!d.hasReminder || Number(d.reminderLeadDays) > 0) && !busy;
 
   const submit = async () => {
     if (!valid) return;
@@ -2377,22 +2376,23 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
           ))}
         </div>
       </Field>
-      {isSubscription && (
-        <Field label={t("upcomingChargeReminder")}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
-            <input type="checkbox" checked={d.hasReminder} onChange={(e) => setD({ ...d, hasReminder: e.target.checked })} />
-            {t("remindMeUpcoming")}
-          </label>
-          {d.hasReminder && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-              <input type="number" inputMode="numeric" min={1} value={d.reminderLeadDays}
-                onChange={(e) => setD({ ...d, reminderLeadDays: e.target.value })}
-                style={{ ...input, width: 70 }} />
-              <span style={{ fontSize: 13, color: SUB }}>{t("daysBeforeLabel")}</span>
-            </div>
-          )}
-        </Field>
-      )}
+      {/* Every recurring rule gets this, not just Subscriptions-category ones —
+          gating it by category name meant a rule under "SUB" or a typo'd
+          category silently never showed the option at all. */}
+      <Field label={t("upcomingChargeReminder")}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
+          <input type="checkbox" checked={d.hasReminder} onChange={(e) => setD({ ...d, hasReminder: e.target.checked })} />
+          {t("remindMeUpcoming")}
+        </label>
+        {d.hasReminder && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <input type="number" inputMode="numeric" min={1} value={d.reminderLeadDays}
+              onChange={(e) => setD({ ...d, reminderLeadDays: e.target.value })}
+              style={{ ...input, width: 70 }} />
+            <span style={{ fontSize: 13, color: SUB }}>{t("daysBeforeLabel")}</span>
+          </div>
+        )}
+      </Field>
       {features.showSplit && (
         <>
           <Field label={t("whoPaid")}>

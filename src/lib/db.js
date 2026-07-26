@@ -434,30 +434,31 @@ export async function generateDueRecurring(ledgerId) {
   }
 }
 
-// Every non-paused recurring rule whose category is named "Subscriptions"
-// *and* has its own has_reminder toggle on (migration 019 — on by default,
-// same as the original always-on behaviour) gets an "upcoming charge"
-// notification reminder_lead_days before whichever occurrence it's about to
-// generate next (same cursor math as generateDueRecurring, run right
-// alongside it). `buildTitle` is a (description, leadDays) => string the caller
-// supplies so this stays free of i18n concerns; only re-upserts when the
-// tracked occurrence actually advances, so marking one read doesn't get
-// silently undone by the very next refresh.
+// Every non-paused recurring rule with its own has_reminder toggle on
+// (migration 019 — on by default) gets an "upcoming charge" notification
+// reminder_lead_days before whichever occurrence it's about to generate next
+// (same cursor math as generateDueRecurring, run right alongside it). Not
+// gated by category any more — that was name-matching against "Subscriptions"
+// literally, so a category spelled "SUB" or renamed anything else silently
+// never got one; the toggle in RecurringForm is the only gate now, same as
+// every other recurring rule regardless of what it's for. `buildTitle` is a
+// (description, leadDays) => string the caller supplies so this stays free of
+// i18n concerns; only re-upserts when the tracked occurrence actually
+// advances, so marking one read doesn't get silently undone by the very next
+// refresh.
 export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
-  const [{ data: rules, error: rerr }, cats, { data: existing, error: eerr }] = await Promise.all([
+  const [{ data: rules, error: rerr }, { data: existing, error: eerr }] = await Promise.all([
     supabase.from("recurring_rules")
-      .select("id, description, category_id, frequency, start_date, last_generated_date, paused, has_reminder, reminder_lead_days")
+      .select("id, description, frequency, start_date, last_generated_date, paused, has_reminder, reminder_lead_days")
       .eq("ledger_id", ledgerId),
-    fetchCategories(ledgerId),
     supabase.from("notifications").select("recurring_rule_id, remind_at").eq("ledger_id", ledgerId).not("recurring_rule_id", "is", null),
   ]);
   if (rerr) throw rerr;
   if (eerr) throw eerr;
-  const subsCategoryIds = new Set(cats.filter((c) => c.name === "Subscriptions").map((c) => c.id));
   const trackedRemindAt = new Map((existing || []).map((r) => [r.recurring_rule_id, r.remind_at]));
 
   for (const rule of rules) {
-    if (rule.paused || rule.has_reminder === false || !subsCategoryIds.has(rule.category_id)) {
+    if (rule.paused || rule.has_reminder === false) {
       if (trackedRemindAt.has(rule.id)) await supabase.from("notifications").delete().eq("recurring_rule_id", rule.id);
       continue;
     }
