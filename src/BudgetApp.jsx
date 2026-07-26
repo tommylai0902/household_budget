@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
@@ -3771,8 +3771,19 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
 // Saved shops) — border, radius, icon + label — but these three expand in
 // place instead of opening a new stacked panel.
 function AccordionRow({ icon: Icon, label, open, onToggle, children }) {
+  // Click-outside-to-close: only listens while this row is open, and only
+  // acts on clicks landing outside its own DOM (so picking a swatch or any
+  // other control inside the expanded content doesn't collapse it).
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) onToggle(); };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [open, onToggle]);
+
   return (
-    <div style={{ border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden", background: CARD }}>
+    <div ref={ref} style={{ border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden", background: CARD }}>
       <button onClick={onToggle} aria-expanded={open}
         style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: INK }}>
         <Icon size={15} />
