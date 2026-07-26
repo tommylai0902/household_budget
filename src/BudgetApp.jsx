@@ -3772,7 +3772,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
       {/* Absent on the picker (no ledger, nothing to remember shops for) — same
           optional-prop gate every other ledger-scoped menu entry already uses. */}
       {onStores && (
-        <button onClick={onStores} style={{ ...ghostBtn, marginTop: 8 }}>
+        <button onClick={onStores} style={ghostBtn}>
           <Store size={15} /> {t("stores")}
         </button>
       )}
