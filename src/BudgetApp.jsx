@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
-  Home, Plane, Repeat, Pause, Play, PiggyBank, Bell,
+  Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -3680,6 +3680,23 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
   );
 }
 
+// Same row look as the plain ghostBtn entries below it (Manage reminders,
+// Saved shops) — border, radius, icon + label — but these three expand in
+// place instead of opening a new stacked panel.
+function AccordionRow({ icon: Icon, label, open, onToggle, children }) {
+  return (
+    <div style={{ border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden", background: CARD }}>
+      <button onClick={onToggle} aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: INK }}>
+        <Icon size={15} />
+        <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
+        <ChevronDown size={15} style={{ color: SUB, transition: "transform .15s", transform: open ? "rotate(180deg)" : "none", flexShrink: 0 }} />
+      </button>
+      {open && <div style={{ padding: "0 12px 12px" }}>{children}</div>}
+    </div>
+  );
+}
+
 // App-wide, not ledger-scoped — same panel opens from the picker or from
 // inside any ledger, which is why it only needs t/lang/theme, nothing here.
 function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onStores, onClose }) {
@@ -3690,6 +3707,12 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showReminders, setShowReminders] = useState(false);
+  // Same row style as Manage reminders/Saved shops below, but these three
+  // expand in place instead of opening a new stacked panel — quick tweaks,
+  // not screens with their own data. Accordion, not independent toggles, so
+  // the panel doesn't just go back to "everything open" (today's design).
+  const [openSection, setOpenSection] = useState(null); // null | "language" | "appearance" | "accent"
+  const toggleSection = (key) => setOpenSection((s) => (s === key ? null : key));
   const dirty = accent !== saved;
   const close = () => { if (dirty) changeAccent(saved); onClose(); };
   const save = async () => {
@@ -3709,10 +3732,10 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
 
   return (
     <Overlay title={t("settings")} onClose={close} t={t}>
-      <Field label={t("language")}>
+      <AccordionRow icon={Languages} label={t("language")} open={openSection === "language"} onToggle={() => toggleSection("language")}>
         <LangToggle lang={lang} changeLang={changeLang} t={t} />
-      </Field>
-      <Field label={t("appearance")}>
+      </AccordionRow>
+      <AccordionRow icon={Sun} label={t("appearance")} open={openSection === "appearance"} onToggle={() => toggleSection("appearance")}>
         <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden" }}>
           {[["light", t("light"), Sun], ["dark", t("dark"), Moon]].map(([value, label, Icon]) => (
             <button key={value} onClick={() => changeTheme(value)}
@@ -3721,8 +3744,8 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
             </button>
           ))}
         </div>
-      </Field>
-      <Field label={t("accentColor")}>
+      </AccordionRow>
+      <AccordionRow icon={Palette} label={t("accentColor")} open={openSection === "accent"} onToggle={() => toggleSection("accent")}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {ACCENT_COLORS.map((c) => (
             <button key={c} onClick={() => changeAccent(c)} aria-label={c} aria-pressed={accent === c}
@@ -3739,7 +3762,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
           {dirty ? t("saveAccent") : t("accentSaved")}
         </button>
         {err && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{t("accentSaveErr", { msg: err })}</div>}
-      </Field>
+      </AccordionRow>
       {/* Same account-wide scope as the Bell — every reminder you've set,
           across every ledger, not just the one Settings happened to open from. */}
       <button onClick={() => setShowReminders(true)} style={ghostBtn}>
