@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { nextOccurrence, dueOccurrences } from "./recurring";
+import { nextOccurrence, dueOccurrences, addDays } from "./recurring";
 
 /* ---- mappers: DB (snake_case) <-> app (camelCase) ---- */
 const toAppCategory = (r) => ({
@@ -429,6 +429,41 @@ export async function generateDueRecurring(ledgerId) {
   }
 }
 
+// Automatic, unlike the manual per-expense cancellation reminder — every
+// non-paused recurring rule whose category is named "Subscriptions" gets an
+// "upcoming charge" notification 2 days before whichever occurrence it's
+// about to generate next (same cursor math as generateDueRecurring, run right
+// alongside it). `buildTitle` is a (description) => string the caller
+// supplies so this stays free of i18n concerns; only re-upserts when the
+// tracked occurrence actually advances, so marking one read doesn't get
+// silently undone by the very next refresh.
+export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
+  const [{ data: rules, error: rerr }, cats, { data: existing, error: eerr }] = await Promise.all([
+    supabase.from("recurring_rules").select("id, description, category_id, frequency, start_date, last_generated_date, paused").eq("ledger_id", ledgerId),
+    fetchCategories(ledgerId),
+    supabase.from("notifications").select("recurring_rule_id, remind_at").eq("ledger_id", ledgerId).not("recurring_rule_id", "is", null),
+  ]);
+  if (rerr) throw rerr;
+  if (eerr) throw eerr;
+  const subsCategoryIds = new Set(cats.filter((c) => c.name === "Subscriptions").map((c) => c.id));
+  const trackedRemindAt = new Map((existing || []).map((r) => [r.recurring_rule_id, r.remind_at]));
+
+  for (const rule of rules) {
+    if (rule.paused || !subsCategoryIds.has(rule.category_id)) {
+      if (trackedRemindAt.has(rule.id)) await supabase.from("notifications").delete().eq("recurring_rule_id", rule.id);
+      continue;
+    }
+    const next = rule.last_generated_date ? nextOccurrence(rule.last_generated_date, rule.frequency) : rule.start_date;
+    const remindAt = addDays(next, -2);
+    if (trackedRemindAt.get(rule.id) === remindAt) continue; // same occurrence already tracked
+    const { error } = await supabase.from("notifications").upsert(
+      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description), remind_at: remindAt, read: false },
+      { onConflict: "recurring_rule_id" },
+    );
+    if (error) throw error;
+  }
+}
+
 /* ---- category templates ----
    Starting categories for a new ledger. Labels for the picker live in the UI's
    STRINGS table; these are the category names themselves, which are
@@ -653,16 +688,17 @@ export async function dismissNotification(id) {
   const { error } = await supabase.from("notifications").delete().eq("id", id);
   if (error) throw error;
 }
-// Settings → Manage reminders: every cancellation reminder that exists, due or
-// not, across every ledger this account can see — distinct from
-// fetchNotifications()'s due-only inbox. Chronological, since this is a
-// schedule you're managing rather than an unread pile.
+// Settings → Manage reminders: every reminder that exists — manual
+// cancellation ones (expense_id) and automatic upcoming-charge ones
+// (recurring_rule_id) alike — due or not, across every ledger this account
+// can see. Distinct from fetchNotifications()'s due-only inbox; chronological,
+// since this is a schedule you're managing rather than an unread pile.
 export async function fetchAllReminders() {
   const { data, error } = await supabase
-    .from("notifications").select("id, ledger_id, expense_id, title, remind_at, read")
-    .not("expense_id", "is", null).order("remind_at", { ascending: true });
+    .from("notifications").select("id, ledger_id, expense_id, recurring_rule_id, title, remind_at, read")
+    .or("expense_id.not.is.null,recurring_rule_id.not.is.null").order("remind_at", { ascending: true });
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, title: r.title, remindAt: r.remind_at, read: r.read }));
+  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, recurringRuleId: r.recurring_rule_id, title: r.title, remindAt: r.remind_at, read: r.read }));
 }
 export async function updateNotificationDate(id, remindAt) {
   const { error } = await supabase.from("notifications").update({ remind_at: remindAt }).eq("id", id);

@@ -13,7 +13,7 @@ const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
 import { settlements, netBalances } from "./lib/settle";
-import { nextOccurrence } from "./lib/recurring";
+import { nextOccurrence, addDays } from "./lib/recurring";
 import { parseCsvText, guessCategoryId, buildPreviewRows } from "./lib/csv";
 import { suggestCategoryId } from "./lib/categorize";
 
@@ -182,9 +182,11 @@ const STRINGS = {
     noKidActivity: "Nothing yet — earn or spend to see it here!",
     cancellationReminder: "Cancellation Reminder", remindMeToCancel: "Remind me to cancel",
     cancellationReminderTitle: "Cancel {name} before it renews",
+    upcomingChargeTitle: "Upcoming charge for {name} in 2 days",
     notifications: "Notifications", noNotifications: "You're all caught up!",
     markAllRead: "Mark all as read", markAsRead: "Mark as read", dismiss: "Dismiss",
-    manageReminders: "Manage reminders", noReminders: "No cancellation reminders set.",
+    manageReminders: "Manage reminders", noReminders: "No reminders set.",
+    autoReminderHint: "Auto-managed — pause the recurring rule to stop this.",
   },
   zh: {
     eyebrow: "Monira",
@@ -308,9 +310,11 @@ const STRINGS = {
     noKidActivity: "仲未有記錄 — 賺錢或者買嘢就會喺度顯示！",
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "續約前記得取消{name}",
+    upcomingChargeTitle: "{name} 兩日後扣款",
     notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
     markAllRead: "全部標記為已讀", markAsRead: "標記為已讀", dismiss: "移除",
-    manageReminders: "管理提醒", noReminders: "仲未設定任何取消提醒。",
+    manageReminders: "管理提醒", noReminders: "仲未設定任何提醒。",
+    autoReminderHint: "自動管理——想停就去暫停嗰條定期規則。",
   },
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
@@ -437,9 +441,11 @@ const STRINGS = {
     noKidActivity: "还没有记录 — 赚钱或买东西后会显示在这里！",
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "续约前记得取消{name}",
+    upcomingChargeTitle: "{name} 将在 2 天后扣款",
     notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
     markAllRead: "全部标记为已读", markAsRead: "标记为已读", dismiss: "移除",
-    manageReminders: "管理提醒", noReminders: "还没有设置任何取消提醒。",
+    manageReminders: "管理提醒", noReminders: "还没有设置任何提醒。",
+    autoReminderHint: "自动管理——想停止请暂停对应的定期规则。",
   },
   fr: {
     eyebrow: "Monira",
@@ -564,9 +570,11 @@ const STRINGS = {
     noKidActivity: "Rien pour l'instant — gagne ou dépense pour voir ça ici !",
     cancellationReminder: "Rappel d'annulation", remindMeToCancel: "Me rappeler d'annuler",
     cancellationReminderTitle: "Annuler {name} avant le renouvellement",
+    upcomingChargeTitle: "Prélèvement de {name} dans 2 jours",
     notifications: "Notifications", noNotifications: "Tout est à jour !",
     markAllRead: "Tout marquer comme lu", markAsRead: "Marquer comme lu", dismiss: "Ignorer",
-    manageReminders: "Gérer les rappels", noReminders: "Aucun rappel d'annulation défini.",
+    manageReminders: "Gérer les rappels", noReminders: "Aucun rappel défini.",
+    autoReminderHint: "Géré automatiquement — mettez la règle récurrente en pause pour l'arrêter.",
   },
   es: {
     eyebrow: "Monira",
@@ -691,9 +699,11 @@ const STRINGS = {
     noKidActivity: "Nada todavía — ¡gana o gasta para verlo aquí!",
     cancellationReminder: "Recordatorio de cancelación", remindMeToCancel: "Recuérdame cancelar",
     cancellationReminderTitle: "Cancela {name} antes de que se renueve",
+    upcomingChargeTitle: "Cargo próximo de {name} en 2 días",
     notifications: "Notificaciones", noNotifications: "¡Estás al día!",
     markAllRead: "Marcar todo como leído", markAsRead: "Marcar como leído", dismiss: "Descartar",
-    manageReminders: "Gestionar recordatorios", noReminders: "No hay recordatorios de cancelación.",
+    manageReminders: "Gestionar recordatorios", noReminders: "No hay recordatorios.",
+    autoReminderHint: "Gestionado automáticamente: pausa la regla recurrente para detenerlo.",
   },
 };
 // Order here is the order of the toggle in Settings. `zh` predates the others
@@ -787,8 +797,6 @@ const okTintsFor = (accent, theme) => (theme === "dark"
   : { bg: mix(accent, "#ffffff", 0.12), ink: accent, line: mix(accent, "#ffffff", 0.32), strong: mix(accent, "#ffffff", 0.22) });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
-// T00:00:00 keeps this timezone-free, same trick as recurring.js's date math.
-const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const monthName = (m, lang) =>
   new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
 const shortDate = (iso, lang) =>
@@ -1571,6 +1579,9 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       // show up in this same load. Best-effort: a viewer can't insert, and a hiccup
       // here shouldn't block the ledger from opening.
       await db.generateDueRecurring(ledger.id).catch(() => {});
+      // Auto-managed upcoming-charge reminders for recurring Subscriptions
+      // rules — no toggle, just kept current alongside the generation above.
+      await db.syncUpcomingChargeReminders(ledger.id, (name) => t("upcomingChargeTitle", { name })).catch(() => {});
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
       // Wishlist goal is Kid-Ledger-only — every other template skips the query
@@ -3738,12 +3749,12 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
       <button onClick={() => setShowReminders(true)} style={ghostBtn}>
         <Bell size={15} /> {t("manageReminders")}
       </button>
-      {showReminders && <ManageRemindersPanel t={t} onClose={() => setShowReminders(false)} />}
+      {showReminders && <ManageRemindersPanel t={t} lang={lang} onClose={() => setShowReminders(false)} />}
     </Overlay>
   );
 }
 
-function ManageRemindersPanel({ t, onClose }) {
+function ManageRemindersPanel({ t, lang, onClose }) {
   const [items, setItems] = useState(null); // null = loading
   const [error, setError] = useState("");
   const load = useCallback(() => {
@@ -3768,16 +3779,33 @@ function ManageRemindersPanel({ t, onClose }) {
         <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noReminders")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((n) => (
-            <div key={n.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
-                <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
-                  style={{ ...input, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
+          {items.map((n) => {
+            // Auto-managed (recurring_rule_id): syncUpcomingChargeReminders
+            // recomputes and overwrites this row on every refresh as long as
+            // the rule is still due for it, so an inline edit or a delete here
+            // wouldn't stick — it'd just reappear/revert on the next load.
+            // The real control for these lives on the recurring rule itself.
+            const auto = !!n.recurringRuleId;
+            return (
+              <div key={n.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
+                  {auto ? (
+                    <>
+                      <div style={{ fontSize: 13, color: INK, marginTop: 6 }}>{shortDate(n.remindAt, lang)}</div>
+                      <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("autoReminderHint")}</div>
+                    </>
+                  ) : (
+                    <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
+                      style={{ ...input, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
+                  )}
+                </div>
+                {!auto && (
+                  <button onClick={() => remove(n.id)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
+                )}
               </div>
-              <button onClick={() => remove(n.id)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Overlay>

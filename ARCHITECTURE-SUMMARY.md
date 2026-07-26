@@ -181,8 +181,22 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 - **Mark as read vs Dismiss**:前者淨係 flip `read`,個 item 留喺個 list(冇咗個「Mark as read」掣同個 unread 樣式);後者係真係 delete 行,成個消失。「Mark all as read」淨係傳緊喺畫面度嗰批 unread 嘅 id,唔係盲目 update read=false 嘅全部行(咁樣先唔會將未到期嘅 reminder 都錯手標成已讀)。
 - **Bell 係全域,唔綁單一帳簿**:同 `fetchLedgers()` 一樣淨係靠 RLS 窄返去邊個帳簿你有得睇,`db.js` 冇傳任何 `ledgerId`——一個 bell 就跟晒你成個帳號嘅所有帳簿。
 - **必踩坑,已修好**:同 Kid Ledger 嗰次一樣嘅陷阱又踩多次——`fetchLedgerReminders` 一開始都係加落 `refresh()` 嘅 `Promise.all`,但呢次冇得好似 `wishlist_goals` 咁淨係 kid template 先 fetch(subscription reminder 邊個 template 都用得),所以 migration 017 行之前**四個舊 template 全部一齊爆**(`Could not find the table 'public.notifications'`)——呢個係預咗嘅、冇得避嘅代價(呢個 feature 本身就要跨晒所有 template),行完 migration 就冇事。
-- **Settings → Manage reminders**:同 Bell 一樣全域(唔跟單一帳簿),睇晒同改到**全部**reminder(唔止「到咗」嗰啲),兩個掣:改個 `remind_at`(`db.updateNotificationDate`)、刪走(重用返 `dismissNotification`)。
+- **Settings → Manage reminders**:同 Bell 一樣全域(唔跟單一帳簿),睇晒**全部**reminder(唔止「到咗」嗰啲)。手動(expense_id)嗰啲先可以改 `remind_at`/刪走;自動(下面 12c 嗰隻,recurring_rule_id)嗰啲淨係顯示,冇編輯/刪除掣——原因見 12c。
 - **第二個必踩坑,已修好**:`subscribeNotifications` 一開始用返同一個寫死嘅 channel 名(`"notifications-changes"`),跟 `subscribeLedger`/`subscribeLedgerList` 嗰種「成個 app 淨係得一個呼叫者」唔同——Bell 成日都掛住,一旦「Manage reminders」都同時開住,第二個 `.channel(同名).subscribe()` 就會即刻拋 `cannot add postgres_changes callbacks... after subscribe()`,成個 app 冧晒(冇 error boundary,即刻變返白版)。而家 channel 名加咗個 random suffix,每次 call 都係獨立一個,幾多個同時訂閱都得。**如果之後想再加一個新嘅 `notifications` 訂閱源,唔使諗呢個問題,呢個 fix 已經係通用嘅。**
+
+---
+
+## 12c. 自動「即將扣款」提醒(migration 018,recurring_rule_id)
+
+同 12b 嗰個手動 cancellation reminder獨立嘅第二種 reminder——**冇 toggle**,自動幫每條符合條件嘅 recurring rule 出。
+
+- **邊條 rule 會有**:`RecurringPanel` 入面,冇 paused、類別個名係 `"Subscriptions"` 嘅 rule,自動有一個「下次幾時扣錢前 2 日」嘅提醒,唔使入去 rule 度撳任何嘢。
+- **點計「下次」**:同 `RecurringPanel` 顯示嘅「Next due」一樣條數(`last_generated_date ? nextOccurrence(...) : start_date`),`db.syncUpcomingChargeReminders()` 喺 `Ledger.refresh()` 入面同 `generateDueRecurring` 一齊跑(`addDays` 而家搬咗去 `src/lib/recurring.js`,`db.js`/`BudgetApp.jsx` 兩邊都 import 返嚟用,唔使兩份一樣嘅代碼)。
+- **唔會將已讀變返做未讀**:淨係當計出嚟嘅「下次」日期同上次記錄嘅**唔一樣**(即係 rule 行咗去下一個 cycle)先至 upsert(順便將 `read` 重設做 false)——如果日期冇變,乜都唔做,唔會將你剔咗嘅「已讀」靜雞雞打返做未讀。
+- **`notifications.expense_id`/`recurring_rule_id` 兩個都係 nullable + unique**:靠邊個掣咗嚟分係邊種 reminder,冇加多一個 `type` 欄。
+- **Pause/刪類別/刪 rule 就會冇咗**:rule paused,或者類別唔叫 Subscriptions,`syncUpcomingChargeReminders` 會自己刪走張 reminder;成條 rule 刪咗就靠 `on delete cascade`。
+- **Manage Reminders 度改唔到、刪唔到**:因為每次 refresh 都會重新算「下次」,你手動改嘅日期/刪走嘅行,落次 refresh 就會俾佢覆蓋/整返出嚟——所以呢類 reminder 喺 Manage Reminders 度淨係顯示(日期 + 一句「Auto-managed」提示),真正想停就要去 pause 嗰條 recurring rule(呢個 app 冇得刪 recurring rule,淨係得 pause,冇 delete 掣)。
+- **必踩坑,已修好**:`fetchAllReminders()`(Manage Reminders 用嗰個)一開始淨係 `.not("expense_id", "is", null)`,將全部 `recurring_rule_id`-anchor 嘅 reminder 篩走晒——測試嗰陣 Bell 明明有嘢,Manage Reminders 度就話「No reminders set.」。而家改咗做 `expense_id` 或 `recurring_rule_id` 隨便一個唔係 null 就算。
 
 ---
 

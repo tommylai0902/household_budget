@@ -18,3 +18,11 @@ export function dueOccurrences(fromISO, freq, todayISO, max = 400) {
   while (occ <= todayISO && guard < max) { out.push(occ); occ = nextOccurrence(occ, freq); guard++; }
   return out;
 }
+
+// n may be negative — used both to look ahead (recurring occurrences) and back
+// (cancellation-reminder/upcoming-charge lead time).
+export function addDays(iso, n) {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
