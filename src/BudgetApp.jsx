@@ -150,7 +150,8 @@ const STRINGS = {
     passwordMismatchErr: "New passwords don't match.", currentPasswordWrongErr: "Current password is incorrect.",
     ledgers: "Ledgers",
     // Tagline, kept English-only in every language block below (same call as
-    // eyebrow/"Monira") rather than translated per language.
+    // eyebrow/"Monira") rather than translated per language — matches
+    // signInHint above, which is the same copy shown on the sign-in screen.
     ledgersHint: "One simple step toward a better financial life.", home: "Home",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
@@ -201,7 +202,7 @@ const STRINGS = {
   zh: {
     eyebrow: "Monira",
     signInTitle: "登入",
-    signInHint: "向更好嘅財務生活，行前一小步。",
+    signInHint: "One simple step toward a better financial life.",
     signUpTitle: "建立帳戶", signUpHint: "註冊後，建立或加入帳簿。",
     nameLabel: "名稱", namePh: "你喺帳簿入面顯示嘅名",
     signUpBtn: "建立帳戶", toSignUp: "未有帳戶？建立一個", toSignIn: "已經有帳戶？登入",
@@ -338,7 +339,7 @@ const STRINGS = {
   "zh-Hans": {
     eyebrow: "Monira",
     signInTitle: "登录",
-    signInHint: "迈向更好财务生活的一小步。",
+    signInHint: "One simple step toward a better financial life.",
     signUpTitle: "创建账户", signUpHint: "注册后，创建或加入账本。",
     nameLabel: "名称", namePh: "你在账本中显示的名字",
     signUpBtn: "创建账户", toSignUp: "还没有账户？创建一个", toSignIn: "已有账户？登录",
@@ -474,7 +475,7 @@ const STRINGS = {
   fr: {
     eyebrow: "Monira",
     signInTitle: "Connexion",
-    signInHint: "Un petit pas simple vers une vie financière meilleure.",
+    signInHint: "One simple step toward a better financial life.",
     signUpTitle: "Créer un compte", signUpHint: "Inscrivez-vous, puis créez ou rejoignez un registre.",
     nameLabel: "Nom", namePh: "Le nom affiché dans le registre",
     signUpBtn: "Créer un compte", toSignUp: "Nouveau ici ? Créez un compte", toSignIn: "Vous avez déjà un compte ? Connectez-vous",
@@ -610,7 +611,7 @@ const STRINGS = {
   es: {
     eyebrow: "Monira",
     signInTitle: "Iniciar sesión",
-    signInHint: "Un paso simple hacia una mejor vida financiera.",
+    signInHint: "One simple step toward a better financial life.",
     signUpTitle: "Crear cuenta", signUpHint: "Regístrate y luego crea o únete a un libro.",
     nameLabel: "Nombre", namePh: "Cómo aparecerás en el libro",
     signUpBtn: "Crear cuenta", toSignUp: "¿Nuevo aquí? Crea una cuenta", toSignIn: "¿Ya tienes cuenta? Inicia sesión",
