@@ -77,7 +77,7 @@ const STRINGS = {
     totalSpending: "Total Spending", balance: "Balance", settleUp: "Settle up",
     emptyState: "No expenses in {month} yet. Add your first one above.",
     emptyStateDay: "No expenses on {date}.", showAll: "Show all",
-    paidByRow: "{name} paid", split5050: "Split 50/50", personal: "Personal",
+    paidByRow: "{name} paid", split5050: "Split 50/50", personal: "No Split",
     uncategorised: "Uncategorised", edit: "Edit", delete: "Delete",
     deleteConfirm: 'Delete "{name}"?',
     stepFooter: "Live-synced across your household · Next: budgets, reports, receipt scanning.",
@@ -100,6 +100,7 @@ const STRINGS = {
     budgetNone: "No budgets set for {month}. Give any category an amount below.",
     budgetSpent: "Spent", budgetLeft: "Left", budgetOver: "Over budget",
     budgetSave: "Save budgets", budgetClearHint: "Leave a category empty for no budget", setBudgetPh: "Set budget",
+    carryForward: "Carry to next month", carryForwardDone: "Carried ✓",
     budgetAmountLabel: "{amount} budget", budgetOtherMonths: "Other months",
     budgetUncat: "Uncategorised spending isn't counted against any category budget.",
     monthlyReport: "Reports", reportFor: "Spending in {month}",
@@ -208,7 +209,7 @@ const STRINGS = {
     totalSpending: "總支出", balance: "結餘", settleUp: "結算",
     emptyState: "{month}還沒有支出，先在上方新增一筆。",
     emptyStateDay: "{date} 冇支出記錄。", showAll: "顯示全部",
-    paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "個人",
+    paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "唔分帳",
     uncategorised: "未分類", edit: "修改", delete: "刪除",
     deleteConfirm: "確定刪除「{name}」？",
     stepFooter: "已與家庭即時同步 · 下一步：預算、報表、收據掃描。",
@@ -231,6 +232,7 @@ const STRINGS = {
     budgetNone: "{month}未設預算。喺下面任何一個類別填個數就得。",
     budgetSpent: "已用", budgetLeft: "剩餘", budgetOver: "超出預算",
     budgetSave: "儲存預算", budgetClearHint: "留空即該類別冇預算", setBudgetPh: "設定預算",
+    carryForward: "帶去下個月", carryForwardDone: "已帶去 ✓",
     budgetAmountLabel: "預算 {amount}", budgetOtherMonths: "其他月份",
     budgetUncat: "未分類嘅支出唔會計入任何類別預算。",
     monthlyReport: "每月報告", reportFor: "{month}支出", reportTotal: "總支出", reportCategories: "按類別",
@@ -340,7 +342,7 @@ const STRINGS = {
     totalSpending: "总支出", balance: "结余", settleUp: "结算",
     emptyState: "{month}还没有支出，先在上方添加一笔。",
     emptyStateDay: "{date} 没有支出记录。", showAll: "显示全部",
-    paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "个人",
+    paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "不分账",
     uncategorised: "未分类", edit: "修改", delete: "删除",
     deleteConfirm: "确定删除「{name}」？",
     stepFooter: "与家庭实时同步 · 下一步：预算、报表、收据扫描。",
@@ -363,6 +365,7 @@ const STRINGS = {
     budgetNone: "{month}还没有设预算。在下面任意类别填个金额即可。",
     budgetSpent: "已用", budgetLeft: "剩余", budgetOver: "超出预算",
     budgetSave: "保存预算", budgetClearHint: "留空表示该类别不设预算", setBudgetPh: "设置预算",
+    carryForward: "结转到下个月", carryForwardDone: "已结转 ✓",
     budgetAmountLabel: "预算 {amount}", budgetOtherMonths: "其他月份",
     budgetUncat: "未分类的支出不计入任何类别预算。",
     monthlyReport: "报表", reportFor: "{month}支出",
@@ -471,7 +474,7 @@ const STRINGS = {
     totalSpending: "Dépenses totales", balance: "Solde", settleUp: "Régler",
     emptyState: "Aucune dépense en {month}. Ajoutez la première ci-dessus.",
     emptyStateDay: "Aucune dépense le {date}.", showAll: "Tout afficher",
-    paidByRow: "Payé par {name}", split5050: "Partagé 50/50", personal: "Personnel",
+    paidByRow: "Payé par {name}", split5050: "Partagé 50/50", personal: "Non partagé",
     uncategorised: "Sans catégorie", edit: "Modifier", delete: "Supprimer",
     deleteConfirm: "Supprimer « {name} » ?",
     stepFooter: "Synchronisé en direct dans votre ménage · À venir : budgets, rapports, lecture de reçus.",
@@ -494,6 +497,7 @@ const STRINGS = {
     budgetNone: "Aucun budget pour {month}. Donnez un montant à une catégorie ci-dessous.",
     budgetSpent: "Dépensé", budgetLeft: "Restant", budgetOver: "Dépassé",
     budgetSave: "Enregistrer les budgets", budgetClearHint: "Laissez vide pour aucun budget", setBudgetPh: "Définir",
+    carryForward: "Reporter au mois prochain", carryForwardDone: "Reporté ✓",
     budgetAmountLabel: "budget de {amount}", budgetOtherMonths: "Autres mois",
     budgetUncat: "Les dépenses sans catégorie ne comptent dans aucun budget.",
     monthlyReport: "Rapports", reportFor: "Dépenses en {month}",
@@ -602,7 +606,7 @@ const STRINGS = {
     totalSpending: "Gasto total", balance: "Saldo", settleUp: "Liquidar",
     emptyState: "No hay gastos en {month}. Añade el primero arriba.",
     emptyStateDay: "No hay gastos el {date}.", showAll: "Ver todo",
-    paidByRow: "Pagó {name}", split5050: "Dividido 50/50", personal: "Personal",
+    paidByRow: "Pagó {name}", split5050: "Dividido 50/50", personal: "Sin dividir",
     uncategorised: "Sin categoría", edit: "Editar", delete: "Eliminar",
     deleteConfirm: '¿Eliminar "{name}"?',
     stepFooter: "Sincronizado en vivo con tu hogar · Próximamente: presupuestos, informes, lectura de recibos.",
@@ -625,6 +629,7 @@ const STRINGS = {
     budgetNone: "Sin presupuestos para {month}. Asigna un importe a cualquier categoría abajo.",
     budgetSpent: "Gastado", budgetLeft: "Restante", budgetOver: "Excedido",
     budgetSave: "Guardar presupuestos", budgetClearHint: "Deja la categoría vacía para no ponerle presupuesto", setBudgetPh: "Poner",
+    carryForward: "Llevar al próximo mes", carryForwardDone: "Llevado ✓",
     budgetAmountLabel: "presupuesto de {amount}", budgetOtherMonths: "Otros meses",
     budgetUncat: "El gasto sin categoría no cuenta para ningún presupuesto.",
     monthlyReport: "Informes", reportFor: "Gastos de {month}",
@@ -807,6 +812,11 @@ const okTintsFor = (accent, theme) => (theme === "dark"
   : { bg: mix(accent, "#ffffff", 0.12), ink: accent, line: mix(accent, "#ffffff", 0.32), strong: mix(accent, "#ffffff", 0.22) });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const monthOf = (iso) => (iso || "").slice(0, 7);
+const nextMonthOf = (month) => {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m, 1); // m is already 1-indexed, so this lands on next month
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 const monthName = (m, lang) =>
   new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
 const shortDate = (iso, lang) =>
@@ -1647,6 +1657,18 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       setBudgets(await db.fetchBudgets(ledger.id));
     } catch (e) { setError(e.message); }
   };
+  // Copies this month's saved budget onto next month, category by category —
+  // categories with no budget set are skipped rather than carrying a 0.
+  const carryBudgetForward = async () => {
+    try {
+      const next = nextMonthOf(month);
+      for (const c of categories) {
+        const amount = budgets.get(db.budgetKey(month, c.id));
+        if (amount != null) await db.setBudget(ledger.id, c.id, next, amount);
+      }
+      setBudgets(await db.fetchBudgets(ledger.id));
+    } catch (e) { setError(e.message); }
+  };
   const saveGoal = async (name, targetAmount) => {
     try { await db.saveWishlistGoal(ledger.id, { name, targetAmount }); setGoal(await db.fetchWishlistGoal(ledger.id)); }
     catch (e) { setError(e.message); }
@@ -1904,7 +1926,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
           member-manager stacking issue). */}
       {showEditBudget && (
         <EditBudgetPanel month={month} monthLabel={label} categories={categories} budgets={budgets} t={t}
-          onSave={saveBudgets} onClose={() => setShowEditBudget(false)} />
+          onSave={saveBudgets} onCarryForward={carryBudgetForward} onClose={() => setShowEditBudget(false)} />
       )}
       {showReport && (
         <MonthlyReport month={month} months={monthsAvailable} expenses={expenses} categories={categories}
@@ -3221,7 +3243,7 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
 // The only place budgets are actually editable, reached via BudgetPanel's
 // "Edit budget" badge. Same per-category draft-then-save shape the old
 // combined panel used, just on its own page.
-function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, onClose }) {
+function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, onCarryForward, onClose }) {
   const [drafts, setDrafts] = useState(() =>
     Object.fromEntries(categories.map((c) => {
       const v = budgets.get(db.budgetKey(month, c.id));
@@ -3229,7 +3251,10 @@ function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, on
     })),
   );
   const [busy, setBusy] = useState(false);
+  const [carrying, setCarrying] = useState(false);
+  const [carried, setCarried] = useState(false);
   const budgetOf = (id) => Number(drafts[id]) || 0;
+  const hasAnyBudget = categories.some((c) => budgets.get(db.budgetKey(month, c.id)) != null);
 
   const save = async () => {
     setBusy(true);
@@ -3237,10 +3262,24 @@ function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, on
     setBusy(false);
     onClose();
   };
+  const carryForward = async () => {
+    setCarrying(true);
+    await onCarryForward();
+    setCarrying(false);
+    setCarried(true);
+  };
 
   return (
     <Overlay onClose={onClose} title={t("editBudget")} t={t}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
+        {hasAnyBudget && (
+          <button onClick={carryForward} disabled={carrying || carried} style={{ ...pill(TEAL), opacity: carrying ? 0.6 : 1 }}>
+            {carried ? <Check size={13} /> : carrying ? <Loader2 size={13} className="spin" /> : null}
+            {carried ? t("carryForwardDone") : t("carryForward")}
+          </button>
+        )}
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {categories.map((c) => {
           const hasBudget = drafts[c.id] != null && drafts[c.id] !== "";
