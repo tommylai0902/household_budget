@@ -3643,11 +3643,6 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
               <PieChart size={15} /> {t("monthlyReport")}
             </button>
           )}
-          {onStores && (
-            <button role="menuitem" onClick={() => { setOpen(false); onStores(); }} style={menuItem}>
-              <Store size={15} /> {t("stores")}
-            </button>
-          )}
           {onRecurring && (
             <button role="menuitem" onClick={() => { setOpen(false); onRecurring(); }} style={menuItem}>
               <Repeat size={15} /> {t("recurring")}
@@ -3667,7 +3662,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
               </select>
             </div>
           )}
-          {(onHome || onBudget || onReport || onStores || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {(onHome || onBudget || onReport || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           <button role="menuitem" onClick={() => { setOpen(false); setShowSettings(true); }} style={menuItem}>
             <Settings size={15} /> {t("settings")}
           </button>
@@ -3678,7 +3673,8 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
         </div>
       )}
       {showSettings && (
-        <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onClose={() => setShowSettings(false)} />
+        <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
+          onStores={onStores} onClose={() => setShowSettings(false)} />
       )}
     </div>
   );
@@ -3686,7 +3682,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
 
 // App-wide, not ledger-scoped — same panel opens from the picker or from
 // inside any ledger, which is why it only needs t/lang/theme, nothing here.
-function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onClose }) {
+function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onStores, onClose }) {
   // Language and theme commit on tap; the accent doesn't. Tapping a swatch only
   // previews it live on the app behind this panel — Save writes it to the
   // account, closing without saving puts the stored colour back.
@@ -3750,6 +3746,13 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         <Bell size={15} /> {t("manageReminders")}
       </button>
       {showReminders && <ManageRemindersPanel t={t} lang={lang} onClose={() => setShowReminders(false)} />}
+      {/* Absent on the picker (no ledger, nothing to remember shops for) — same
+          optional-prop gate every other ledger-scoped menu entry already uses. */}
+      {onStores && (
+        <button onClick={onStores} style={{ ...ghostBtn, marginTop: 8 }}>
+          <Store size={15} /> {t("stores")}
+        </button>
+      )}
     </Overlay>
   );
 }
