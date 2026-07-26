@@ -113,6 +113,17 @@ export async function saveMyAccent(accent) {
   if (error) throw error;
   if (!data?.length) throw new Error("no profile row");
 }
+// Same shape as saveMyAccent — this is also the name Manage members falls back
+// to when seeding a Personal/Kid ledger's one silent member (see createLedger).
+export async function updateMyName(name) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("not signed in");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("name can't be empty");
+  const { data, error } = await supabase.from("app_user").update({ name: trimmed }).eq("id", session.user.id).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("no profile row");
+}
 
 /* ---- invites (RBAC) ---- */
 // A random secret goes in the link; only its SHA-256 hash is stored, so the DB

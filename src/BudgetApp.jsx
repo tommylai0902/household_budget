@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "rea
 import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
-  Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette,
+  Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -144,6 +144,10 @@ const STRINGS = {
     editCategories: "Edit categories", menu: "Menu",
     settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
     saveAccent: "Save colour", accentSaved: "Saved", accentSaveErr: "Couldn't save your colour: {msg}",
+    profile: "Profile", saveName: "Save name", nameSaved: "Saved", nameSaveErr: "Couldn't save your name: {msg}",
+    currentPasswordLabel: "Current password", newPasswordLabel: "New password", confirmPasswordLabel: "Confirm new password",
+    changePassword: "Change password", passwordChanged: "Password updated.", passwordSaveErr: "Couldn't update your password: {msg}",
+    passwordMismatchErr: "New passwords don't match.", currentPasswordWrongErr: "Current password is incorrect.",
     ledgers: "Ledgers",
     // Tagline, kept English-only in every language block below (same call as
     // eyebrow/"Monira") rather than translated per language.
@@ -278,6 +282,10 @@ const STRINGS = {
     editCategories: "編輯類別", menu: "選單",
     settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
     saveAccent: "儲存顏色", accentSaved: "已儲存", accentSaveErr: "儲存唔到你揀嘅顏色：{msg}",
+    profile: "個人資料", saveName: "儲存名稱", nameSaved: "已儲存", nameSaveErr: "儲存唔到你嘅名：{msg}",
+    currentPasswordLabel: "目前密碼", newPasswordLabel: "新密碼", confirmPasswordLabel: "確認新密碼",
+    changePassword: "更改密碼", passwordChanged: "密碼已更新。", passwordSaveErr: "更改唔到密碼：{msg}",
+    passwordMismatchErr: "兩次輸入嘅新密碼唔一致。", currentPasswordWrongErr: "目前密碼唔啱。",
     ledgers: "帳簿", ledgersHint: "One simple step toward a better financial life.", home: "主頁",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
@@ -412,6 +420,10 @@ const STRINGS = {
     editCategories: "编辑类别", menu: "菜单",
     settings: "设置", appearance: "外观", light: "浅色", dark: "深色", accentColor: "主题色",
     saveAccent: "保存颜色", accentSaved: "已保存", accentSaveErr: "无法保存你选的颜色：{msg}",
+    profile: "个人资料", saveName: "保存名字", nameSaved: "已保存", nameSaveErr: "无法保存你的名字：{msg}",
+    currentPasswordLabel: "当前密码", newPasswordLabel: "新密码", confirmPasswordLabel: "确认新密码",
+    changePassword: "更改密码", passwordChanged: "密码已更新。", passwordSaveErr: "无法更改密码：{msg}",
+    passwordMismatchErr: "两次输入的新密码不一致。", currentPasswordWrongErr: "当前密码不正确。",
     ledgers: "账本", ledgersHint: "One simple step toward a better financial life.", home: "主页",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "创建账本",
     invitePeople: "邀请成员", inviteAccess: "权限",
@@ -544,6 +556,10 @@ const STRINGS = {
     editCategories: "Modifier les catégories", menu: "Menu",
     settings: "Paramètres", appearance: "Apparence", light: "Clair", dark: "Sombre", accentColor: "Couleur d'accent",
     saveAccent: "Enregistrer la couleur", accentSaved: "Enregistré", accentSaveErr: "Impossible d'enregistrer votre couleur : {msg}",
+    profile: "Profil", saveName: "Enregistrer le nom", nameSaved: "Enregistré", nameSaveErr: "Impossible d'enregistrer votre nom : {msg}",
+    currentPasswordLabel: "Mot de passe actuel", newPasswordLabel: "Nouveau mot de passe", confirmPasswordLabel: "Confirmer le nouveau mot de passe",
+    changePassword: "Changer le mot de passe", passwordChanged: "Mot de passe mis à jour.", passwordSaveErr: "Impossible de changer le mot de passe : {msg}",
+    passwordMismatchErr: "Les nouveaux mots de passe ne correspondent pas.", currentPasswordWrongErr: "Le mot de passe actuel est incorrect.",
     ledgers: "Registres", ledgersHint: "One simple step toward a better financial life.", home: "Accueil",
     newLedgerPh: "ex. Voyage — Japon", createLedger: "Créer le registre",
     invitePeople: "Inviter des personnes", inviteAccess: "Leur accès",
@@ -676,6 +692,10 @@ const STRINGS = {
     editCategories: "Editar categorías", menu: "Menú",
     settings: "Ajustes", appearance: "Apariencia", light: "Claro", dark: "Oscuro", accentColor: "Color de acento",
     saveAccent: "Guardar color", accentSaved: "Guardado", accentSaveErr: "No se pudo guardar tu color: {msg}",
+    profile: "Perfil", saveName: "Guardar nombre", nameSaved: "Guardado", nameSaveErr: "No se pudo guardar tu nombre: {msg}",
+    currentPasswordLabel: "Contraseña actual", newPasswordLabel: "Nueva contraseña", confirmPasswordLabel: "Confirmar nueva contraseña",
+    changePassword: "Cambiar contraseña", passwordChanged: "Contraseña actualizada.", passwordSaveErr: "No se pudo cambiar la contraseña: {msg}",
+    passwordMismatchErr: "Las nuevas contraseñas no coinciden.", currentPasswordWrongErr: "La contraseña actual es incorrecta.",
     ledgers: "Libros", ledgersHint: "One simple step toward a better financial life.", home: "Inicio",
     newLedgerPh: "p. ej. Viaje — Japón", createLedger: "Crear libro",
     invitePeople: "Invitar personas", inviteAccess: "Su acceso",
@@ -3597,21 +3617,24 @@ function MemberManager({ members, t, onChange, onClose }) {
 // so this is the slot for account actions and the features still to come
 // (budgets, reports) rather than a one-off button per feature.
 // Same name source as the Manage members roster (app_user.name), so "who am I"
-// and "who's on this ledger" never disagree. Fetched once per mount, not per open.
+// and "who's on this ledger" never disagree. Fetched once per mount, not per
+// open — refresh() lets ProfilePanel pull the dropdown's cached name/email
+// back in sync right after a save, instead of waiting for a remount.
 function useMyProfile() {
   const [profile, setProfile] = useState(null); // { name, email } | null while loading
-  useEffect(() => {
-    let live = true;
-    supabase.auth.getSession().then(({ data }) => {
-      const u = data.session?.user;
-      if (!u) return;
-      supabase.from("app_user").select("name, email").eq("id", u.id).single()
-        .then(({ data: row }) => { if (live) setProfile({ name: row?.name || null, email: row?.email || u.email }); })
-        .catch(() => { if (live) setProfile({ name: null, email: u.email }); });
-    });
-    return () => { live = false; };
+  const refresh = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const u = data.session?.user;
+    if (!u) return;
+    try {
+      const { data: row } = await supabase.from("app_user").select("name, email").eq("id", u.id).single();
+      setProfile({ name: row?.name || null, email: row?.email || u.email });
+    } catch {
+      setProfile({ name: null, email: u.email });
+    }
   }, []);
-  return profile;
+  useEffect(() => { refresh(); }, [refresh]);
+  return [profile, refresh];
 }
 
 // Global, not ledger-scoped — same as fetchLedgers(), RLS already narrows
@@ -3682,7 +3705,7 @@ function NotificationBell({ t, lang }) {
 function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const profile = useMyProfile();
+  const [profile, refreshProfile] = useMyProfile();
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
@@ -3764,7 +3787,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
       )}
       {showSettings && (
         <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-          onStores={onStores} onClose={() => setShowSettings(false)} />
+          profile={profile} onProfileChange={refreshProfile} onStores={onStores} onClose={() => setShowSettings(false)} />
       )}
     </div>
   );
@@ -3800,7 +3823,7 @@ function AccordionRow({ icon: Icon, label, open, onToggle, children }) {
 
 // App-wide, not ledger-scoped — same panel opens from the picker or from
 // inside any ledger, which is why it only needs t/lang/theme, nothing here.
-function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onStores, onClose }) {
+function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, profile, onProfileChange, onStores, onClose }) {
   // Language and theme commit on tap; the accent doesn't. Tapping a swatch only
   // previews it live on the app behind this panel — Save writes it to the
   // account, closing without saving puts the stored colour back.
@@ -3808,11 +3831,11 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showReminders, setShowReminders] = useState(false);
-  // Same row style as Manage reminders/Saved shops below, but these three
+  // Same row style as Manage reminders/Saved shops below, but these five
   // expand in place instead of opening a new stacked panel — quick tweaks,
   // not screens with their own data. Accordion, not independent toggles, so
   // the panel doesn't just go back to "everything open" (today's design).
-  const [openSection, setOpenSection] = useState(null); // null | "language" | "appearance" | "accent"
+  const [openSection, setOpenSection] = useState(null); // null | "language" | "appearance" | "accent" | "name" | "password"
   const toggleSection = (key) => setOpenSection((s) => (s === key ? null : key));
   const dirty = accent !== saved;
   const close = () => { if (dirty) changeAccent(saved); onClose(); };
@@ -3831,8 +3854,86 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
     setBusy(false);
   };
 
+  // Name mirrors the accent's dirty/saved toggle exactly (see save() above).
+  const [name, setName] = useState(profile?.name || "");
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameErr, setNameErr] = useState("");
+  const nameDirty = name.trim() !== "" && name.trim() !== (profile?.name || "");
+  const saveName = async () => {
+    setNameBusy(true);
+    setNameErr("");
+    try {
+      await db.updateMyName(name);
+      await onProfileChange();
+    } catch (e) {
+      setNameErr(e.message || String(e));
+    }
+    setNameBusy(false);
+  };
+
+  // Re-authenticates with the current password first (signInWithPassword) so a
+  // still-open session on a shared device can't silently take over the account —
+  // Supabase's updateUser() alone would accept a new password from just the
+  // active session, no current-password check at all.
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwErr, setPwErr] = useState("");
+  const [pwDone, setPwDone] = useState(false);
+  const changePassword = async () => {
+    setPwErr("");
+    setPwDone(false);
+    if (newPw !== confirmPw) { setPwErr(t("passwordMismatchErr")); return; }
+    setPwBusy(true);
+    try {
+      const { error: reauthErr } = await supabase.auth.signInWithPassword({ email: profile?.email, password: currentPw });
+      if (reauthErr) { setPwErr(t("currentPasswordWrongErr")); setPwBusy(false); return; }
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setPwDone(true);
+    } catch (e) {
+      setPwErr(t("passwordSaveErr", { msg: e.message || String(e) }));
+    }
+    setPwBusy(false);
+  };
+
   return (
     <Overlay title={t("settings")} onClose={close} t={t}>
+      <AccordionRow icon={User} label={t("profile")} open={openSection === "name"} onToggle={() => toggleSection("name")}>
+        <Field label={t("email")}>
+          <div style={{ ...input, color: SUB }}>{profile?.email || ""}</div>
+        </Field>
+        <Field label={t("nameLabel")}>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveName()} style={input} />
+        </Field>
+        <button onClick={saveName} disabled={!nameDirty || nameBusy}
+          style={{ ...addBtn, justifyContent: "center", opacity: nameDirty ? (nameBusy ? 0.6 : 1) : 0.5, cursor: nameDirty && !nameBusy ? "pointer" : "default" }}>
+          {nameBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
+          {nameDirty ? t("saveName") : t("nameSaved")}
+        </button>
+        {nameErr && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{t("nameSaveErr", { msg: nameErr })}</div>}
+      </AccordionRow>
+      <AccordionRow icon={Lock} label={t("changePassword")} open={openSection === "password"} onToggle={() => toggleSection("password")}>
+        <Field label={t("currentPasswordLabel")}>
+          <input type="password" autoComplete="current-password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} style={input} />
+        </Field>
+        <Field label={t("newPasswordLabel")}>
+          <input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} style={input} />
+        </Field>
+        <Field label={t("confirmPasswordLabel")}>
+          <input type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && changePassword()} style={input} />
+        </Field>
+        <button onClick={changePassword} disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+          style={{ ...addBtn, justifyContent: "center", opacity: (pwBusy || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
+          {pwBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("changePassword")}
+        </button>
+        {pwErr && <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{pwErr}</div>}
+        {pwDone && <div style={{ color: OK_INK, fontSize: 12, marginTop: 6 }}>{t("passwordChanged")}</div>}
+      </AccordionRow>
       <AccordionRow icon={Languages} label={t("language")} open={openSection === "language"} onToggle={() => toggleSection("language")}>
         <LangToggle lang={lang} changeLang={changeLang} t={t} />
       </AccordionRow>
