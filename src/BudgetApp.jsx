@@ -1902,7 +1902,7 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
       )}
       {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
       {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
-      {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} lang={lang} t={t}
+      {showRecurring && <RecurringPanel ledger={ledger} categories={categories} members={members} features={features} lang={lang} t={t}
         onClose={() => setShowRecurring(false)} onChanged={refresh} />}
     </div>
   );
@@ -2209,7 +2209,7 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
 // Lists the ledger's recurring rules and opens the form to add/edit one. Rule
 // changes bubble up via onChanged so the ledger re-runs catch-up generation and
 // the new expenses/badges appear without reopening anything.
-function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChanged }) {
+function RecurringPanel({ ledger, categories, members, features, lang, t, onClose, onChanged }) {
   const [rules, setRules] = useState(null); // null = loading
   const [editing, setEditing] = useState(null); // null | "new" | rule
   const [err, setErr] = useState("");
@@ -2246,7 +2246,7 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
   const nextDue = (r) => (r.paused ? null : r.lastGeneratedDate ? nextOccurrence(r.lastGeneratedDate, r.frequency) : r.startDate);
 
   if (editing !== null) {
-    return <RecurringForm initial={editing === "new" ? null : editing} categories={categories} members={members}
+    return <RecurringForm initial={editing === "new" ? null : editing} categories={categories} members={members} features={features}
       lang={lang} t={t} onClose={() => setEditing(null)} onSave={save} />;
   }
 
@@ -2297,10 +2297,14 @@ function RecurringPanel({ ledger, categories, members, lang, t, onClose, onChang
 // Add/edit one rule. Mirrors the who-paid / split controls of the expense form so
 // generated expenses land with a correct payer and sharers — the spec's five
 // fields alone can't produce a valid expense in this split-aware ledger.
-function RecurringForm({ initial, categories, members, lang, t, onClose, onSave }) {
+// Personal-template ledgers (features.showSplit false) hide both fields, same
+// as ExpenseForm: one silent payer, every generated occurrence is personal.
+function RecurringForm({ initial, categories, members, features, lang, t, onClose, onSave }) {
   const [d, setD] = useState(() => initial || {
     description: "", amount: "", categoryId: categories[0]?.id || null,
-    paidById: members[0]?.id || null, split: "shared", sharedWith: members.map((m) => m.id),
+    paidById: members[0]?.id || null,
+    split: features.showSplit ? "shared" : "personal",
+    sharedWith: features.showSplit ? members.map((m) => m.id) : [],
     frequency: "monthly", startDate: todayISO(),
   });
   const [busy, setBusy] = useState(false);
@@ -2346,32 +2350,36 @@ function RecurringForm({ initial, categories, members, lang, t, onClose, onSave 
           ))}
         </div>
       </Field>
-      <Field label={t("whoPaid")}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {members.map((m) => {
-            const Icon = memberIcon(m.icon);
-            return (
-              <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={chip(d.paidById === m.id)}>
-                <Icon size={13} /> {m.name}
+      {features.showSplit && (
+        <>
+          <Field label={t("whoPaid")}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {members.map((m) => {
+                const Icon = memberIcon(m.icon);
+                return (
+                  <button key={m.id} onClick={() => setD({ ...d, paidById: m.id })} style={chip(d.paidById === m.id)}>
+                    <Icon size={13} /> {m.name}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+          <Field label={t("split")}>
+            <div style={{ display: "flex", gap: 3, background: MUTED_BG, borderRadius: 10, padding: 3 }}>
+              <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
+              <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
+                <Users size={14} /> {t("splitBetween")}
               </button>
-            );
-          })}
-        </div>
-      </Field>
-      <Field label={t("split")}>
-        <div style={{ display: "flex", gap: 3, background: MUTED_BG, borderRadius: 10, padding: 3 }}>
-          <button onClick={() => setD({ ...d, split: "personal" })} style={segItem(d.split === "personal")}><User size={14} /> {t("personal")}</button>
-          <button onClick={() => setD({ ...d, split: "shared", sharedWith: d.sharedWith?.length ? d.sharedWith : members.map((m) => m.id) })} style={segItem(d.split === "shared")}>
-            <Users size={14} /> {t("splitBetween")}
-          </button>
-        </div>
-        {d.split === "shared" && (
-          <div style={{ marginTop: 10 }}>
-            <SplitMemberPicker members={members} sharedWith={d.sharedWith || []} t={t}
-              onChange={(sharedWith) => setD({ ...d, sharedWith })} />
-          </div>
-        )}
-      </Field>
+            </div>
+            {d.split === "shared" && (
+              <div style={{ marginTop: 10 }}>
+                <SplitMemberPicker members={members} sharedWith={d.sharedWith || []} t={t}
+                  onChange={(sharedWith) => setD({ ...d, sharedWith })} />
+              </div>
+            )}
+          </Field>
+        </>
+      )}
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
         <button onClick={submit} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
