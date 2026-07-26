@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
-  Users, User, ArrowLeft, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
+  Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette,
 } from "lucide-react";
 
@@ -167,7 +167,7 @@ const STRINGS = {
     inviteInvalid: "This invite link isn't valid.", inviteExpired: "This invite has expired.",
     inviteUsed: "This invite has already been used.",
     noLedgers: "No ledgers yet. Create your first one below.",
-    exit: "Exit", language: "Language", openLedger: "Open {name}",
+    language: "Language", openLedger: "Open {name}",
     startWith: "Start with", tplHousehold: "Household", tplTravel: "Travel",
     tplPersonal: "Personal", tplKid: "Kids", tplBlank: "Blank",
     tplHint: "{n} categories — you can rename or add more later",
@@ -298,7 +298,7 @@ const STRINGS = {
     inviteInvalid: "呢條邀請連結無效。", inviteExpired: "呢個邀請已過期。",
     inviteUsed: "呢個邀請已經用咗。",
     noLedgers: "仲未有帳簿。喺下面建立第一本。",
-    exit: "離開", language: "語言", openLedger: "開啟{name}",
+    language: "語言", openLedger: "開啟{name}",
     startWith: "起始類別", tplHousehold: "家用", tplTravel: "旅行",
     tplPersonal: "個人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 個類別 — 之後可以改名或者加",
@@ -432,7 +432,7 @@ const STRINGS = {
     inviteInvalid: "这条邀请链接无效。", inviteExpired: "这个邀请已过期。",
     inviteUsed: "这个邀请已经被使用过了。",
     noLedgers: "还没有账本。在下面创建第一个。",
-    exit: "退出", language: "语言", openLedger: "打开{name}",
+    language: "语言", openLedger: "打开{name}",
     startWith: "起始类别", tplHousehold: "家用", tplTravel: "旅行",
     tplPersonal: "个人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 个类别 — 之后可以改名或添加",
@@ -564,7 +564,7 @@ const STRINGS = {
     inviteInvalid: "Ce lien d'invitation n'est pas valide.", inviteExpired: "Cette invitation a expiré.",
     inviteUsed: "Cette invitation a déjà été utilisée.",
     noLedgers: "Aucun registre. Créez le premier ci-dessous.",
-    exit: "Quitter", language: "Langue", openLedger: "Ouvrir {name}",
+    language: "Langue", openLedger: "Ouvrir {name}",
     startWith: "Commencer avec", tplHousehold: "Ménage", tplTravel: "Voyage",
     tplPersonal: "Personnel", tplKid: "Enfants", tplBlank: "Vierge",
     tplHint: "{n} catégories — renommables, et vous pouvez en ajouter",
@@ -696,7 +696,7 @@ const STRINGS = {
     inviteInvalid: "Este enlace de invitación no es válido.", inviteExpired: "Esta invitación ha caducado.",
     inviteUsed: "Esta invitación ya se ha usado.",
     noLedgers: "Aún no hay libros. Crea el primero abajo.",
-    exit: "Salir", language: "Idioma", openLedger: "Abrir {name}",
+    language: "Idioma", openLedger: "Abrir {name}",
     startWith: "Empezar con", tplHousehold: "Hogar", tplTravel: "Viaje",
     tplPersonal: "Personal", tplKid: "Niños", tplBlank: "En blanco",
     tplHint: "{n} categorías — puedes renombrarlas o añadir más",
@@ -1309,13 +1309,12 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
 
-        {/* Header — same chrome as every other ledger (switcher, exit, menu),
+        {/* Header — same chrome as every other ledger (switcher, menu),
             so navigation stays consistent; only the content below is the
             gamified skin. */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
-            <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}><ArrowLeft size={15} /> {t("exit")}</button>
             <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
               accent={accent} changeAccent={changeAccent} onHome={onExit} />
@@ -1787,9 +1786,6 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         <div className="ledger-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
           <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
           <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
-            <button onClick={onExit} style={ghostBtn} aria-label={t("exit")}>
-              <ArrowLeft size={15} /> {t("exit")}
-            </button>
             <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
               {monthsAvailable.map((m) => (
                 <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
