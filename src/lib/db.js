@@ -443,30 +443,35 @@ export async function generateDueRecurring(ledgerId) {
 // never got one; the toggle in RecurringForm is the only gate now, same as
 // every other recurring rule regardless of what it's for. `buildTitle` is a
 // (description, leadDays) => string the caller supplies so this stays free of
-// i18n concerns; only re-upserts when the tracked occurrence actually
-// advances, so marking one read doesn't get silently undone by the very next
-// refresh.
+// i18n concerns.
+//
+// Tracks "have I already generated this occurrence?" via cycle_date (the raw
+// next-occurrence date, migration 020) rather than remind_at — remind_at is
+// user-editable from Manage Reminders now, so keying off it would make any
+// edit look like a new occurrence and overwrite it on the very next refresh.
+// cycle_date only changes once the rule truly advances, so an edited
+// remind_at (or a flipped `read`) survives until then.
 export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
   const [{ data: rules, error: rerr }, { data: existing, error: eerr }] = await Promise.all([
     supabase.from("recurring_rules")
       .select("id, description, frequency, start_date, last_generated_date, paused, has_reminder, reminder_lead_days")
       .eq("ledger_id", ledgerId),
-    supabase.from("notifications").select("recurring_rule_id, remind_at").eq("ledger_id", ledgerId).not("recurring_rule_id", "is", null),
+    supabase.from("notifications").select("recurring_rule_id, cycle_date").eq("ledger_id", ledgerId).not("recurring_rule_id", "is", null),
   ]);
   if (rerr) throw rerr;
   if (eerr) throw eerr;
-  const trackedRemindAt = new Map((existing || []).map((r) => [r.recurring_rule_id, r.remind_at]));
+  const trackedCycle = new Map((existing || []).map((r) => [r.recurring_rule_id, r.cycle_date]));
 
   for (const rule of rules) {
     if (rule.paused || rule.has_reminder === false) {
-      if (trackedRemindAt.has(rule.id)) await supabase.from("notifications").delete().eq("recurring_rule_id", rule.id);
+      if (trackedCycle.has(rule.id)) await supabase.from("notifications").delete().eq("recurring_rule_id", rule.id);
       continue;
     }
     const next = rule.last_generated_date ? nextOccurrence(rule.last_generated_date, rule.frequency) : rule.start_date;
+    if (trackedCycle.get(rule.id) === next) continue; // same occurrence already tracked — leave any manual edit alone
     const remindAt = addDays(next, -(rule.reminder_lead_days || 2));
-    if (trackedRemindAt.get(rule.id) === remindAt) continue; // same occurrence already tracked
     const { error } = await supabase.from("notifications").upsert(
-      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description, rule.reminder_lead_days || 2), remind_at: remindAt, read: false },
+      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description, rule.reminder_lead_days || 2), remind_at: remindAt, cycle_date: next, read: false },
       { onConflict: "recurring_rule_id" },
     );
     if (error) throw error;

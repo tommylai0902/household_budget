@@ -201,7 +201,7 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 
 ### 14b. Manage Reminders(Settings 入面)
 
-- 同 Bell 一樣全域,睇晒**全部**reminder(唔止「到咗」嗰啲)。手動(`expense_id`)嗰啲可以改 `remind_at`/刪走;自動(下面 14c/14d,`recurring_rule_id`)嗰啲淨係顯示,冇編輯/刪除掣(見 14c 解釋原因)。
+- 同 Bell 一樣全域,睇晒**全部**reminder(唔止「到咗」嗰啲)。手動(`expense_id`)嗰啲可以改 `remind_at`/刪走;自動(下面 14c/14d,`recurring_rule_id`)嗰啲而家**都可以改日期**(migration 020,見 14c),但係仲係冇刪除掣。
 - **必踩坑,已修好**:`fetchAllReminders()` 一開始淨係 `.not("expense_id", "is", null)`,將全部 `recurring_rule_id`-anchor 嘅 reminder 篩走晒——測試嗰陣 Bell 明明有嘢,Manage Reminders 度就話「No reminders set.」。而家改咗做 `expense_id` 或 `recurring_rule_id` 隨便一個唔係 null 就算。
 - **必踩坑,已修好**:`subscribeNotifications` 一開始用返同一個寫死嘅 channel 名,跟 `subscribeLedger`/`subscribeLedgerList` 嗰種「成個 app 淨係得一個呼叫者」唔同——Bell 成日都掛住,一旦「Manage reminders」都同時開住,第二個 `.channel(同名).subscribe()` 就會即刻拋 `cannot add postgres_changes callbacks... after subscribe()`,成個 app 冧晒(冇 error boundary,即刻變返白版)。而家 channel 名加咗個 random suffix,每次 call 都係獨立一個,幾多個同時訂閱都得。**如果之後想再加一個新嘅 `notifications` 訂閱源,唔使諗呢個問題,呢個 fix 已經係通用嘅。**
 
@@ -210,7 +210,8 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 - 同 14a 嗰個手動 cancellation reminder獨立嘅第二種 reminder——每條符合條件嘅 recurring rule 自動出,唔使逐個 expense 咁樣手動 toggle。
 - **點計「下次」**:同 `RecurringPanel` 顯示嘅「Next due」一樣條數(`last_generated_date ? nextOccurrence(...) : start_date`),`db.syncUpcomingChargeReminders()` 喺 `Ledger.refresh()` 入面同 `generateDueRecurring` 一齊跑(`addDays` 喺 `src/lib/recurring.js`,`db.js`/`BudgetApp.jsx` 兩邊都 import 返嚟用)。
 - **唔會將已讀變返做未讀**:淨係當計出嚟嘅「下次」日期同上次記錄嘅**唔一樣**(即係 rule 行咗去下一個 cycle)先至 upsert(順便將 `read` 重設做 false)——如果日期冇變,乜都唔做。
-- **Manage Reminders 度改唔到、刪唔到**:因為每次 refresh 都會重新算「下次」,你手動改嘅日期/刪走嘅行,落次 refresh 就會俾佢覆蓋/整返出嚟——所以呢類 reminder 喺 Manage Reminders 度淨係顯示(日期 + 一句「Auto-managed」提示),真正想停就要去該條 recurring rule 度剔走個 toggle(見 14d),或者撳個 rule 自己嘅刪除掣(**recurring rule 本身係有刪除掣㗎**,唔淨係得 pause)。
+- **Manage Reminders 度而家改得到日期(migration 020,`notifications.cycle_date`)**:一開始追蹤「呢個 occurrence 生成咗未」係直接比較 `remind_at`,所以喺 Manage Reminders 手動改咗個日期,落次 refresh 就會即刻俾佢覆蓋轉頭(睇落好似改極都改唔到)。而家加咗一欄 `cycle_date` 專門記錄「下次」嗰個原始日期(唔跟 `reminder_lead_days` 減嗰個),`syncUpcomingChargeReminders` 淨係比較 `cycle_date`——`remind_at` 使用者想點改都得,淨係當 rule 真係行到下一個 cycle(`cycle_date` 變咗)先會覆蓋轉頭。
+- **刪除掣依然冇**:`notifications` 表本身喺 `subscribeLedger` 嘅 realtime 監聽清單入面,一刪就會即刻觸發成個 ledger 嘅 `refresh()`→`syncUpcomingChargeReminders()`,而呢類 reminder 一冇行就即刻按「rule 仲欠一個」嘅邏輯整返出嚟——即係話刪除呢個動作冇地方記低「呢個 cycle 使用者刪過」,一刪就會彈返出嚟,同「刪除」呢個字面意思矛盾,所以索性冇喺 UI 度俾呢個掣。真正想停就要去該條 recurring rule 度剔走個 toggle(見 14d),或者撳個 rule 自己嘅刪除掣(**recurring rule 本身係有刪除掣㗎**,唔淨係得 pause)。
 
 ### 14d. Recurring rule 自己嘅 reminder toggle + 可調日數(migration 019)
 

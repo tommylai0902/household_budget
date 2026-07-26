@@ -189,7 +189,7 @@ const STRINGS = {
     notifications: "Notifications", noNotifications: "You're all caught up!",
     markAllRead: "Mark all as read", markAsRead: "Mark as read", dismiss: "Dismiss",
     manageReminders: "Manage reminders", noReminders: "No reminders set.",
-    autoReminderHint: "Auto-managed — pause the recurring rule to stop this.",
+    autoReminderHint: "From a recurring rule — resets once it reaches its next charge. Pause the rule to stop it for good.",
   },
   zh: {
     eyebrow: "Monira",
@@ -320,7 +320,7 @@ const STRINGS = {
     notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
     markAllRead: "全部標記為已讀", markAsRead: "標記為已讀", dismiss: "移除",
     manageReminders: "管理提醒", noReminders: "仲未設定任何提醒。",
-    autoReminderHint: "自動管理——想停就去暫停嗰條定期規則。",
+    autoReminderHint: "嚟自定期規則——去到下次扣款會重設返。想永久停就去暫停嗰條規則。",
   },
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
@@ -454,7 +454,7 @@ const STRINGS = {
     notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
     markAllRead: "全部标记为已读", markAsRead: "标记为已读", dismiss: "移除",
     manageReminders: "管理提醒", noReminders: "还没有设置任何提醒。",
-    autoReminderHint: "自动管理——想停止请暂停对应的定期规则。",
+    autoReminderHint: "来自定期规则——到下次扣款会重设。想永久停止请暂停该规则。",
   },
   fr: {
     eyebrow: "Monira",
@@ -586,7 +586,7 @@ const STRINGS = {
     notifications: "Notifications", noNotifications: "Tout est à jour !",
     markAllRead: "Tout marquer comme lu", markAsRead: "Marquer comme lu", dismiss: "Ignorer",
     manageReminders: "Gérer les rappels", noReminders: "Aucun rappel défini.",
-    autoReminderHint: "Géré automatiquement — mettez la règle récurrente en pause pour l'arrêter.",
+    autoReminderHint: "Issu d'une règle récurrente — se réinitialise à la prochaine échéance. Mettez la règle en pause pour l'arrêter définitivement.",
   },
   es: {
     eyebrow: "Monira",
@@ -718,7 +718,7 @@ const STRINGS = {
     notifications: "Notificaciones", noNotifications: "¡Estás al día!",
     markAllRead: "Marcar todo como leído", markAsRead: "Marcar como leído", dismiss: "Descartar",
     manageReminders: "Gestionar recordatorios", noReminders: "No hay recordatorios.",
-    autoReminderHint: "Gestionado automáticamente: pausa la regla recurrente para detenerlo.",
+    autoReminderHint: "Viene de una regla recurrente: se reinicia en el próximo cobro. Pausa la regla para detenerlo definitivamente.",
   },
 };
 // Order here is the order of the toggle in Settings. `zh` predates the others
@@ -3893,25 +3893,23 @@ function ManageRemindersPanel({ t, lang, onClose }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((n) => {
-            // Auto-managed (recurring_rule_id): syncUpcomingChargeReminders
-            // recomputes and overwrites this row on every refresh as long as
-            // the rule is still due for it, so an inline edit or a delete here
-            // wouldn't stick — it'd just reappear/revert on the next load.
-            // The real control for these lives on the recurring rule itself.
+            // Auto-managed (recurring_rule_id) reminders are now editable —
+            // syncUpcomingChargeReminders tracks occurrences via cycle_date
+            // rather than remind_at, so an edited date survives until the
+            // rule actually advances to its next cycle (see db.js).
+            // ponytail: delete still isn't offered for these. notifications
+            // is part of subscribeLedger's realtime feed, so the open ledger
+            // would immediately re-run syncUpcomingChargeReminders and
+            // recreate the row the moment it's deleted — pause/delete the
+            // recurring rule itself to actually stop it.
             const auto = !!n.recurringRuleId;
             return (
               <div key={n.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
-                  {auto ? (
-                    <>
-                      <div style={{ fontSize: 13, color: INK, marginTop: 6 }}>{shortDate(n.remindAt, lang)}</div>
-                      <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("autoReminderHint")}</div>
-                    </>
-                  ) : (
-                    <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
-                      style={{ ...input, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
-                  )}
+                  <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
+                    style={{ ...input, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
+                  {auto && <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("autoReminderHint")}</div>}
                 </div>
                 {!auto && (
                   <button onClick={() => remove(n.id)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
