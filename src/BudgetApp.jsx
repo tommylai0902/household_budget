@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
-  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -168,11 +168,7 @@ const STRINGS = {
     currentPasswordLabel: "Current password", newPasswordLabel: "New password", confirmPasswordLabel: "Confirm new password",
     changePassword: "Change password", passwordChanged: "Password updated.", passwordSaveErr: "Couldn't update your password: {msg}",
     passwordMismatchErr: "New passwords don't match.", currentPasswordWrongErr: "Current password is incorrect.",
-    ledgers: "Ledgers",
-    // Tagline, kept English-only in every language block below (same call as
-    // eyebrow/"Monira") rather than translated per language — matches
-    // signInHint above, which is the same copy shown on the sign-in screen.
-    ledgersHint: "One simple step toward a better financial life.", home: "Home",
+    ledgers: "Ledgers", home: "Home",
     newLedgerPh: "e.g. Travel — Japan", createLedger: "Create ledger",
     invitePeople: "Invite people", inviteAccess: "Their access",
     manageAccess: "Manage members", currentMembers: "Who has access",
@@ -307,7 +303,7 @@ const STRINGS = {
     currentPasswordLabel: "目前密碼", newPasswordLabel: "新密碼", confirmPasswordLabel: "確認新密碼",
     changePassword: "更改密碼", passwordChanged: "密碼已更新。", passwordSaveErr: "更改唔到密碼：{msg}",
     passwordMismatchErr: "兩次輸入嘅新密碼唔一致。", currentPasswordWrongErr: "目前密碼唔啱。",
-    ledgers: "帳簿", ledgersHint: "One simple step toward a better financial life.", home: "主頁",
+    ledgers: "帳簿", home: "主頁",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "建立帳簿",
     invitePeople: "邀請成員", inviteAccess: "權限",
     manageAccess: "管理成員", currentMembers: "邊個有權限",
@@ -445,7 +441,7 @@ const STRINGS = {
     currentPasswordLabel: "当前密码", newPasswordLabel: "新密码", confirmPasswordLabel: "确认新密码",
     changePassword: "更改密码", passwordChanged: "密码已更新。", passwordSaveErr: "无法更改密码：{msg}",
     passwordMismatchErr: "两次输入的新密码不一致。", currentPasswordWrongErr: "当前密码不正确。",
-    ledgers: "账本", ledgersHint: "One simple step toward a better financial life.", home: "主页",
+    ledgers: "账本", home: "主页",
     newLedgerPh: "例如：旅行 — 日本", createLedger: "创建账本",
     invitePeople: "邀请成员", inviteAccess: "权限",
     manageAccess: "管理成员", currentMembers: "谁有权限",
@@ -581,7 +577,7 @@ const STRINGS = {
     currentPasswordLabel: "Mot de passe actuel", newPasswordLabel: "Nouveau mot de passe", confirmPasswordLabel: "Confirmer le nouveau mot de passe",
     changePassword: "Changer le mot de passe", passwordChanged: "Mot de passe mis à jour.", passwordSaveErr: "Impossible de changer le mot de passe : {msg}",
     passwordMismatchErr: "Les nouveaux mots de passe ne correspondent pas.", currentPasswordWrongErr: "Le mot de passe actuel est incorrect.",
-    ledgers: "Registres", ledgersHint: "One simple step toward a better financial life.", home: "Accueil",
+    ledgers: "Registres", home: "Accueil",
     newLedgerPh: "ex. Voyage — Japon", createLedger: "Créer le registre",
     invitePeople: "Inviter des personnes", inviteAccess: "Leur accès",
     manageAccess: "Gérer les membres", currentMembers: "Qui a accès",
@@ -717,7 +713,7 @@ const STRINGS = {
     currentPasswordLabel: "Contraseña actual", newPasswordLabel: "Nueva contraseña", confirmPasswordLabel: "Confirmar nueva contraseña",
     changePassword: "Cambiar contraseña", passwordChanged: "Contraseña actualizada.", passwordSaveErr: "No se pudo cambiar la contraseña: {msg}",
     passwordMismatchErr: "Las nuevas contraseñas no coinciden.", currentPasswordWrongErr: "La contraseña actual es incorrecta.",
-    ledgers: "Libros", ledgersHint: "One simple step toward a better financial life.", home: "Inicio",
+    ledgers: "Libros", home: "Inicio",
     newLedgerPh: "p. ej. Viaje — Japón", createLedger: "Crear libro",
     invitePeople: "Invitar personas", inviteAccess: "Su acceso",
     manageAccess: "Gestionar miembros", currentMembers: "Quién tiene acceso",
@@ -1254,7 +1250,6 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
               (only offered once there's actually a last-used ledger to land on). */}
           <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onHome={onHome} />
         </>} />
-        <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
 
         {inviteMsg && (
           <div onClick={onDismissInvite} style={{ cursor: "pointer", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12,
@@ -1926,7 +1921,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang
 
         {viewState === "home" && (
           <HomePage ledgerId={ledger.id} ledgerName={ledger.name} t={t} spent={summary.total} budget={totalBudget} lastEntry={expenses[0] || null}
-            onOpenLedger={onExit}
+            onOpenLedger={onExit} onViewTransactions={() => setViewState("ledger")}
             onOpenInventory={() => setViewState("inventory")} onOpenGrocery={() => setViewState("grocery")} />
         )}
 
@@ -4176,8 +4171,15 @@ function ManageRemindersPanel({ t, lang, onClose }) {
   );
 }
 
-const bentoCard = {
-  background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 16,
+// Bento home's per-card colour coding — fixed hex (not var(--accent)) since
+// glassmorphism hues stay constant across light/dark; only the frosted
+// surface underneath (--glass-* in index.css) adapts to theme.
+const HOME_CYAN = "#22D3EE";
+const HOME_AMBER = "#F59E0B";
+const HOME_SKY = "#38BDF8";
+const glassCard = {
+  background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 20, padding: 20,
+  backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
@@ -4191,7 +4193,7 @@ function Greeting({ t }) {
   const greetingWord = hour < 12 ? t("greetingMorning") : hour < 18 ? t("greetingAfternoon") : t("greetingEvening");
   const name = profile?.name || profile?.email?.split("@")[0] || "";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 800 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 600, color: INK }}>
       {isDay ? <Sun size={18} style={{ color: WARN }} /> : <Moon size={18} style={{ color: SUB }} />}
       {name ? t("greetingLine", { greeting: greetingWord, name }) : greetingWord}
     </div>
@@ -4208,7 +4210,11 @@ function BrandHeader({ left, right }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 20, marginBottom: 16 }}>
       <div style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{left}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: TEAL, whiteSpace: "nowrap" }}>Monira</div>
+      <div style={{
+        fontSize: 22, fontWeight: 800, letterSpacing: -0.4, whiteSpace: "nowrap",
+        background: "linear-gradient(90deg, #2DD4BF, #34D399, #67E8F9)",
+        WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+      }}>Monira</div>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>{right}</div>
     </div>
   );
@@ -4219,28 +4225,33 @@ function BrandHeader({ left, right }) {
 // than threaded through Ledger's central refresh(), same self-contained
 // pattern as InventoryPanel/GroceryListPanel below.
 // Card header shared by all three bento cards: icon + uppercase title on the
-// left, a small decorative icon on the right, divider below — matches the
-// approved mockup's card anatomy exactly, so it's factored out once.
-function BentoCardHeader({ icon: Icon, title, corner: Corner }) {
+// left, a small decorative icon on the right — matches the approved mockup's
+// card anatomy exactly, so it's factored out once. Each card passes its own
+// hex accent (cyan/amber/sky) so the three read as distinct categories at a
+// glance; `accent` must be a plain hex string (not a var()) since the
+// corner-icon tint appends an alpha suffix to it. `divider`/`cornerClass` are
+// per-card opt-ins: Ledger and Inventory dropped the divider for a seamless
+// look, and Ledger's corner arrow gets its own hover-glow class.
+function BentoCardHeader({ icon: Icon, title, corner: Corner, accent, divider = true, cornerClass }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon size={20} style={{ color: TEAL }} />
-          <span style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.3 }}>{title}</span>
+          <Icon size={20} style={{ color: accent }} />
+          <span style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, color: accent }}>{title}</span>
         </div>
         {Corner && (
-          <span style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 8, background: MUTED_BG }}>
-            <Corner size={14} style={{ color: TEAL }} />
+          <span className={cornerClass} style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 8, background: `${accent}26`, transition: "box-shadow .18s ease" }}>
+            <Corner size={14} style={{ color: accent }} />
           </span>
         )}
       </div>
-      <div style={{ borderTop: `1px solid ${LINE}`, margin: "10px 0" }} />
+      {divider && <div style={{ borderTop: "1px solid var(--glass-border)", margin: "10px 0" }} />}
     </>
   );
 }
 
-function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLedger, onOpenInventory, onOpenGrocery }) {
+function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLedger, onViewTransactions, onOpenInventory, onOpenGrocery }) {
   const [inventoryCount, setInventoryCount] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [pendingGrocery, setPendingGrocery] = useState(0);
@@ -4265,56 +4276,92 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "relative" }}>
+      {/* Purely decorative ambient glow behind the glass cards — glassmorphism
+          needs something with colour/shape behind the frosted panes to blur,
+          otherwise backdrop-filter has nothing to do against a flat page
+          background. Fixed to this wrapper (overflow hidden further down),
+          never intercepts clicks. */}
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.25), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.18), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      <style>{`
+        .bento-glass { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+        .bento-glass:hover { transform: translateY(-2px); }
+        .bento-glass-ledger:hover { border-color: rgba(34,211,238,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(34,211,238,0.28); }
+        .bento-glass-inventory:hover { border-color: rgba(245,158,11,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(245,158,11,0.28); }
+        .bento-glass-grocery:hover { border-color: rgba(56,189,248,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(56,189,248,0.28); }
+        .bento-glass-budget:hover { border-color: rgba(16,185,129,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(16,185,129,0.28); }
+        .bento-glass-ledger:hover .ledger-corner-glow { box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+        .price-match-pill { cursor: pointer; transition: background .18s ease; }
+        .bento-glass-grocery:hover .price-match-pill { background: rgba(56,189,248,0.2) !important; }
+      `}</style>
+
       {/* Greeting now lives in the shared header, next to the centered brand
           (see Ledger's header row) — this is just the multi-ledger context
-          label, since switching ledgers happens via the Ledger & Transactions
-          card → picker, not from here. */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.3 }}>
-        {t("viewingLedger", { name: ledgerName })}
+          label, styled as a small pill/badge. Plain text now — the click
+          target moved to the whole budget banner below (the "dashboard
+          status bar"); the Ledger & Transactions card still goes to the
+          picker instead. */}
+      <div style={{ position: "relative", zIndex: 1, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--badge-teal-border)", background: "var(--badge-teal-bg)", borderRadius: 99, padding: "4px 12px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--badge-teal-ink)" }}>
+        <MapPin size={12} /> {t("viewingLedger", { name: ledgerName })}
       </div>
 
       {budget > 0 && (
-        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, marginBottom: 10 }}>
+        <button onClick={onViewTransactions} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 20, padding: 20, width: "100%" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, letterSpacing: 0.3, marginBottom: 12, color: INK }}>
             <span>{t("budgetBannerLine", { spent: money(spent), budget: money(budget), pct })}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: over ? DANGER : SUB }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: over ? DANGER : SUB }}>
               {over ? t("budgetOverLine", { amount: money(spent - budget) }) : t("budgetRemainingLine", { amount: money(budget - spent) })}
             </span>
           </div>
-          <BudgetBar spent={spent} budget={budget} height={12} />
-        </div>
+          {/* Own progress bar rather than the shared BudgetBar — that component
+              is reused by the plain Budget panel too, and this glow-gradient
+              treatment is specific to the Bento dashboard's premium look. */}
+          <div style={{ position: "relative", height: 12, borderRadius: 99, background: "var(--track)", overflow: "hidden" }}>
+            <div style={{
+              width: `${Math.min(100, Math.max(pct > 0 ? 2 : 0, pct))}%`, height: "100%", borderRadius: 99,
+              background: over ? "linear-gradient(90deg, #F87171, #FB923C)" : "linear-gradient(90deg, #10B981, #2DD4BF)",
+              boxShadow: over ? "0 0 12px rgba(248,113,113,0.5)" : "0 0 12px rgba(16,185,129,0.5)",
+              transition: "width .25s ease",
+            }} />
+          </div>
+        </button>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <button onClick={onOpenLedger} style={{ ...bentoCard, gridColumn: "span 2" }}>
-          <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} />
-          <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>
-            {t("totalMonthSpent")}: <b style={{ color: INK }}>{money(spent)}</b>
-          </div>
-          {lastEntry && (
-            <div style={{ fontSize: 13, color: SUB }}>
-              {t("lastEntry")}: <b style={{ color: INK }}>{lastEntry.description} - {money(lastEntry.amount)}</b>
+      <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <button onClick={onOpenLedger} className="bento-glass bento-glass-ledger" style={{ ...glassCard, gridColumn: "span 2" }}>
+          <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} accent={HOME_CYAN} divider={false} cornerClass="ledger-corner-glow" />
+          <div style={{ marginTop: 12, background: "var(--muted-bg)", border: "1px solid var(--glass-border)", borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 14, marginBottom: lastEntry ? 4 : 0 }}>
+              <span style={{ color: SUB, fontWeight: 500 }}>{t("totalMonthSpent")}: </span>
+              <span style={{ color: INK, fontWeight: 600 }}>{money(spent)}</span>
             </div>
-          )}
+            {lastEntry && (
+              <div style={{ fontSize: 14 }}>
+                <span style={{ color: SUB, fontWeight: 500 }}>{t("lastEntry")}: </span>
+                <span style={{ color: INK, fontWeight: 600 }}>{lastEntry.description} - {money(lastEntry.amount)}</span>
+              </div>
+            )}
+          </div>
         </button>
 
-        <button onClick={onOpenInventory} style={bentoCard}>
-          <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} />
-          <div style={{ fontSize: 13, color: SUB }}>
+        <button onClick={onOpenInventory} className="bento-glass bento-glass-inventory" style={glassCard}>
+          <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} accent={HOME_AMBER} divider={false} />
+          <div style={{ fontSize: 13, color: SUB, marginTop: 12 }}>
             {t("trackedItems", { n: inventoryCount })}
           </div>
           {lowStockCount > 0 && (
-            <span style={{ ...pill(WARN), display: "inline-flex", marginTop: 10 }}>{t("lowStockAlert", { n: lowStockCount })}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", marginTop: 10, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#FCD34D", borderRadius: 99, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>
+              {t("lowStockAlert", { n: lowStockCount })}
+            </span>
           )}
         </button>
 
-        <button onClick={onOpenGrocery} style={bentoCard}>
-          <BentoCardHeader icon={ShoppingCart} title={t("groceryCardTitle")} corner={Sparkles} />
+        <button onClick={onOpenGrocery} className="bento-glass bento-glass-grocery" style={glassCard}>
+          <BentoCardHeader icon={ShoppingCart} title={t("groceryCardTitle")} corner={Sparkles} accent={HOME_SKY} />
           <div style={{ fontSize: 13, color: SUB }}>
             {t("pendingItemsCount", { n: pendingGrocery })}
           </div>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: OK_BG, color: OK_INK, borderRadius: 99, padding: "5px 10px", fontSize: 12, fontWeight: 700 }}>
+          <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.3)", color: "#7DD3FC", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
             <Info size={13} /> {dealsActive ? t("dealsActiveBadge") : t("priceMatchCheck")}
           </span>
         </button>

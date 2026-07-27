@@ -29,6 +29,16 @@ html, body, #root { margin: 0; height: 100%; }
   --ok-bg: #E3F5F2; --ok-ink: #0F5E55; --ok-line: #B8E4DD; --ok-strong: #C7EBE4;
   --bad-bg: #FEF2F2; --bad-ink: #B91C1C; --bad-line: #FECACA;
   --track: #EEF2F1; --muted-bg: #F1F3F5; --danger: #DC2626; --warn: #C2410C;
+  /* Glassmorphic surface for the Bento home dashboard only (HomePage) — a
+     frosted card over the page background, not the flat --card used
+     everywhere else. Needs its own light/dark pair since a translucent
+     white reads very differently over a pale vs near-black page. */
+  --glass-bg: rgba(255, 255, 255, 0.6); --glass-border: rgba(20, 184, 166, 0.18);
+  --glass-shadow: rgba(15, 23, 42, 0.08);
+  /* "Viewing: {ledger}" badge on the Bento home — solid teal-50/teal-200/
+     teal-700 in light mode reads as a washed-out grey-green if you reuse the
+     dark theme's translucent teal-950 fill, so it gets its own pair too. */
+  --badge-teal-bg: #F0FDFA; --badge-teal-border: #99F6E4; --badge-teal-ink: #0F766E;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -39,6 +49,9 @@ html, body, #root { margin: 0; height: 100%; }
   --ok-bg: #123833; --ok-ink: #7FD9CA; --ok-line: #1F544C; --ok-strong: #1A4B43;
   --bad-bg: #3A1D1D; --bad-ink: #F19B94; --bad-line: #5E2E2A;
   --track: #2A3137; --muted-bg: #242A2F; --danger: #F1897F; --warn: #F5A97A;
+  --glass-bg: rgba(14, 34, 41, 0.75); --glass-border: rgba(45, 212, 191, 0.2);
+  --glass-shadow: rgba(0, 0, 0, 0.35);
+  --badge-teal-bg: rgba(4, 47, 46, 0.4); --badge-teal-border: rgba(20, 184, 166, 0.3); --badge-teal-ink: #5EEAD4;
 }
 
 /* Padding must count inside a declared width, or anything using
