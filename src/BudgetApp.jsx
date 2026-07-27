@@ -4332,8 +4332,13 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
         </button>
       )}
 
-      <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <button onClick={onOpenLedger} className="bento-glass bento-glass-ledger" style={{ ...glassCard, gridColumn: "span 2" }}>
+      {/* auto-fit/minmax, not a fixed two-track grid: a real phone's content
+          width (~340-400px) can't fit two 300px+ cards side by side without
+          crushing "SMART GROCERY & DEALS" into three wrapped lines, so this
+          collapses to a single column there and only goes two-up once the
+          container is wide enough (tablet/desktop). */}
+      <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+        <button onClick={onOpenLedger} className="bento-glass bento-glass-ledger" style={{ ...glassCard, gridColumn: "1 / -1" }}>
           <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} accent={HOME_CYAN} divider={false} cornerClass="ledger-corner-glow" />
           <div style={{ marginTop: 12, background: "var(--muted-bg)", border: "1px solid var(--glass-border)", borderRadius: 12, padding: 12 }}>
             <div style={{ fontSize: 14, marginBottom: lastEntry ? 4 : 0 }}>
