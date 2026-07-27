@@ -4339,8 +4339,8 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           container is wide enough (tablet/desktop). */}
       <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
         <button onClick={onOpenLedger} className="bento-glass bento-glass-ledger" style={{ ...glassCard, gridColumn: "1 / -1" }}>
-          <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} accent={HOME_CYAN} divider={false} cornerClass="ledger-corner-glow" />
-          <div style={{ marginTop: 12, background: "var(--muted-bg)", border: "1px solid var(--glass-border)", borderRadius: 12, padding: 12 }}>
+          <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} accent={HOME_CYAN} cornerClass="ledger-corner-glow" />
+          <div style={{ background: "var(--muted-bg)", border: "1px solid var(--glass-border)", borderRadius: 12, padding: 12 }}>
             <div style={{ fontSize: 14, marginBottom: lastEntry ? 4 : 0 }}>
               <span style={{ color: SUB, fontWeight: 400 }}>{t("totalMonthSpent")}: </span>
               <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{money(spent)}</span>
@@ -4355,8 +4355,8 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
         </button>
 
         <button onClick={onOpenInventory} className="bento-glass bento-glass-inventory" style={glassCard}>
-          <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} accent={HOME_AMBER} divider={false} />
-          <div style={{ fontSize: 14, marginTop: 12 }}>
+          <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} accent={HOME_AMBER} />
+          <div style={{ fontSize: 14 }}>
             <span style={{ color: SUB, fontWeight: 400 }}>{t("trackedItemsLabel")} </span>
             <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{inventoryCount}</span>
           </div>
