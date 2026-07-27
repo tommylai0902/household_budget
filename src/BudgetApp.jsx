@@ -1881,24 +1881,27 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang
             against the right edge instead of falling back to the left.
             Home shows the greeting on the left and the brand centered (position:
             relative/absolute, so it's centered on the row rather than the
-            available space next to a variable-width greeting); every other view
-            swaps that for a "Back to Dashboard" button. From "ledger" it goes
-            all the way out to the picker (onExit) — that's what the overflow
-            menu's Home entry is for instead. From "inventory"/"grocery" it
-            goes back to this ledger's own Bento home, since those are reached
-            from a home card in the first place, not the picker. Month-select
-            is ledger-only. The overflow menu only offers ledger-management
-            entries (Budget/Reports/Recurring/members/currency) outside of
-            "home" — those don't mean anything until you're actually inside a
-            ledger. */}
+            available space next to a variable-width greeting); every other
+            view swaps that for a "Back to Dashboard" button — but only on
+            "ledger", where it goes all the way out to the picker (onExit),
+            a different destination than the overflow menu's Home entry.
+            "inventory"/"grocery" drop the button entirely: their only way
+            back is Home, which already goes to the exact same place
+            (setViewState("home")), so the button was a dead duplicate there.
+            Month-select is ledger-only. The overflow menu only offers
+            ledger-management entries (Budget/Reports/Recurring/members/
+            currency) outside of "home" — those don't mean anything until
+            you're actually inside a ledger. */}
         {viewState === "home" ? (
           <BrandHeader left={<Greeting t={t} />} right={<>
             <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
           </>} />
         ) : (
-          <div className="ledger-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-            <button onClick={viewState === "ledger" ? onExit : () => setViewState("home")} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+          <div className="ledger-header" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+            {viewState === "ledger" && (
+              <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+            )}
             <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
               {viewState === "ledger" && (
                 <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
