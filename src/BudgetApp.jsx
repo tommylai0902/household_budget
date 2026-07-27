@@ -139,8 +139,8 @@ const STRINGS = {
     backToDashboard: "Back to Dashboard",
     greetingMorning: "Good morning", greetingAfternoon: "Good afternoon", greetingEvening: "Good evening",
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
-    inventoryCardTitle: "Inventory Hub", trackedItems: "Total Items Tracked: {n}", lowStockAlert: "{n} items Low Stock!",
-    groceryCardTitle: "Smart Grocery & Deals", pendingItemsCount: "Pending Items: {n}", dealsActiveBadge: "Deals Active! · Price Match Check",
+    inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
+    groceryCardTitle: "Smart Grocery & Deals", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
     greetingLine: "{greeting}, {name}!", viewingLedger: "Viewing: {name}",
     budgetBannerLine: "BUDGET: {spent} / {budget} Spent ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
@@ -4175,7 +4175,7 @@ function ManageRemindersPanel({ t, lang, onClose }) {
 // glassmorphism hues stay constant across light/dark; only the frosted
 // surface underneath (--glass-* in index.css) adapts to theme.
 const HOME_CYAN = "#22D3EE";
-const HOME_AMBER = "#F59E0B";
+const HOME_AMBER = "#FBBF24";
 const HOME_SKY = "#38BDF8";
 const glassCard = {
   background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 20, padding: 20,
@@ -4193,7 +4193,7 @@ function Greeting({ t }) {
   const greetingWord = hour < 12 ? t("greetingMorning") : hour < 18 ? t("greetingAfternoon") : t("greetingEvening");
   const name = profile?.name || profile?.email?.split("@")[0] || "";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 600, color: INK }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 500, color: INK }}>
       {isDay ? <Sun size={18} style={{ color: WARN }} /> : <Moon size={18} style={{ color: SUB }} />}
       {name ? t("greetingLine", { greeting: greetingWord, name }) : greetingWord}
     </div>
@@ -4211,8 +4211,8 @@ function BrandHeader({ left, right }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 20, marginBottom: 16 }}>
       <div style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{left}</div>
       <div style={{
-        fontSize: 22, fontWeight: 800, letterSpacing: -0.4, whiteSpace: "nowrap",
-        background: "linear-gradient(90deg, #2DD4BF, #34D399, #67E8F9)",
+        fontSize: 24, fontWeight: 800, letterSpacing: -0.4, whiteSpace: "nowrap",
+        background: "linear-gradient(90deg, #5EEAD4, #34D399, #67E8F9)",
         WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
       }}>Monira</div>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>{right}</div>
@@ -4332,13 +4332,13 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} accent={HOME_CYAN} divider={false} cornerClass="ledger-corner-glow" />
           <div style={{ marginTop: 12, background: "var(--muted-bg)", border: "1px solid var(--glass-border)", borderRadius: 12, padding: 12 }}>
             <div style={{ fontSize: 14, marginBottom: lastEntry ? 4 : 0 }}>
-              <span style={{ color: SUB, fontWeight: 500 }}>{t("totalMonthSpent")}: </span>
-              <span style={{ color: INK, fontWeight: 600 }}>{money(spent)}</span>
+              <span style={{ color: SUB, fontWeight: 400 }}>{t("totalMonthSpent")}: </span>
+              <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{money(spent)}</span>
             </div>
             {lastEntry && (
               <div style={{ fontSize: 14 }}>
-                <span style={{ color: SUB, fontWeight: 500 }}>{t("lastEntry")}: </span>
-                <span style={{ color: INK, fontWeight: 600 }}>{lastEntry.description} - {money(lastEntry.amount)}</span>
+                <span style={{ color: SUB, fontWeight: 400 }}>{t("lastEntry")}: </span>
+                <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{lastEntry.description} - {money(lastEntry.amount)}</span>
               </div>
             )}
           </div>
@@ -4346,8 +4346,9 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
 
         <button onClick={onOpenInventory} className="bento-glass bento-glass-inventory" style={glassCard}>
           <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} accent={HOME_AMBER} divider={false} />
-          <div style={{ fontSize: 13, color: SUB, marginTop: 12 }}>
-            {t("trackedItems", { n: inventoryCount })}
+          <div style={{ fontSize: 14, marginTop: 12 }}>
+            <span style={{ color: SUB, fontWeight: 400 }}>{t("trackedItemsLabel")} </span>
+            <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{inventoryCount}</span>
           </div>
           {lowStockCount > 0 && (
             <span style={{ display: "inline-flex", alignItems: "center", marginTop: 10, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#FCD34D", borderRadius: 99, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>
@@ -4358,8 +4359,9 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
 
         <button onClick={onOpenGrocery} className="bento-glass bento-glass-grocery" style={glassCard}>
           <BentoCardHeader icon={ShoppingCart} title={t("groceryCardTitle")} corner={Sparkles} accent={HOME_SKY} />
-          <div style={{ fontSize: 13, color: SUB }}>
-            {t("pendingItemsCount", { n: pendingGrocery })}
+          <div style={{ fontSize: 14 }}>
+            <span style={{ color: SUB, fontWeight: 400 }}>{t("pendingItemsLabel")} </span>
+            <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{pendingGrocery}</span>
           </div>
           <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.3)", color: "#7DD3FC", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
             <Info size={13} /> {dealsActive ? t("dealsActiveBadge") : t("priceMatchCheck")}
