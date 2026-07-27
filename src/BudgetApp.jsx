@@ -130,6 +130,7 @@ const STRINGS = {
     addToInventory: "Add to Inventory", addToInventoryHint: "Track this purchase in your inventory",
     quantity: "Quantity", unit: "Unit", expiryDate: "Expiry date",
     inventory: "Inventory", searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.",
+    addItem: "Add Item", itemNamePh: "Item name", minQuantityLabel: "Low stock at (optional)",
     lowStock: "Low stock", expiringSoon: "Expiring soon", expired: "Expired",
     addToGroceryList: "Add to Grocery List", addedToGroceryList: "Added",
     groceryList: "Grocery List", addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
@@ -4382,11 +4383,16 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
   );
 }
 
+const NEW_INVENTORY_ITEM = { name: "", quantity: "1", unit: "", minQuantity: "", expiryDate: "" };
+
 function InventoryPanel({ ledgerId, t }) {
   const [items, setItems] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all"); // all | low | expiring
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [draft, setDraft] = useState(NEW_INVENTORY_ITEM);
+  const [saving, setSaving] = useState(false);
   const load = useCallback(() => {
     db.fetchInventoryItems(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
   }, [ledgerId]);
@@ -4399,6 +4405,21 @@ function InventoryPanel({ ledgerId, t }) {
   const addToGrocery = async (item) => {
     try { await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity)); }
     catch (e) { setError(e.message || String(e)); }
+  };
+  const addItem = async () => {
+    if (!draft.name.trim() || saving) return;
+    setSaving(true);
+    try {
+      await db.upsertInventoryItem(ledgerId, {
+        name: draft.name.trim(), quantity: draft.quantity, unit: draft.unit,
+        minQuantity: draft.minQuantity === "" ? null : Number(draft.minQuantity),
+        expiryDate: draft.expiryDate || null,
+      });
+      setDraft(NEW_INVENTORY_ITEM);
+      setShowAddForm(false);
+      load();
+    } catch (e) { setError(e.message || String(e)); }
+    setSaving(false);
   };
 
   const today = todayISO();
@@ -4414,9 +4435,35 @@ function InventoryPanel({ ledgerId, t }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Package size={18} style={{ color: TEAL }} />
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("inventory")}</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, flex: 1 }}>{t("inventory")}</h2>
+        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px" }}>
+          <Plus size={15} /> {t("addItem")}
+        </button>
       </div>
       {error && <div style={errorBox}>{error}</div>}
+      {showAddForm && (
+        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder={t("itemNamePh")} style={input} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Field label={t("quantity")} style={{ width: 90 }}>
+              <input type="number" inputMode="decimal" value={draft.quantity} onChange={(e) => setDraft({ ...draft, quantity: e.target.value })} style={input} />
+            </Field>
+            <Field label={t("unit")} style={{ width: 90 }}>
+              <input type="text" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={input} />
+            </Field>
+            <Field label={t("expiryDate")} style={{ flex: 1, minWidth: 140 }}>
+              <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
+            </Field>
+          </div>
+          <Field label={t("minQuantityLabel")}>
+            <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
+          </Field>
+          <button onClick={addItem} disabled={!draft.name.trim() || saving} style={{ ...addBtn, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+            {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
+          </button>
+        </div>
+      )}
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchInventoryPh")} style={input} />
       <div style={{ display: "flex", gap: 6 }}>
         {[["all", t("showAll")], ["low", t("lowStock")], ["expiring", t("expiringSoon")]].map(([k, label]) => (
