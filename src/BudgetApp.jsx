@@ -3,6 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -124,6 +125,25 @@ const STRINGS = {
     rememberHint: "Saved shops are suggested as you type. Nothing is saved unless you tick this.",
     newStorePh: "New shop name", saveStores: "Save shops", deleteStore: "Remove shop",
     noStores: "No saved shops yet. Tick the box when adding an expense to keep one.",
+    // Inventory / Grocery — English only for now; other languages fall back to
+    // English via makeT's `??` chain until translated.
+    addToInventory: "Add to Inventory", addToInventoryHint: "Track this purchase in your inventory",
+    quantity: "Quantity", unit: "Unit", expiryDate: "Expiry date",
+    inventory: "Inventory", searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.",
+    lowStock: "Low stock", expiringSoon: "Expiring soon", expired: "Expired",
+    addToGroceryList: "Add to Grocery List", addedToGroceryList: "Added",
+    groceryList: "Grocery List", addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
+    priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
+    postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
+    dealCheckErr: "Couldn't check prices: {msg}",
+    backToDashboard: "Back to Dashboard",
+    greetingMorning: "Good morning", greetingAfternoon: "Good afternoon", greetingEvening: "Good evening",
+    ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
+    inventoryCardTitle: "Inventory Hub", trackedItems: "Total Items Tracked: {n}", lowStockAlert: "{n} items Low Stock!",
+    groceryCardTitle: "Smart Grocery & Deals", pendingItemsCount: "Pending Items: {n}", dealsActiveBadge: "Deals Active! · Price Match Check",
+    greetingLine: "{greeting}, {name}!", viewingLedger: "Viewing: {name}",
+    budgetBannerLine: "BUDGET: {spent} / {budget} Spent ({pct}%)",
+    budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
     recurring: "Recurring expenses", recurringAdd: "Add new", noRecurring: "No recurring expenses yet.",
     recurNew: "New recurring expense", recurEdit: "Edit recurring expense",
     freqWeekly: "Weekly", freqMonthly: "Monthly", freqYearly: "Yearly", frequency: "Frequency",
@@ -866,6 +886,14 @@ const getAccent = () => {
   return ACCENT_COLORS[0];
 };
 const cacheAccent = (c) => { try { localStorage.setItem("accent", c); } catch {} };
+// Device-level, not account-level — Flipp results are location-specific, and
+// nothing else in the schema has a place for it.
+const getPostalCode = () => { try { return localStorage.getItem("postalCode") || ""; } catch { return ""; } };
+const cachePostalCode = (v) => { try { localStorage.setItem("postalCode", v); } catch {} };
+// Which ledger to auto-open on a fresh sign-in, so Bento home doesn't need a
+// picker round-trip every time. Device-level, like accent/theme/postal code.
+const getLastLedgerId = () => { try { return localStorage.getItem("lastLedgerId") || null; } catch { return null; } };
+const cacheLastLedgerId = (id) => { try { localStorage.setItem("lastLedgerId", id); } catch {} };
 
 /* ============================ Root ================================= */
 export default function App() {
@@ -919,6 +947,29 @@ export default function App() {
 
   // No ledger picked = the picker is home. Exiting a ledger comes back here.
   const [ledger, setLedger] = useState(null);
+  // What a freshly-opened Ledger should land on: "home" (its Bento dashboard)
+  // for the auto-loaded last-used ledger below, "ledger" (straight to the
+  // transactions/calendar) for a ledger explicitly chosen from the picker or
+  // switcher — picking one there is a clear "I want to work in this book"
+  // signal, not another dashboard to look at.
+  const [entryView, setEntryView] = useState("home");
+  const openLedger = (l, view) => { setEntryView(view); cacheLastLedgerId(l.id); setLedger(l); };
+
+  // Bento home is the landing page now — on a fresh sign-in, skip the picker
+  // and drop straight into whichever ledger was open last, same idea as the
+  // accent/theme caches. Silently falls back to the picker (unchanged) if
+  // nothing's cached yet, or the cached ledger is gone/inaccessible.
+  useEffect(() => {
+    if (!userId || ledger) return;
+    const cached = getLastLedgerId();
+    if (!cached) return;
+    let live = true;
+    db.fetchLedgers().then((all) => {
+      const match = all.find((l) => l.id === cached);
+      if (live && match) openLedger(match, "home");
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [userId]);
 
   // An invite link lands as /?invite=<token>. Held in state (not consumed) so that,
   // once signed in, we show a confirmation screen and only redeem on an explicit tap.
@@ -933,9 +984,25 @@ export default function App() {
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} hasInvite={!!inviteToken} />;
   if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
+  // Picker's Home menu entry — jumps back to the last-used ledger's Bento
+  // dashboard, same target the auto-load effect above would have landed on.
+  // Only offered when there's actually one cached; a brand-new account with
+  // no ledger opened yet has nowhere for "Home" to go.
+  const goHome = async () => {
+    const cached = getLastLedgerId();
+    if (!cached) return;
+    try {
+      const all = await db.fetchLedgers();
+      const match = all.find((l) => l.id === cached);
+      if (match) openLedger(match, "home");
+    } catch {}
+  };
+
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-    onOpen={setLedger} currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
-  return <Ledger ledger={ledger} currentUserId={session.user.id} onExit={() => setLedger(null)} onSwitchLedger={setLedger} lang={lang} changeLang={changeLang} t={t}
+    onOpen={(l) => openLedger(l, "ledger")} onHome={getLastLedgerId() ? goHome : undefined}
+    currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
+  return <Ledger ledger={ledger} startView={entryView} currentUserId={session.user.id} onExit={() => setLedger(null)}
+    onSwitchLedger={(l) => openLedger(l, "ledger")} lang={lang} changeLang={changeLang} t={t}
     theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />;
 }
 
@@ -1110,7 +1177,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, inviteMsg, onDismissInvite, currentUserId }) {
+function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -1177,17 +1244,16 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
   return (
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-          {/* App name, not t("ledgers") — this is the home page's brand header, not
-              a description of the list below it (that's ledgersHint). Same string
-              in every language, like the eyebrow on the sign-in screen. */}
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4 }}>Monira</h1>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <NotificationBell t={t} lang={lang} />
-            {/* Same overflow menu as inside a ledger, minus the entries that need one. */}
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
-          </div>
-        </div>
+        {/* Same header block as the Bento home now: greeting on the left, brand
+            centered, bell/menu on the right — same string in every language,
+            like the eyebrow on the sign-in screen. */}
+        <BrandHeader left={<Greeting t={t} />} right={<>
+          <NotificationBell t={t} lang={lang} />
+          {/* Same overflow menu as inside a ledger, minus the entries that need one
+              — plus Home, which jumps back to wherever the Bento dashboard leads
+              (only offered once there's actually a last-used ledger to land on). */}
+          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onHome={onHome} />
+        </>} />
         <p style={{ fontSize: 13, color: SUB, margin: "6px 0 16px" }}>{t("ledgersHint")}</p>
 
         {inviteMsg && (
@@ -1584,7 +1650,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 }
 
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
+function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
   activeCurrency = ledger.currency || "CAD"; // set before children below read money()/currencySymbol()
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
@@ -1605,6 +1671,11 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
   const [showSettlement, setShowSettlement] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
+  // Bento dashboard is the landing page; tapping a card switches into that
+  // destination full-view instead of opening a slide-over. startView (from
+  // App) skips straight to "ledger" when this mount came from an explicit
+  // picker/switcher choice rather than the auto-loaded last-used ledger.
+  const [viewState, setViewState] = useState(startView || "home"); // "home" | "ledger" | "inventory" | "grocery"
   const [batchRows, setBatchRows] = useState(null); // transactions pending batch review (from Upload)
   const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null); // MonthCalendar tap — filters the list only, not summary/settlement
@@ -1714,6 +1785,12 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         await db.deleteReminderNotification(expenseId);
       }
       if (personal) await db.insertPersonalExpense(personal, memberById(members, draft.paidById)?.name);
+      if (draft.addToInventory && draft.description) {
+        await db.upsertInventoryItem(ledger.id, {
+          name: draft.description, quantity: draft.invQuantity, unit: draft.invUnit,
+          expiryDate: draft.invExpiryDate, category: catName(catById(draft.categoryId), lang),
+        });
+      }
       setEditing(null);
       refresh();
     } catch (e) { setError(e.message); }
@@ -1806,99 +1883,131 @@ function Ledger({ ledger, currentUserId, onExit, onSwitchLedger, lang, changeLan
         {/* Header */}
         {/* minWidth keeps the title from shrinking to a stub, so on a narrow screen
             the controls wrap to their own line; marginLeft:auto then holds them
-            against the right edge instead of falling back to the left. */}
-        <div className="ledger-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
-          <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
-            <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
-              {monthsAvailable.map((m) => (
-                <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
-              ))}
-            </select>
+            against the right edge instead of falling back to the left.
+            Home shows the greeting on the left and the brand centered (position:
+            relative/absolute, so it's centered on the row rather than the
+            available space next to a variable-width greeting); every other view
+            swaps that for a "Back to Dashboard" button — which goes all the
+            way out to the picker (onExit), not this ledger's own Bento home;
+            that's what the overflow menu's Home entry is for instead. Month-
+            select is ledger-only. The overflow menu only offers ledger-
+            management entries (Budget/Reports/Recurring/members/currency)
+            outside of "home" — those don't mean anything until you're
+            actually inside a ledger. */}
+        {viewState === "home" ? (
+          <BrandHeader left={<Greeting t={t} />} right={<>
             <NotificationBell t={t} lang={lang} />
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-              onHome={onExit}
-              onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-              onStores={() => setManagingStores(true)}
-              onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
-              onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined}
-              currency={features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
+          </>} />
+        ) : (
+          <div className="ledger-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+            <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+            <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
+              {viewState === "ledger" && (
+                <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
+                  {monthsAvailable.map((m) => (
+                    <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
+                  ))}
+                </select>
+              )}
+              <NotificationBell t={t} lang={lang} />
+              <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
+                onHome={() => setViewState("home")}
+                onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
+                onStores={() => setManagingStores(true)}
+                onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
+                onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined}
+                currency={features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
+            </div>
           </div>
-        </div>
+        )}
 
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
-        <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t}
-          total={summary.total} totalBudget={totalBudget} onCheckSettleUp={() => setShowSettlement(true)} />
+        {viewState === "home" && (
+          <HomePage ledgerId={ledger.id} ledgerName={ledger.name} t={t} spent={summary.total} budget={totalBudget} lastEntry={expenses[0] || null}
+            onOpenLedger={onExit}
+            onOpenInventory={() => setViewState("inventory")} onOpenGrocery={() => setViewState("grocery")} />
+        )}
 
-        <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
+        {viewState === "ledger" && (
+          <>
+            <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t}
+              total={summary.total} totalBudget={totalBudget} onCheckSettleUp={() => setShowSettlement(true)} />
 
-        {/* List */}
-        <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
-          {visibleRows.length === 0 ? (
-            <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
-              <Receipt size={26} style={{ opacity: 0.4 }} />
-              <p style={{ margin: "10px 0 0" }}>
-                {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: label })}
-              </p>
-            </div>
-          ) : (
-            visibleRows.map((e, i) => {
-              const cat = catById(e.categoryId);
-              const payer = memberById(members, e.paidById);
-              return (
-                <div key={e.id} className="exp-row" role="button" tabIndex={0}
-                  onClick={() => setDetail(e)}
-                  onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
-                  style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
-                  <div className="exp-main">
-                    <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.description}</div>
-                  </div>
-                  <div className="exp-total" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{money(e.amount)}</div>
-                    <ChevronRight size={17} style={{ color: SUB }} />
-                  </div>
-                  <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 8px", borderRadius: 99, background: OK_BG, color: OK_INK, fontSize: 11, fontWeight: 700 }}>
-                      <span aria-hidden="true">{categoryIcon(cat)}</span>
-                      {cat ? catName(cat, lang) : t("uncategorised")}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>{shortDate(e.date, lang)}</span>
-                    {/* Who-paid and split-mode are both meaningless on a Personal
-                        ledger — there's exactly one (silent) payer and every
-                        expense is personal, so the badges would just repeat
-                        the same two things on every single row. */}
-                    {features.showSplit && (
-                      <>
-                        <span aria-hidden="true">·</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
-                          {payer?.name || "—"}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        {/* Plain SUB, matching the date/payer either side — it stood
-                            out as the one accent-coloured thing in an otherwise
-                            neutral metadata row. */}
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: SUB }}>
-                          {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
-                          {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
-                        </span>
-                      </>
-                    )}
-                    {e.recurringRuleId && (
-                      <span title={t("recurring")} aria-label={t("recurring")} style={{ display: "inline-flex", alignItems: "center", color: "#94A3B8" }}>
-                        <Repeat size={12} />
-                      </span>
-                    )}
-                  </div>
+            <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
+
+            {/* List */}
+            <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
+              {visibleRows.length === 0 ? (
+                <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
+                  <Receipt size={26} style={{ opacity: 0.4 }} />
+                  <p style={{ margin: "10px 0 0" }}>
+                    {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: label })}
+                  </p>
                 </div>
-              );
-            })
-          )}
-        </div>
+              ) : (
+                visibleRows.map((e, i) => {
+                  const cat = catById(e.categoryId);
+                  const payer = memberById(members, e.paidById);
+                  return (
+                    <div key={e.id} className="exp-row" role="button" tabIndex={0}
+                      onClick={() => setDetail(e)}
+                      onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
+                      style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
+                      <div className="exp-main">
+                        <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.description}</div>
+                      </div>
+                      <div className="exp-total" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{money(e.amount)}</div>
+                        <ChevronRight size={17} style={{ color: SUB }} />
+                      </div>
+                      <div className="exp-meta" style={{ fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 8px", borderRadius: 99, background: OK_BG, color: OK_INK, fontSize: 11, fontWeight: 700 }}>
+                          <span aria-hidden="true">{categoryIcon(cat)}</span>
+                          {cat ? catName(cat, lang) : t("uncategorised")}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>{shortDate(e.date, lang)}</span>
+                        {/* Who-paid and split-mode are both meaningless on a Personal
+                            ledger — there's exactly one (silent) payer and every
+                            expense is personal, so the badges would just repeat
+                            the same two things on every single row. */}
+                        {features.showSplit && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 99, background: payer?.color || SUB }} />
+                              {payer?.name || "—"}
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            {/* Plain SUB, matching the date/payer either side — it stood
+                                out as the one accent-coloured thing in an otherwise
+                                neutral metadata row. */}
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: SUB }}>
+                              {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
+                              {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
+                            </span>
+                          </>
+                        )}
+                        {e.recurringRuleId && (
+                          <span title={t("recurring")} aria-label={t("recurring")} style={{ display: "inline-flex", alignItems: "center", color: "#94A3B8" }}>
+                            <Repeat size={12} />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
 
-        <p style={{ fontSize: 12, color: SUB, marginTop: 14, textAlign: "center" }}>{t("stepFooter")}</p>
+            <p style={{ fontSize: 12, color: SUB, marginTop: 14, textAlign: "center" }}>{t("stepFooter")}</p>
+          </>
+        )}
+
+        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} />}
+        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} t={t} />}
       </div>
 
       {detail && (
@@ -3053,6 +3162,26 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
         </div>
         {categories.length === 0 && <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("noCategoriesHint")}</div>}
       </Field>
+      <Field label={t("addToInventory")}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
+          <input type="checkbox" checked={!!d.addToInventory} onChange={(e) => setD({ ...d, addToInventory: e.target.checked })} />
+          {t("addToInventoryHint")}
+        </label>
+        {d.addToInventory && (
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <Field label={t("quantity")} style={{ width: 90 }}>
+              <input type="number" inputMode="decimal" value={d.invQuantity || ""}
+                onChange={(e) => setD({ ...d, invQuantity: e.target.value })} style={input} />
+            </Field>
+            <Field label={t("unit")} style={{ width: 90 }}>
+              <input type="text" value={d.invUnit || ""} onChange={(e) => setD({ ...d, invUnit: e.target.value })} style={input} />
+            </Field>
+            <Field label={t("expiryDate")} style={{ flex: 1, minWidth: 140 }}>
+              <input type="date" value={d.invExpiryDate || ""} onChange={(e) => setD({ ...d, invExpiryDate: e.target.value })} style={input} />
+            </Field>
+          </div>
+        )}
+      </Field>
       {isSubscription && (
         <Field label={t("cancellationReminder")}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
@@ -4044,6 +4173,317 @@ function ManageRemindersPanel({ t, lang, onClose }) {
         </div>
       )}
     </Overlay>
+  );
+}
+
+const bentoCard = {
+  background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 16,
+  cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
+};
+
+// Lives in Ledger's header row (next to the centered brand) rather than
+// inside HomePage's own body, so it sits on the same row as "Monira" per the
+// approved mockup instead of stacked above it.
+function Greeting({ t }) {
+  const [profile] = useMyProfile();
+  const hour = new Date().getHours();
+  const isDay = hour >= 6 && hour < 18;
+  const greetingWord = hour < 12 ? t("greetingMorning") : hour < 18 ? t("greetingAfternoon") : t("greetingEvening");
+  const name = profile?.name || profile?.email?.split("@")[0] || "";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 800 }}>
+      {isDay ? <Sun size={18} style={{ color: WARN }} /> : <Moon size={18} style={{ color: SUB }} />}
+      {name ? t("greetingLine", { greeting: greetingWord, name }) : greetingWord}
+    </div>
+  );
+}
+
+// Shared by the Bento home header and the picker's header — a CSS grid
+// (1fr auto 1fr), not flex+absolute-center: with true grid columns, the
+// brand middle column always centers on the row's own width, and the flanking
+// columns just shrink/truncate instead of visually overlapping it the way an
+// absolutely-positioned center did on the narrower picker (a long greeting
+// text ran straight into "Monira" there).
+function BrandHeader({ left, right }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 20, marginBottom: 16 }}>
+      <div style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{left}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: TEAL, whiteSpace: "nowrap" }}>Monira</div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>{right}</div>
+    </div>
+  );
+}
+
+// Bento dashboard, the ledger's landing view — Ledger renders this when
+// viewState==="home". Card counts (inventory/grocery) are fetched here rather
+// than threaded through Ledger's central refresh(), same self-contained
+// pattern as InventoryPanel/GroceryListPanel below.
+// Card header shared by all three bento cards: icon + uppercase title on the
+// left, a small decorative icon on the right, divider below — matches the
+// approved mockup's card anatomy exactly, so it's factored out once.
+function BentoCardHeader({ icon: Icon, title, corner: Corner }) {
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon size={20} style={{ color: TEAL }} />
+          <span style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.3 }}>{title}</span>
+        </div>
+        {Corner && (
+          <span style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 8, background: MUTED_BG }}>
+            <Corner size={14} style={{ color: TEAL }} />
+          </span>
+        )}
+      </div>
+      <div style={{ borderTop: `1px solid ${LINE}`, margin: "10px 0" }} />
+    </>
+  );
+}
+
+function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLedger, onOpenInventory, onOpenGrocery }) {
+  const [inventoryCount, setInventoryCount] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [pendingGrocery, setPendingGrocery] = useState(0);
+  const [dealsActive, setDealsActive] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    db.fetchInventoryItems(ledgerId).then((items) => {
+      if (!live) return;
+      setInventoryCount(items.length);
+      setLowStockCount(items.filter((it) => it.minQuantity != null && it.quantity <= it.minQuantity).length);
+    }).catch(() => {});
+    db.fetchGroceryList(ledgerId).then((items) => {
+      if (!live) return;
+      setPendingGrocery(items.filter((it) => !it.isCompleted).length);
+      setDealsActive(items.some((it) => it.targetSupermarket));
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [ledgerId]);
+
+  const over = budget > 0 && spent > budget;
+  const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Greeting now lives in the shared header, next to the centered brand
+          (see Ledger's header row) — this is just the multi-ledger context
+          label, since switching ledgers happens via the Ledger & Transactions
+          card → picker, not from here. */}
+      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.3 }}>
+        {t("viewingLedger", { name: ledgerName })}
+      </div>
+
+      {budget > 0 && (
+        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, marginBottom: 10 }}>
+            <span>{t("budgetBannerLine", { spent: money(spent), budget: money(budget), pct })}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: over ? DANGER : SUB }}>
+              {over ? t("budgetOverLine", { amount: money(spent - budget) }) : t("budgetRemainingLine", { amount: money(budget - spent) })}
+            </span>
+          </div>
+          <BudgetBar spent={spent} budget={budget} height={12} />
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <button onClick={onOpenLedger} style={{ ...bentoCard, gridColumn: "span 2" }}>
+          <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} />
+          <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>
+            {t("totalMonthSpent")}: <b style={{ color: INK }}>{money(spent)}</b>
+          </div>
+          {lastEntry && (
+            <div style={{ fontSize: 13, color: SUB }}>
+              {t("lastEntry")}: <b style={{ color: INK }}>{lastEntry.description} - {money(lastEntry.amount)}</b>
+            </div>
+          )}
+        </button>
+
+        <button onClick={onOpenInventory} style={bentoCard}>
+          <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} />
+          <div style={{ fontSize: 13, color: SUB }}>
+            {t("trackedItems", { n: inventoryCount })}
+          </div>
+          {lowStockCount > 0 && (
+            <span style={{ ...pill(WARN), display: "inline-flex", marginTop: 10 }}>{t("lowStockAlert", { n: lowStockCount })}</span>
+          )}
+        </button>
+
+        <button onClick={onOpenGrocery} style={bentoCard}>
+          <BentoCardHeader icon={ShoppingCart} title={t("groceryCardTitle")} corner={Sparkles} />
+          <div style={{ fontSize: 13, color: SUB }}>
+            {t("pendingItemsCount", { n: pendingGrocery })}
+          </div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: OK_BG, color: OK_INK, borderRadius: 99, padding: "5px 10px", fontSize: 12, fontWeight: 700 }}>
+            <Info size={13} /> {dealsActive ? t("dealsActiveBadge") : t("priceMatchCheck")}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InventoryPanel({ ledgerId, t }) {
+  const [items, setItems] = useState(null); // null = loading
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all"); // all | low | expiring
+  const load = useCallback(() => {
+    db.fetchInventoryItems(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => db.subscribeInventory(ledgerId, load), [ledgerId, load]);
+
+  const adjust = async (id, delta) => {
+    try { await db.adjustInventoryQuantity(id, delta); load(); } catch (e) { setError(e.message || String(e)); }
+  };
+  const addToGrocery = async (item) => {
+    try { await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity)); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+
+  const today = todayISO();
+  const isExpiring = (d) => !!d && d >= today && d <= addDays(today, 3);
+  const isExpired = (d) => !!d && d < today;
+  const isLow = (it) => it.minQuantity != null && it.quantity <= it.minQuantity;
+
+  const visible = (items || [])
+    .filter((it) => it.name.toLowerCase().includes(query.toLowerCase()))
+    .filter((it) => filter === "all" || (filter === "low" && isLow(it)) || (filter === "expiring" && (isExpiring(it.expiryDate) || isExpired(it.expiryDate))));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Package size={18} style={{ color: TEAL }} />
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("inventory")}</h2>
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchInventoryPh")} style={input} />
+      <div style={{ display: "flex", gap: 6 }}>
+        {[["all", t("showAll")], ["low", t("lowStock")], ["expiring", t("expiringSoon")]].map(([k, label]) => (
+          <button key={k} onClick={() => setFilter(k)} style={chip(filter === k)}>{label}</button>
+        ))}
+      </div>
+      {items === null ? (
+        <Centered>{t("connecting")}</Centered>
+      ) : visible.length === 0 ? (
+        <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noInventoryItems")}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {visible.map((it) => {
+            const low = isLow(it);
+            const expired = isExpired(it.expiryDate);
+            const expiring = !expired && isExpiring(it.expiryDate);
+            return (
+              <div key={it.id} style={{ background: CARD, border: `1px solid ${low || expired ? BAD_LINE : LINE}`, borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+                    <div style={{ fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
+                  </div>
+                  <button onClick={() => adjust(it.id, -1)} style={iconBtn} aria-label="-"><Minus size={14} /></button>
+                  <button onClick={() => adjust(it.id, 1)} style={iconBtn} aria-label="+"><Plus size={14} /></button>
+                </div>
+                {(low || expired || expiring) && (
+                  <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                    {low && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("lowStock")}</span>}
+                    {expired && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("expired")}</span>}
+                    {expiring && <span style={{ color: WARN, fontSize: 11, fontWeight: 700 }}>{t("expiringSoon")}</span>}
+                  </div>
+                )}
+                {low && (
+                  <button onClick={() => addToGrocery(it)} style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
+                    <ShoppingCart size={14} /> {t("addToGroceryList")}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroceryListPanel({ ledgerId, t }) {
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState("");
+  const [newItem, setNewItem] = useState("");
+  const [postalCode, setPostalCode] = useState(getPostalCode);
+  const [checkingId, setCheckingId] = useState(null);
+  const load = useCallback(() => {
+    db.fetchGroceryList(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => db.subscribeGroceryList(ledgerId, load), [ledgerId, load]);
+
+  const add = async () => {
+    if (!newItem.trim()) return;
+    try { await db.addGroceryItem(ledgerId, newItem.trim()); setNewItem(""); load(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+  const toggle = async (id, isCompleted) => {
+    try { await db.toggleGroceryItem(id, isCompleted); load(); } catch (e) { setError(e.message || String(e)); }
+  };
+  const remove = async (id) => {
+    try { await db.deleteGroceryItem(id); load(); } catch (e) { setError(e.message || String(e)); }
+  };
+  const checkDeals = async (item) => {
+    setCheckingId(item.id);
+    setError("");
+    try {
+      const result = await db.fetchDeals(item.itemName, postalCode);
+      if (result.lowestMerchant) await db.setGroceryDeal(item.id, { targetSupermarket: result.lowestMerchant, dealPrice: result.lowestPrice });
+      load();
+    } catch (e) {
+      setError(t("dealCheckErr", { msg: e.message || String(e) }));
+    }
+    setCheckingId(null);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <ShoppingCart size={18} style={{ color: TEAL }} />
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("groceryList")}</h2>
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+      <input value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
+        placeholder={t("postalCodePh")} style={input} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={t("addGroceryItemPh")} style={{ ...input, flex: 1 }} />
+        <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
+      </div>
+      {items === null ? (
+        <Centered>{t("connecting")}</Centered>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noGroceryItems")}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((it) => (
+            <div key={it.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="checkbox" checked={it.isCompleted} onChange={(e) => toggle(it.id, e.target.checked)} />
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 700, textDecoration: it.isCompleted ? "line-through" : "none", color: it.isCompleted ? SUB : INK }}>
+                  {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
+                </span>
+                <button onClick={() => remove(it.id)} style={{ ...iconBtn, color: DANGER }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
+              </div>
+              <button onClick={() => checkDeals(it)} disabled={checkingId === it.id}
+                style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center", opacity: checkingId === it.id ? 0.6 : 1 }}>
+                {checkingId === it.id ? t("checkingDeals") : t("priceMatchCheck")}
+              </button>
+              {it.targetSupermarket && (
+                <div style={{ marginTop: 8, background: OK_BG, color: OK_INK, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700 }}>
+                  {t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

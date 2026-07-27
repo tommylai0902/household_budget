@@ -767,3 +767,101 @@ export function subscribeLedgerList(onChange) {
     .subscribe();
   return () => supabase.removeChannel(ch);
 }
+
+/* ---- inventory ---- */
+const toAppInventoryItem = (r) => ({
+  id: r.id, name: r.name, quantity: Number(r.quantity), unit: r.unit || "",
+  minQuantity: r.min_quantity != null ? Number(r.min_quantity) : null,
+  expiryDate: r.expiry_date || null, category: r.category || "",
+});
+
+export async function fetchInventoryItems(ledgerId) {
+  const { data, error } = await supabase.from("inventory_items").select("*").eq("ledger_id", ledgerId).order("name");
+  if (error) throw error;
+  return data.map(toAppInventoryItem);
+}
+
+// Restocks an existing row (by name) by adding to its quantity, or inserts a
+// new one. ponytail: read-then-write, not a single atomic upsert — fine at
+// two-person household scale, revisit only if concurrent double-entry shows up.
+export async function upsertInventoryItem(ledgerId, item) {
+  const { data: existing, error: selErr } = await supabase
+    .from("inventory_items").select("id, quantity").eq("ledger_id", ledgerId).eq("name", item.name).maybeSingle();
+  if (selErr) throw selErr;
+  if (existing) {
+    const { error } = await supabase.from("inventory_items")
+      .update({ quantity: Number(existing.quantity) + (Number(item.quantity) || 0), unit: item.unit || null, expiry_date: item.expiryDate || null })
+      .eq("id", existing.id);
+    if (error) throw error;
+    return existing.id;
+  }
+  const { data, error } = await supabase.from("inventory_items").insert({
+    ledger_id: ledgerId, name: item.name, quantity: Number(item.quantity) || 0, unit: item.unit || null,
+    min_quantity: item.minQuantity ?? null, expiry_date: item.expiryDate || null, category: item.category || null,
+  }).select("id").single();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function adjustInventoryQuantity(id, delta) {
+  const { data, error } = await supabase.from("inventory_items").select("quantity").eq("id", id).single();
+  if (error) throw error;
+  const next = Math.max(0, Number(data.quantity) + delta);
+  const { error: updErr } = await supabase.from("inventory_items").update({ quantity: next }).eq("id", id);
+  if (updErr) throw updErr;
+}
+
+export function subscribeInventory(ledgerId, onChange) {
+  const ch = supabase
+    .channel(`inventory-${ledgerId}-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "inventory_items", filter: `ledger_id=eq.${ledgerId}` }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+
+/* ---- grocery list ---- */
+const toAppGroceryItem = (r) => ({
+  id: r.id, itemName: r.item_name, quantityNeeded: Number(r.quantity_needed),
+  isCompleted: r.is_completed, targetSupermarket: r.target_supermarket || "",
+  dealPrice: r.deal_price != null ? Number(r.deal_price) : null,
+});
+
+export async function fetchGroceryList(ledgerId) {
+  const { data, error } = await supabase.from("grocery_list").select("*").eq("ledger_id", ledgerId).order("created_at");
+  if (error) throw error;
+  return data.map(toAppGroceryItem);
+}
+export async function addGroceryItem(ledgerId, itemName, quantityNeeded = 1) {
+  const { error } = await supabase.from("grocery_list")
+    .insert({ ledger_id: ledgerId, item_name: itemName, quantity_needed: quantityNeeded });
+  if (error) throw error;
+}
+export async function toggleGroceryItem(id, isCompleted) {
+  const { error } = await supabase.from("grocery_list").update({ is_completed: isCompleted }).eq("id", id);
+  if (error) throw error;
+}
+export async function deleteGroceryItem(id) {
+  const { error } = await supabase.from("grocery_list").delete().eq("id", id);
+  if (error) throw error;
+}
+export async function setGroceryDeal(id, { targetSupermarket, dealPrice }) {
+  const { error } = await supabase.from("grocery_list")
+    .update({ target_supermarket: targetSupermarket, deal_price: dealPrice }).eq("id", id);
+  if (error) throw error;
+}
+
+export function subscribeGroceryList(ledgerId, onChange) {
+  const ch = supabase
+    .channel(`grocery-${ledgerId}-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "grocery_list", filter: `ledger_id=eq.${ledgerId}` }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
+
+/* ---- Flipp price-match, proxied + cached through /api/scan-deals ---- */
+export async function fetchDeals(query, postalCode) {
+  const res = await fetch(`/api/scan-deals?q=${encodeURIComponent(query)}&postalCode=${encodeURIComponent(postalCode || "")}`);
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || res.statusText);
+  return out; // { query, deals, lowestPrice, lowestMerchant }
+}

@@ -5,19 +5,23 @@ import { VitePWA } from 'vite-plugin-pwa'
 // `vite dev` doesn't serve /api/* — that's Vercel's runtime. Mount the same
 // handler locally so scanning works without `vercel dev`, with a minimal
 // res.status().json() shim (Vercel adds those; plain Node http does not).
+const mountApi = (server, route, file) => {
+  server.middlewares.use(route, async (req, res) => {
+    res.status = (code) => { res.statusCode = code; return res }
+    res.json = (body) => {
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify(body))
+    }
+    const { default: handler } = await server.ssrLoadModule(file)
+    await handler(req, res)
+  })
+}
 const apiDevServer = (env) => ({
   name: 'api-dev-server',
   configureServer(server) {
     Object.assign(process.env, env)
-    server.middlewares.use('/api/scan-receipt', async (req, res) => {
-      res.status = (code) => { res.statusCode = code; return res }
-      res.json = (body) => {
-        res.setHeader('content-type', 'application/json')
-        res.end(JSON.stringify(body))
-      }
-      const { default: handler } = await server.ssrLoadModule('/api/scan-receipt.js')
-      await handler(req, res)
-    })
+    mountApi(server, '/api/scan-receipt', '/api/scan-receipt.js')
+    mountApi(server, '/api/scan-deals', '/api/scan-deals.js')
   },
 })
 
