@@ -4181,7 +4181,7 @@ function ManageRemindersPanel({ t, lang, onClose }) {
 // Bento home's per-card colour coding — fixed hex (not var(--accent)) since
 // glassmorphism hues stay constant across light/dark; only the frosted
 // surface underneath (--glass-* in index.css) adapts to theme.
-const HOME_CYAN = "#22D3EE";
+const HOME_CYAN = "#34D399";
 const HOME_AMBER = "#FBBF24";
 const HOME_SKY = "#38BDF8";
 const glassCard = {
@@ -4245,7 +4245,7 @@ function BentoCardHeader({ icon: Icon, title, corner: Corner, accent, divider = 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Icon size={20} style={{ color: accent }} />
-          <span style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, color: accent }}>{title}</span>
+          <span style={{ fontSize: 19, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, color: INK }}>{title}</span>
         </div>
         {Corner && (
           <span className={cornerClass} style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 8, background: `${accent}26`, transition: "box-shadow .18s ease" }}>
@@ -4293,10 +4293,11 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
       <style>{`
         .bento-glass { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
         .bento-glass:hover { transform: translateY(-2px); }
-        .bento-glass-ledger:hover { border-color: rgba(34,211,238,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(34,211,238,0.28); }
-        .bento-glass-inventory:hover { border-color: rgba(245,158,11,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(245,158,11,0.28); }
-        .bento-glass-grocery:hover { border-color: rgba(56,189,248,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(56,189,248,0.28); }
-        .bento-glass-budget:hover { border-color: rgba(16,185,129,0.55) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 22px rgba(16,185,129,0.28); }
+        .bento-glass-ledger:hover, .bento-glass-inventory:hover, .bento-glass-grocery:hover {
+          border-color: rgba(52,211,153,0.75) !important;
+          box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
+        }
+        .bento-glass-budget:hover { border-color: rgba(52,211,153,0.75) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important; }
         .bento-glass-ledger:hover .ledger-corner-glow { box-shadow: 0 0 12px rgba(16,185,129,0.4); }
         .price-match-pill { cursor: pointer; transition: background .18s ease; }
         .bento-glass-grocery:hover .price-match-pill { background: rgba(56,189,248,0.2) !important; }
@@ -4342,8 +4343,8 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
       <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
         <button onClick={onOpenLedger} className="bento-glass bento-glass-ledger" style={{ ...glassCard, gridColumn: "1 / -1" }}>
           <BentoCardHeader icon={Wallet} title={t("ledgerCard")} corner={ArrowUpRight} accent={HOME_CYAN} cornerClass="ledger-corner-glow" />
-          <div style={{ background: "var(--muted-bg)", border: "1px solid var(--glass-border)", borderRadius: 12, padding: 12 }}>
-            <div style={{ fontSize: 14, marginBottom: lastEntry ? 4 : 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 14 }}>
               <span style={{ color: SUB, fontWeight: 400 }}>{t("totalMonthSpent")}: </span>
               <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{money(spent)}</span>
             </div>
@@ -4358,15 +4359,17 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
 
         <button onClick={onOpenInventory} className="bento-glass bento-glass-inventory" style={glassCard}>
           <BentoCardHeader icon={Package} title={t("inventoryCardTitle")} corner={Package} accent={HOME_AMBER} />
-          <div style={{ fontSize: 14 }}>
-            <span style={{ color: SUB, fontWeight: 400 }}>{t("trackedItemsLabel")} </span>
-            <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{inventoryCount}</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ fontSize: 14 }}>
+              <span style={{ color: SUB, fontWeight: 400 }}>{t("trackedItemsLabel")} </span>
+              <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{inventoryCount}</span>
+            </div>
+            {lowStockCount > 0 && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#FCD34D", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800 }}>
+                {t("lowStockAlert", { n: lowStockCount })}
+              </span>
+            )}
           </div>
-          {lowStockCount > 0 && (
-            <span style={{ display: "inline-flex", alignItems: "center", marginTop: 10, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#FCD34D", borderRadius: 99, padding: "4px 10px", fontSize: 11, fontWeight: 800 }}>
-              {t("lowStockAlert", { n: lowStockCount })}
-            </span>
-          )}
         </button>
 
         <button onClick={onOpenGrocery} className="bento-glass bento-glass-grocery" style={glassCard}>
@@ -4375,7 +4378,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
             <span style={{ color: SUB, fontWeight: 400 }}>{t("pendingItemsLabel")} </span>
             <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{pendingGrocery}</span>
           </div>
-          <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.3)", color: "#7DD3FC", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
+          <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.3)", color: "#fff", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
             <Info size={13} /> {dealsActive ? t("dealsActiveBadge") : t("priceMatchCheck")}
           </span>
         </button>
