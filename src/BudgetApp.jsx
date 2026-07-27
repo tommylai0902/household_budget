@@ -133,6 +133,7 @@ const STRINGS = {
     addItem: "Add Item", itemNamePh: "Item name", minQuantityLabel: "Low stock at (optional)",
     lowStock: "Low stock", expiringSoon: "Expiring soon", expired: "Expired",
     addToGroceryList: "Add to Grocery List", addedToGroceryList: "Added",
+    alreadyOnGroceryList: "{name} is already on your grocery list. Add it again?", addAnyway: "Add anyway",
     groceryList: "Grocery List", addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
@@ -4402,9 +4403,18 @@ function InventoryPanel({ ledgerId, t }) {
   const adjust = async (id, delta) => {
     try { await db.adjustInventoryQuantity(id, delta); load(); } catch (e) { setError(e.message || String(e)); }
   };
-  const addToGrocery = async (item) => {
+  const [confirmAddItem, setConfirmAddItem] = useState(null); // inventory item pending "already on the list" confirmation
+  const doAddToGrocery = async (item) => {
     try { await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity)); }
     catch (e) { setError(e.message || String(e)); }
+  };
+  const addToGrocery = async (item) => {
+    try {
+      const groceryItems = await db.fetchGroceryList(ledgerId);
+      const alreadyPending = groceryItems.some((g) => !g.isCompleted && g.itemName.toLowerCase() === item.name.toLowerCase());
+      if (alreadyPending) { setConfirmAddItem(item); return; }
+      await doAddToGrocery(item);
+    } catch (e) { setError(e.message || String(e)); }
   };
   const addItem = async () => {
     if (!draft.name.trim() || saving) return;
@@ -4506,6 +4516,13 @@ function InventoryPanel({ ledgerId, t }) {
             );
           })}
         </div>
+      )}
+      {confirmAddItem && (
+        <ConfirmDialog t={t} tone="neutral" icon={ShoppingCart}
+          message={t("alreadyOnGroceryList", { name: confirmAddItem.name })}
+          confirmLabel={t("addAnyway")}
+          onConfirm={() => { doAddToGrocery(confirmAddItem); setConfirmAddItem(null); }}
+          onCancel={() => setConfirmAddItem(null)} />
       )}
     </div>
   );
@@ -4614,7 +4631,11 @@ function Overlay({ title, onClose, t, children }) {
 // user ticks that, every future confirm() on the page silently returns false with
 // no dialog at all, which reads as "delete does nothing" everywhere at once.
 // zIndex above Overlay's 50 so it can sit on top of a panel that opened it.
-function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel }) {
+// tone/icon default to the original destructive look (solid red, Trash2) so
+// every existing call site is unaffected; tone="neutral" is for the rare
+// non-destructive confirmation (e.g. "already on your list, add again?"),
+// which would lie if it kept the red delete styling.
+function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel, tone = "danger", icon: Icon = Trash2 }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,26,32,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={onCancel}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, borderRadius: 14, padding: 20, width: "min(360px, 100%)", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
@@ -4623,8 +4644,8 @@ function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel }) {
           <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
           {/* Solid red stays literal in both themes: DANGER lightens for dark
               mode so it reads as text, which would leave white-on-pale here. */}
-          <button onClick={onConfirm} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: 12, borderRadius: 9, border: "none", background: "#DC2626", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            <Trash2 size={16} /> {confirmLabel || t("delete")}
+          <button onClick={onConfirm} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: 12, borderRadius: 9, border: "none", background: tone === "danger" ? "#DC2626" : TEAL, color: tone === "danger" ? "#fff" : ACCENT_INK, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            <Icon size={16} /> {confirmLabel || t("delete")}
           </button>
         </div>
       </div>
