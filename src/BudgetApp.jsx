@@ -3401,18 +3401,24 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
           {t("addToInventoryHint")}
         </label>
         {d.addToInventory && (
-          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-            <Field label={t("quantity")} style={{ width: 90 }}>
-              <input type="number" inputMode="decimal" value={d.invQuantity || ""}
-                onChange={(e) => setD({ ...d, invQuantity: e.target.value })} style={input} />
-            </Field>
-            <Field label={t("unit")} style={{ width: 90 }}>
-              <input type="text" value={d.invUnit || ""} onChange={(e) => setD({ ...d, invUnit: e.target.value })} style={input} />
-            </Field>
-            <Field label={t("expiryDate")} style={{ flex: 1, minWidth: 140 }}>
+          <>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <Field label={t("quantity")} style={{ width: 90 }}>
+                <input type="number" inputMode="decimal" value={d.invQuantity || ""}
+                  onChange={(e) => setD({ ...d, invQuantity: e.target.value })} style={input} />
+              </Field>
+              <Field label={t("unit")} style={{ width: 90 }}>
+                <input type="text" value={d.invUnit || ""} onChange={(e) => setD({ ...d, invUnit: e.target.value })} style={input} />
+              </Field>
+            </div>
+            {/* Its own row, not a third flex item alongside Quantity/Unit: a native
+                <input type="date"> has an intrinsic minimum width that ignores
+                flex-shrink/minWidth, so cramming it in with the other two let it
+                overflow the card edge on a phone. */}
+            <Field label={t("expiryDate")} style={{ marginTop: 8 }}>
               <input type="date" value={d.invExpiryDate || ""} onChange={(e) => setD({ ...d, invExpiryDate: e.target.value })} style={input} />
             </Field>
-          </div>
+          </>
         )}
       </Field>
       {isSubscription && (
@@ -4731,17 +4737,21 @@ function InventoryPanel({ ledgerId, t }) {
         <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder={t("itemNamePh")} style={input} />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <Field label={t("quantity")} style={{ width: 90 }}>
               <input type="number" inputMode="decimal" value={draft.quantity} onChange={(e) => setDraft({ ...draft, quantity: e.target.value })} style={input} />
             </Field>
             <Field label={t("unit")} style={{ width: 90 }}>
               <input type="text" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={input} />
             </Field>
-            <Field label={t("expiryDate")} style={{ flex: 1, minWidth: 140 }}>
-              <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
-            </Field>
           </div>
+          {/* Its own row, not a third flex item alongside Quantity/Unit: a native
+              <input type="date"> has an intrinsic minimum width that ignores
+              flex-shrink/minWidth, so cramming it in with the other two let it
+              overflow the card edge on a phone. */}
+          <Field label={t("expiryDate")}>
+            <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
+          </Field>
           <Field label={t("minQuantityLabel")}>
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
@@ -4867,17 +4877,21 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
     <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
         onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("itemNamePh")} style={input} />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8 }}>
         <Field label={t("quantity")} style={{ width: 90 }}>
           <input type="number" inputMode="decimal" value={draft.quantity} onChange={(e) => setDraft({ ...draft, quantity: e.target.value })} style={input} />
         </Field>
         <Field label={t("unit")} style={{ width: 90 }}>
           <input type="text" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={input} />
         </Field>
-        <Field label={t("expiryDate")} style={{ flex: 1, minWidth: 140 }}>
-          <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
-        </Field>
       </div>
+      {/* Its own row, not a third flex item alongside Quantity/Unit: a native
+          <input type="date"> has an intrinsic minimum width that ignores
+          flex-shrink/minWidth, so cramming it in with the other two let it
+          overflow the card edge on a phone. */}
+      <Field label={t("expiryDate")}>
+        <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
+      </Field>
       <Field label={t("minQuantityLabel")}>
         <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
       </Field>
