@@ -1084,16 +1084,7 @@ export default function App() {
   // dashboard, same target the auto-load effect above would have landed on.
   // Only offered when there's actually one cached; a brand-new account with
   // no ledger opened yet has nowhere for "Home" to go.
-  const goHome = async () => {
-    const cached = getLastLedgerId();
-    if (!cached) return;
-    try {
-      const all = await db.fetchLedgers();
-      const match = all.find((l) => l.id === cached);
-      if (match) openLedger(match, "home");
-    } catch {}
-  };
-  const makeGoView = (view) => async () => {
+  const goToView = async (view) => {
     const cached = getLastLedgerId();
     if (!cached) return;
     try {
@@ -1104,9 +1095,8 @@ export default function App() {
   };
 
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-    onOpen={(l) => openLedger(l, "ledger")} onHome={getLastLedgerId() ? goHome : undefined}
-    onInventory={getLastLedgerId() ? makeGoView("inventory") : undefined}
-    onGrocery={getLastLedgerId() ? makeGoView("grocery") : undefined}
+    onOpen={(l) => openLedger(l, "ledger")} onHome={getLastLedgerId() ? () => goToView("home") : undefined}
+    onNavigate={getLastLedgerId() ? goToView : undefined}
     currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
   return <Ledger ledger={ledger} startView={entryView} currentUserId={session.user.id} onExit={() => setLedger(null)}
     onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
@@ -1291,7 +1281,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onInventory, onGrocery, inviteMsg, onDismissInvite, currentUserId }) {
+function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -1363,7 +1353,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             on the right — same string in every language, like the eyebrow on
             the sign-in screen. */}
         <BrandHeader
-          left={(onInventory || onGrocery) ? <HomeNavDropdown onInventory={onInventory} onGrocery={onGrocery} t={t} /> : undefined}
+          left={onNavigate ? <HomeNavDropdown onSwitch={onNavigate} t={t} /> : undefined}
           right={<>
           <NotificationBell t={t} lang={lang} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
@@ -4475,7 +4465,11 @@ const glassCard = {
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
-function HomeNavDropdown({ onInventory, onGrocery, t }) {
+// The picker's counterpart to ViewSwitcher: same trigger/menu chrome, but it
+// lists every view (VIEW_OPTIONS, shared with ViewSwitcher so the two can't
+// drift) with none marked active — the picker isn't one of them. Picking one
+// opens the last-used ledger straight on that view.
+function HomeNavDropdown({ onSwitch, t }) {
   const [open, setOpen] = useState(false);
   const ref = useCloseOnOutside(open, () => setOpen(false));
   return (
@@ -4487,14 +4481,15 @@ function HomeNavDropdown({ onInventory, onGrocery, t }) {
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
-          <button role="menuitem" onClick={() => { setOpen(false); onInventory(); }} style={menuItem}>
-            <Package size={15} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("inventoryCardTitle")}</span>
-          </button>
-          <button role="menuitem" onClick={() => { setOpen(false); onGrocery(); }} style={menuItem}>
-            <ShoppingCart size={15} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("groceryCardTitle")}</span>
-          </button>
+          {VIEW_OPTIONS.map((v) => {
+            const Icon = v.icon;
+            return (
+              <button key={v.key} role="menuitem" onClick={() => { setOpen(false); onSwitch(v.key); }} style={menuItem}>
+                <Icon size={15} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(v.labelKey)}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
