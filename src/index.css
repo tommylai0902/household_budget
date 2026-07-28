@@ -17,11 +17,12 @@ html, body, #root { margin: 0; height: 100%; }
 :root {
   /* User-pickable (Settings → Accent colour), same in both themes — this is
      just the pre-JS fallback, App applies the saved choice (plus its matching
-     --accent-ink, computed by accentInkFor in BudgetApp.jsx) as inline styles
+     --accent-ink and --accent-rgb, computed in BudgetApp.jsx) as inline styles
      on <html>, which outrank these rules. Matches ACCENT_COLORS[0] — a neutral
      grey, dark enough that its ink is white, same as the rest of the palette. */
   --accent: #656565;
   --accent-ink: #fff;
+  --accent-rgb: 101, 101, 101;
 }
 :root, :root[data-theme="light"] {
   color-scheme: light;
@@ -33,12 +34,12 @@ html, body, #root { margin: 0; height: 100%; }
      frosted card over the page background, not the flat --card used
      everywhere else. Needs its own light/dark pair since a translucent
      white reads very differently over a pale vs near-black page. */
-  --glass-bg: rgba(255, 255, 255, 0.6); --glass-border: rgba(20, 184, 166, 0.18);
+  --glass-bg: rgba(255, 255, 255, 0.6); --glass-border: rgba(var(--accent-rgb), 0.18);
   --glass-shadow: rgba(15, 23, 42, 0.08);
   /* "Viewing: {ledger}" badge on the Bento home — solid teal-50/teal-200/
      teal-700 in light mode reads as a washed-out grey-green if you reuse the
      dark theme's translucent teal-950 fill, so it gets its own pair too. */
-  --badge-teal-bg: #F0FDFA; --badge-teal-border: #99F6E4; --badge-teal-ink: #0F766E;
+  --badge-teal-bg: rgba(var(--accent-rgb), 0.08); --badge-teal-border: rgba(var(--accent-rgb), 0.25); --badge-teal-ink: var(--accent);
   /* Low-stock and price-match pills on the Bento home — same "translucent tint
      from the dark palette read as an unreadably pale wash with light text" bug
      as the teal badge above: light mode needs its own solid, dark-ink pair. */
@@ -54,9 +55,9 @@ html, body, #root { margin: 0; height: 100%; }
   --ok-bg: #123833; --ok-ink: #7FD9CA; --ok-line: #1F544C; --ok-strong: #1A4B43;
   --bad-bg: #3A1D1D; --bad-ink: #F19B94; --bad-line: #5E2E2A;
   --track: #2A3137; --muted-bg: #242A2F; --danger: #F1897F; --warn: #F5A97A;
-  --glass-bg: rgba(14, 34, 41, 0.75); --glass-border: rgba(45, 212, 191, 0.2);
+  --glass-bg: rgba(14, 34, 41, 0.75); --glass-border: rgba(var(--accent-rgb), 0.2);
   --glass-shadow: rgba(0, 0, 0, 0.35);
-  --badge-teal-bg: rgba(4, 47, 46, 0.4); --badge-teal-border: rgba(20, 184, 166, 0.3); --badge-teal-ink: #5EEAD4;
+  --badge-teal-bg: rgba(var(--accent-rgb), 0.15); --badge-teal-border: rgba(var(--accent-rgb), 0.3); --badge-teal-ink: var(--accent);
   --badge-amber-bg: rgba(245, 158, 11, 0.15); --badge-amber-border: rgba(245, 158, 11, 0.3); --badge-amber-ink: #FCD34D;
   --badge-sky-bg: rgba(56, 189, 248, 0.15); --badge-sky-border: rgba(56, 189, 248, 0.3); --badge-sky-ink: #7DD3FC;
 }
@@ -88,7 +89,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
    className="btn-glow" on a primary-action button (addBtn) rather than
    applied to every button, since ghost/icon buttons aren't meant to glow. */
 .btn-glow { transition: box-shadow .18s ease, transform .18s ease; }
-.btn-glow:hover:not(:disabled) { box-shadow: 0 0 20px rgba(52,211,153,0.45); transform: translateY(-1px); }
+.btn-glow:hover:not(:disabled) { box-shadow: 0 0 20px rgba(var(--accent-rgb),0.45); transform: translateY(-1px); }
 
 /* Desktop-mouse fallback for every swipeable row (ledger picker, inventory
    list): a faint always-there "more" button, sharpening on hover/focus, as
@@ -100,8 +101,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
    swipeable row, not a per-item accent. */
 .swipe-row { transition: box-shadow .18s ease, border-color .18s ease; }
 .swipe-row:hover {
-  border-color: rgba(52,211,153,0.75) !important;
-  box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
+  border-color: rgba(var(--accent-rgb),0.75) !important;
+  box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
 }
 
 /* Visible tap feedback: opt-in via className="press-fx" on controls whose
