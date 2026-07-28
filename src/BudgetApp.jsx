@@ -1375,10 +1375,14 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
              hover-capable devices it's a faint always-there hint (not fully
              invisible — a mouse user should be able to tell it exists without
              already knowing to hover first), sharpening on hover/focus. */
-          .ledger-row-more { opacity: 0; pointer-events: none; transition: opacity .15s ease; }
-          @media (hover: hover) {
-            .ledger-row-more { opacity: 0.45; pointer-events: auto; }
-            .ledger-row:hover .ledger-row-more, .ledger-row-more:focus-visible { opacity: 1; }
+          .ledger-row-more { opacity: 0.7; pointer-events: auto; transition: opacity .15s ease; }
+          .ledger-row:hover .ledger-row-more, .ledger-row-more:focus-visible { opacity: 1; }
+          /* Same hover glow as the Bento home cards — one shared mint tone for
+             every row, not the per-template accent. */
+          .ledger-row { transition: box-shadow .18s ease, border-color .18s ease; }
+          .ledger-row:hover {
+            border-color: rgba(52,211,153,0.75) !important;
+            box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
           }
         `}</style>
       </div>
@@ -1453,8 +1457,10 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
   };
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
-      <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4 }}>
+    <div style={{ position: "relative", borderRadius: 12 }}>
+      {/* Hidden while the row is closed — the row above is translucent glass
+          now, so these solid tiles would otherwise show straight through it. */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4, visibility: x ? "visible" : "hidden" }}>
         <button onClick={() => { closeRow(); onRename(l); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("renameLedger")}>
           <Pencil size={17} />
         </button>
@@ -1468,24 +1474,25 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
         style={{
           position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
-          // Opaque, not the usual translucent glass-bg: this row sits directly
-          // over solid red/teal action tiles, and backdrop-filter's blur pulls
-          // their color through a translucent background at the edges. The
-          // border/glow use this card's own template accent instead of the
-          // flat teal glass-border, so each row reads as its own category.
-          background: CARD, border: `1px solid ${accent}4d`, boxShadow: `0 8px 24px ${accent}1f, 0 0 0 1px ${accent}14 inset`,
+          // Same frosted glass treatment as the Bento home cards: translucent
+          // surface + backdrop blur, neutral translucent border. The template
+          // accent stays in the eyebrow/icon/dot only, plus the hover glow.
+          background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
           borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: accent, marginBottom: 4 }}>
-            {(() => { const Icon = ledgerIcon(l.template); return <Icon size={13} style={{ flexShrink: 0 }} />; })()}
+          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#34D399", marginBottom: 6 }}>
+            {(() => { const Icon = ledgerIcon(l.template); return <Icon size={14} style={{ flexShrink: 0 }} />; })()}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(ledgerLabelKey(l.template))}</span>
           </div>
-          <div style={{ fontSize: 19, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
+          <div style={{ fontSize: 23, fontWeight: 800, letterSpacing: -0.3, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
+          {stats && <div style={{ borderTop: "1px solid var(--glass-border)", margin: "10px 0" }} />}
           {stats && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: SUB, marginTop: 4 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 99, background: accent, flexShrink: 0 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
+              {/* Mint status dot with its own halo, same tone as the card glow. */}
+              <span style={{ width: 7, height: 7, borderRadius: 99, background: "#34D399", boxShadow: "0 0 6px rgba(52,211,153,0.9), 0 0 12px rgba(52,211,153,0.5)", flexShrink: 0 }} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {t("transactionsCount", { n: stats.count })}
                 {stats.lastUpdated && ` • ${t("updatedLine", { when: relativeUpdated(stats.lastUpdated, lang, t) })}`}
