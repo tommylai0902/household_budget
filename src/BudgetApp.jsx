@@ -1535,7 +1535,7 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
     <div style={{ position: "relative", borderRadius: 12 }}>
       {/* Hidden while the row is closed — the row above is translucent glass
           now, so these solid tiles would otherwise show straight through it. */}
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4, visibility: x ? "visible" : "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
         <button onClick={() => { closeRow(); onRename(l); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("renameLedger")}>
           <Pencil size={17} />
         </button>
@@ -4885,7 +4885,7 @@ function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery,
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4, visibility: x ? "visible" : "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
         <button onClick={() => { closeRow(); onEdit(); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("editItem")}>
           <Pencil size={17} />
         </button>
@@ -5065,7 +5065,7 @@ function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelet
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4, visibility: x ? "visible" : "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
         <button onClick={() => { closeRow(); onEdit(); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("editItem")}>
           <Pencil size={17} />
         </button>
@@ -5252,7 +5252,12 @@ const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid ${BAD_LINE}`, background: CARD, color: DANGER, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: SUB, cursor: "pointer" };
-const swipeActionBtn = { width: 44, border: "none", display: "grid", placeItems: "center", cursor: "pointer" };
+// Rounded rather than square-edged: flush square tiles butted right up
+// against the card's own rounded corners read as a harsh, bolted-on block
+// next to the rest of the app's soft glass aesthetic. A shared radius plus a
+// visible gap (see the swipe-reveal wrapper) makes each one its own floating
+// pill instead of one hard-edged strip.
+const swipeActionBtn = { width: 44, borderRadius: 10, border: "none", display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.18)" };
 const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 const suggestItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 12px", border: "none", background: "none", color: INK, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 // Dashed outline sets it apart from the coloured category pills — it's an action, not a category.
