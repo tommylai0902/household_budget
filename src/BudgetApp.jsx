@@ -1821,6 +1821,32 @@ function KidGoalEditor({ goal, t, onSave, onClose }) {
   );
 }
 
+// Click-outside-to-close for every dropdown/menu in the header (ledger
+// switcher, notifications, overflow menu). Returns a ref to attach to the
+// menu's own wrapper; only acts on pointers landing outside it, rather than
+// relying on the trigger button's stopPropagation to suppress a document
+// "click" listener — that only works if the outside click actually fires
+// one, and iOS Safari doesn't reliably synthesize a click event from a tap
+// on a plain, non-interactive element (no cursor:pointer, no handler), so a
+// menu closed only that way often just never closed on a phone. "mousedown"
+// (not "click") fires immediately and is what AccordionRow below already
+// used successfully for the same reason.
+function useCloseOnOutside(open, onClose) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+  return ref;
+}
+
 // Loads every ledger the signed-in user can open (RLS already scopes this to
 // owned + shared — no client-side filtering needed) and owns the dropdown's
 // open/close state, so the header component below just renders.
@@ -1828,25 +1854,18 @@ function useLedgerSwitcher(currentId) {
   const [ledgers, setLedgers] = useState([]);
   const [open, setOpen] = useState(false);
   useEffect(() => { db.fetchLedgers().then(setLedgers).catch(() => {}); }, []);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    const onKey = (e) => e.key === "Escape" && close();
-    document.addEventListener("click", close);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
-  }, [open]);
-  return { ledgers, currentId, open, setOpen };
+  const ref = useCloseOnOutside(open, () => setOpen(false));
+  return { ledgers, currentId, open, setOpen, ref };
 }
 
 // Replaces the static ledger-name heading: click it to switch ledgers in place,
 // no exit-to-picker round trip. "+ Create ledger" still hands off to the picker,
 // which already has the template chooser — no need to duplicate that here.
 function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
-  const { ledgers, open, setOpen } = useLedgerSwitcher(ledger.id);
+  const { ledgers, open, setOpen, ref } = useLedgerSwitcher(ledger.id);
   const select = (l) => { setOpen(false); if (l.id !== ledger.id) onSwitch(l); };
   return (
-    <div className="ledger-switcher" style={{ position: "relative", minWidth: 150, flex: "1 1 auto" }} onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} className="ledger-switcher" style={{ position: "relative", minWidth: 150, flex: "1 1 auto" }}>
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
         style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
         <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.4, minWidth: 0, flex: "0 1 auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: INK }}>
@@ -4038,16 +4057,7 @@ function NotificationBell({ t, lang }) {
   const load = useCallback(() => { db.fetchNotifications().then(setItems).catch(() => {}); }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeNotifications(load), [load]);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener("click", close);
-    document.addEventListener("keydown", (e) => e.key === "Escape" && close());
-    return () => {
-      document.removeEventListener("click", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
+  const wrapRef = useCloseOnOutside(open, () => setOpen(false));
 
   const toggleOpen = () => {
     if (!open && btnRef.current) {
@@ -4065,7 +4075,7 @@ function NotificationBell({ t, lang }) {
   const dismiss = async (id) => { try { await db.dismissNotification(id); load(); } catch {} };
 
   return (
-    <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+    <div ref={wrapRef} style={{ position: "relative" }}>
       <button ref={btnRef} onClick={toggleOpen} style={{ ...iconBtn, position: "relative" }}
         aria-label={t("notifications")} aria-haspopup="menu" aria-expanded={open}>
         <Bell size={16} />
@@ -4107,19 +4117,10 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [profile, refreshProfile] = useMyProfile();
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener("click", close);
-    document.addEventListener("keydown", (e) => e.key === "Escape" && close());
-    return () => {
-      document.removeEventListener("click", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
+  const ref = useCloseOnOutside(open, () => setOpen(false));
 
   return (
-    <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} style={{ position: "relative" }}>
       <button onClick={() => setOpen((o) => !o)} style={iconBtn} aria-label={t("menu")} aria-haspopup="menu" aria-expanded={open}>
         <Menu size={16} />
       </button>
@@ -4198,16 +4199,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
 // Saved shops) — border, radius, icon + label — but these three expand in
 // place instead of opening a new stacked panel.
 function AccordionRow({ icon: Icon, label, open, onToggle, children }) {
-  // Click-outside-to-close: only listens while this row is open, and only
-  // acts on clicks landing outside its own DOM (so picking a swatch or any
-  // other control inside the expanded content doesn't collapse it).
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const onOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) onToggle(); };
-    document.addEventListener("mousedown", onOutside);
-    return () => document.removeEventListener("mousedown", onOutside);
-  }, [open, onToggle]);
+  const ref = useCloseOnOutside(open, onToggle);
 
   return (
     <div ref={ref} style={{ border: `1px solid ${LINE}`, borderRadius: 9, overflow: "hidden", background: CARD }}>
@@ -4516,10 +4508,10 @@ function BentoCardHeader({ icon: Icon, title, corner: Corner, accent, divider = 
 // ledger's Home dashboard is showing, and it sticks (cacheLastLedgerId)
 // until picked again, here or via the in-ledger switcher.
 function HomeLedgerSwitcher({ ledgerId, ledgerName, t, onSwitch }) {
-  const { ledgers, open, setOpen } = useLedgerSwitcher(ledgerId);
+  const { ledgers, open, setOpen, ref } = useLedgerSwitcher(ledgerId);
   const select = (l) => { setOpen(false); if (l.id !== ledgerId) onSwitch(l); };
   return (
-    <div style={{ position: "relative", zIndex: 5, alignSelf: "flex-start" }} onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} style={{ position: "relative", zIndex: 5, alignSelf: "flex-start" }}>
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} style={{
         display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--badge-teal-border)", background: "var(--badge-teal-bg)",
         borderRadius: 99, padding: "4px 12px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--badge-teal-ink)", cursor: "pointer",
