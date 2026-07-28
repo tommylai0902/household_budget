@@ -4465,10 +4465,11 @@ const glassCard = {
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
-// The picker's counterpart to ViewSwitcher: same trigger/menu chrome, but it
-// lists every view (VIEW_OPTIONS, shared with ViewSwitcher so the two can't
-// drift) with none marked active — the picker isn't one of them. Picking one
-// opens the last-used ledger straight on that view.
+// The picker's counterpart to ViewSwitcher: same trigger/menu chrome, sourced
+// from the same VIEW_OPTIONS so the two can't drift. "ledger" is dropped —
+// the picker's own list below already picks a ledger to open. Nothing is
+// marked active; the picker isn't one of these views. Picking one opens the
+// last-used ledger straight on that view.
 function HomeNavDropdown({ onSwitch, t }) {
   const [open, setOpen] = useState(false);
   const ref = useCloseOnOutside(open, () => setOpen(false));
@@ -4481,7 +4482,7 @@ function HomeNavDropdown({ onSwitch, t }) {
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
-          {VIEW_OPTIONS.map((v) => {
+          {VIEW_OPTIONS.filter((v) => v.key !== "ledger").map((v) => {
             const Icon = v.icon;
             return (
               <button key={v.key} role="menuitem" onClick={() => { setOpen(false); onSwitch(v.key); }} style={menuItem}>
