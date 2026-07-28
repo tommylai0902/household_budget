@@ -1440,9 +1440,15 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             );
           })}
           {rankedLedgers.length > 3 && (
-            <button onClick={() => setShowAll((s) => !s)} style={{ ...ghostBtn, justifyContent: "center", background: "none" }}>
+            <button onClick={() => setShowAll((s) => !s)} className="swipe-row" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
+              borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
+              fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
+            }}>
               {showAll ? t("showLess") : t("viewAllLedgers", { n: rankedLedgers.length })}
-              <ChevronDown size={15} style={{ transform: showAll ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+              <ChevronDown size={16} style={{ flexShrink: 0, transform: showAll ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
             </button>
           )}
         </div>
