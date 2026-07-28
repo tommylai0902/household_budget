@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
       apiDevServer(env),
       VitePWA({
         registerType: 'autoUpdate',
+        workbox: { skipWaiting: true, clientsClaim: true },
         includeAssets: ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
         manifest: {
           name: 'Monira',
