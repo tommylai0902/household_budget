@@ -4551,7 +4551,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
               <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{inventoryCount}</span>
             </div>
             {lowStockCount > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#FCD34D", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--badge-amber-bg)", border: "1px solid var(--badge-amber-border)", color: "var(--badge-amber-ink)", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800 }}>
                 {t("lowStockAlert", { n: lowStockCount })}
               </span>
             )}
@@ -4564,7 +4564,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
             <span style={{ color: SUB, fontWeight: 400 }}>{t("pendingItemsLabel")} </span>
             <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{pendingGrocery}</span>
           </div>
-          <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.3)", color: "#fff", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
+          <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "var(--badge-sky-bg)", border: "1px solid var(--badge-sky-border)", color: "var(--badge-sky-ink)", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
             <Info size={13} /> {dealsActive ? t("dealsActiveBadge") : t("priceMatchCheck")}
           </span>
         </button>
