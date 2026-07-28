@@ -140,7 +140,7 @@ const STRINGS = {
     editItem: "Edit item", deleteItem: "Delete item", saveItem: "Save changes",
     deleteItemConfirm: 'Delete "{name}" from your inventory? This cannot be undone.',
     lowStock: "Low stock", expiringSoon: "Expiring soon", expired: "Expired",
-    addToGroceryList: "Add to Grocery List", addedToGroceryList: "Added",
+    addToGroceryList: "Add to Grocery List", addedToGroceryList: "{name} added to your grocery list",
     alreadyOnGroceryList: "{name} is already on your grocery list. Add it again?", addAnyway: "Add anyway",
     groceryList: "Grocery List", addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
@@ -4618,9 +4618,12 @@ function InventoryPanel({ ledgerId, t }) {
     try { await db.deleteInventoryItem(item.id); load(); } catch (e) { setError(e.message || String(e)); }
   };
   const [confirmAddItem, setConfirmAddItem] = useState(null); // inventory item pending "already on the list" confirmation
+  const [toast, setToast] = useState(null); // { id, text } — id changes so a repeat message restarts the timer
   const doAddToGrocery = async (item) => {
-    try { await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity)); }
-    catch (e) { setError(e.message || String(e)); }
+    try {
+      await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity));
+      setToast({ id: Date.now(), text: t("addedToGroceryList", { name: item.name }) });
+    } catch (e) { setError(e.message || String(e)); }
   };
   const addToGrocery = async (item) => {
     try {
@@ -4725,6 +4728,7 @@ function InventoryPanel({ ledgerId, t }) {
           message={t("deleteItemConfirm", { name: confirmDeleteItem.name })}
           onConfirm={doDeleteItem} onCancel={() => setConfirmDeleteItem(null)} />
       )}
+      {toast && <Toast key={toast.id} message={toast.text} onDone={() => setToast(null)} />}
     </div>
   );
 }
@@ -4757,8 +4761,8 @@ function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery,
             <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
             <div style={{ fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
           </div>
-          <button onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }} style={iconBtn} aria-label="-"><Minus size={14} /></button>
-          <button onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }} style={iconBtn} aria-label="+"><Plus size={14} /></button>
+          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }} style={iconBtn} aria-label="-"><Minus size={14} /></button>
+          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }} style={iconBtn} aria-label="+"><Plus size={14} /></button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
             aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
             <MoreHorizontal size={15} />
@@ -4772,7 +4776,7 @@ function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery,
           </div>
         )}
         {low && (
-          <button onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
+          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
             <ShoppingCart size={14} /> {t("addToGroceryList")}
           </button>
         )}
@@ -4937,6 +4941,36 @@ function Overlay({ title, onClose, t, children }) {
           {children}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Success confirmation, deliberately a toast and not a ConfirmDialog: adding
+// to the grocery list is something you may do several times in a row, and a
+// modal demanding a dismiss click each time turns a confirmation into a
+// chore. Auto-dismisses. Callers give it a changing `key` so re-showing the
+// same message remounts it and restarts the timer.
+function Toast({ message, onDone }) {
+  // Kept in a ref so an inline arrow from the caller doesn't re-run the
+  // effect on every parent render and reset the timer forever.
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  useEffect(() => {
+    const id = setTimeout(() => doneRef.current(), 2400);
+    return () => clearTimeout(id);
+  }, [message]);
+  return (
+    <div role="status" style={{
+      position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 95,
+      display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "calc(100% - 32px)",
+      background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
+      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+      boxShadow: "0 10px 34px var(--glass-shadow), 0 0 24px rgba(52,211,153,0.18)",
+      borderRadius: 99, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: INK,
+      animation: "toast-in .18s ease", pointerEvents: "none",
+    }}>
+      <Check size={16} style={{ color: "#34D399", flexShrink: 0 }} />
+      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{message}</span>
     </div>
   );
 }

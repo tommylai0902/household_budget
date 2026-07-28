@@ -103,3 +103,16 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border-color: rgba(52,211,153,0.75) !important;
   box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
 }
+
+/* Visible tap feedback: opt-in via className="press-fx" on controls whose
+   effect isn't instantly obvious on screen (inventory +/-, add-to-list), so
+   a tap that's still round-tripping to Supabase still feels registered.
+   Touch has no hover state to lean on, which is what made these feel dead. */
+.press-fx { transition: transform .09s ease, filter .09s ease; }
+.press-fx:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.35); }
+
+/* Success toast — slides up from the bottom, auto-dismisses (see Toast). */
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
