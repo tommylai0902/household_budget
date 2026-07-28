@@ -84,6 +84,7 @@ const STRINGS = {
     totalSpending: "Total Spending", balance: "Balance", settleUp: "Settle up",
     emptyState: "No expenses in {month} yet. Add your first one above.",
     emptyStateDay: "No expenses on {date}.", showAll: "Show all",
+    viewAllLedgers: "View all {n} ledgers", showLess: "Show less",
     paidByRow: "{name} paid", split5050: "Split 50/50", personal: "No Split",
     uncategorised: "Uncategorised", edit: "Edit", delete: "Delete",
     deleteConfirm: 'Delete "{name}"?',
@@ -1283,17 +1284,37 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 /* ========================= Ledger picker ========================== */
 function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
+  // Transaction count per ledger, fetched once here (rather than per-row)
+  // so the list can be ranked by it before LedgerRow ever renders.
+  const [statsById, setStatsById] = useState({});
+  const [showAll, setShowAll] = useState(false);
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    try { setError(""); setLedgers(await db.fetchLedgers()); }
-    catch (e) { setError(e.message || String(e)); setLedgers([]); }
+    try {
+      setError("");
+      const all = await db.fetchLedgers();
+      setLedgers(all);
+      const entries = await Promise.all(
+        all.map((l) => db.fetchLedgerStats(l.id).then((s) => [l.id, s]).catch(() => [l.id, null]))
+      );
+      setStatsById(Object.fromEntries(entries));
+    } catch (e) { setError(e.message || String(e)); setLedgers([]); }
   }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeLedgerList(() => load()), [load]);
+
+  // Most-used-first, so a busy account's top 3 are the ones actually worth
+  // seeing without scrolling — "used" means transaction count, the only
+  // usage signal the schema tracks per ledger.
+  const rankedLedgers = useMemo(
+    () => [...ledgers || []].sort((a, b) => (statsById[b.id]?.count || 0) - (statsById[a.id]?.count || 0)),
+    [ledgers, statsById]
+  );
+  const visibleLedgers = showAll ? rankedLedgers : rankedLedgers.slice(0, 3);
 
   const create = async () => {
     const trimmed = name.trim();
@@ -1378,7 +1399,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
               <div style={{ marginTop: 8 }}>{t("noLedgers")}</div>
             </div>
           )}
-          {ledgers.map((l) => {
+          {visibleLedgers.map((l) => {
             return (
             <div key={l.id}>
               {editingId === l.id ? (
@@ -1413,11 +1434,17 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                   )}
                 </div>
               ) : (
-                <LedgerRow l={l} t={t} lang={lang} onOpen={onOpen} onRename={startRename} onDelete={remove} />
+                <LedgerRow l={l} stats={statsById[l.id]} t={t} lang={lang} onOpen={onOpen} onRename={startRename} onDelete={remove} />
               )}
             </div>
             );
           })}
+          {rankedLedgers.length > 3 && (
+            <button onClick={() => setShowAll((s) => !s)} style={{ ...ghostBtn, justifyContent: "center", background: "none" }}>
+              {showAll ? t("showLess") : t("viewAllLedgers", { n: rankedLedgers.length })}
+              <ChevronDown size={15} style={{ transform: showAll ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+            </button>
+          )}
         </div>
 
         <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
@@ -1530,9 +1557,7 @@ function useSwipeReveal(actionsWidth) {
 // each row; now they live under it, revealed by dragging the row left. Mice
 // without a drag gesture get a hover-revealed "more" button as a click
 // fallback (CSS-only, see .swipe-more-btn in index.css).
-function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
-  const [stats, setStats] = useState(null); // { count, lastUpdated } | null while loading
-  useEffect(() => { let live = true; db.fetchLedgerStats(l.id).then((s) => live && setStats(s)).catch(() => {}); return () => { live = false; }; }, [l.id]);
+function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
   const accent = ledgerAccent(l.template);
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(LEDGER_ROW_ACTIONS_WIDTH);
   const handleRowClick = () => onTapOrClose(() => onOpen(l));
