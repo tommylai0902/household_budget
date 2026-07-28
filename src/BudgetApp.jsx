@@ -9,6 +9,12 @@ import {
 // Each starter template gets its own mark in the ledger list.
 const LEDGER_ICONS = { household: Home, travel: Plane, personal: Users, kid: PiggyBank, blank: BookOpen };
 const ledgerIcon = (tpl) => LEDGER_ICONS[tpl] || BookOpen;
+// Picker-card accent per template — each card's label/dot/glow pick up their
+// template's color instead of one flat teal for every ledger.
+const LEDGER_ACCENTS = { household: "#2DD4BF", travel: "#38BDF8", personal: "#C084FC", kid: "#FBBF24", blank: "#94A3B8" };
+const ledgerAccent = (tpl) => LEDGER_ACCENTS[tpl] || LEDGER_ACCENTS.blank;
+const LEDGER_LABEL_KEYS = { household: "ledgerLabelHousehold", travel: "ledgerLabelTravel", personal: "ledgerLabelPersonal", kid: "ledgerLabelKid", blank: "ledgerLabelBlank" };
+const ledgerLabelKey = (tpl) => LEDGER_LABEL_KEYS[tpl] || LEDGER_LABEL_KEYS.blank;
 const MEMBER_ICONS = { user: User, people: Users, home: Home, plane: Plane, book: BookOpen, tag: Tag };
 const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
@@ -200,6 +206,10 @@ const STRINGS = {
     tplHintBlank: "No categories — add your own from inside the ledger",
     deleteLedger: "Delete ledger", renameLedger: "Rename ledger", moreActions: "More actions",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
+    ledgerLabelHousehold: "Home Budget", ledgerLabelTravel: "Travel Expenses", ledgerLabelPersonal: "Personal Expenses",
+    ledgerLabelKid: "Kids Fund", ledgerLabelBlank: "Custom Ledger",
+    transactionsCount: "{n} Transactions", justNow: "Just now", minutesAgo: "{n}m ago", hoursAgo: "{n}h ago",
+    updatedToday: "Today", updatedYesterday: "Yesterday", updatedLine: "Updated {when}",
     currency: "Currency",
     vaultTitle: "Treasure Vault", earnedMoney: "Earned Money", boughtSomething: "Bought Something",
     kidAdd: "Add it!", noGoalYet: "No goal yet — tap to set one!",
@@ -863,6 +873,22 @@ const monthName = (m, lang) =>
   new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
 const shortDate = (iso, lang) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric" });
+// Ledger picker card's "Updated ..." line. Precise for the last couple hours
+// (that's when the exact count still matters to whoever's looking), then
+// collapses to day-level granularity — "3h ago" thirty seconds later would
+// just be noise.
+const relativeUpdated = (iso, lang, t) => {
+  if (!iso) return null;
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return t("justNow");
+  if (diffMin < 60) return t("minutesAgo", { n: diffMin });
+  const sameDay = new Date(iso).toDateString() === new Date().toDateString();
+  if (diffMin < 240 && sameDay) return t("hoursAgo", { n: Math.floor(diffMin / 60) });
+  if (sameDay) return t("updatedToday");
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  if (new Date(iso).toDateString() === yesterday.toDateString()) return t("updatedYesterday");
+  return new Date(iso).toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric" });
+};
 
 const getLang = () => {
   try { const l = localStorage.getItem("lang"); if (STRINGS[l]) return l; } catch {}
@@ -1312,7 +1338,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                   )}
                 </div>
               ) : (
-                <LedgerRow l={l} t={t} onOpen={onOpen} onRename={startRename} onDelete={remove} />
+                <LedgerRow l={l} t={t} lang={lang} onOpen={onOpen} onRename={startRename} onDelete={remove} />
               )}
             </div>
             );
@@ -1370,7 +1396,10 @@ const LEDGER_ROW_ACTIONS_WIDTH = 92; // two 44px action tiles + a hairline gap
 // that report a horizontal swipe as a wheel event (deltaX) are handled
 // separately in onWheel. Mice without a drag gesture get a hover-revealed
 // "more" button as a click fallback (CSS-only, see .ledger-row-more below).
-function LedgerRow({ l, t, onOpen, onRename, onDelete }) {
+function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
+  const [stats, setStats] = useState(null); // { count, lastUpdated } | null while loading
+  useEffect(() => { let live = true; db.fetchLedgerStats(l.id).then((s) => live && setStats(s)).catch(() => {}); return () => { live = false; }; }, [l.id]);
+  const accent = ledgerAccent(l.template);
   const [x, setXState] = useState(0);
   const xRef = useRef(0);
   const setX = (v) => { xRef.current = v; setXState(v); };
@@ -1441,13 +1470,29 @@ function LedgerRow({ l, t, onOpen, onRename, onDelete }) {
           position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
           // Opaque, not the usual translucent glass-bg: this row sits directly
           // over solid red/teal action tiles, and backdrop-filter's blur pulls
-          // their color through a translucent background at the edges.
-          background: CARD, border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
-          borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          // their color through a translucent background at the edges. The
+          // border/glow use this card's own template accent instead of the
+          // flat teal glass-border, so each row reads as its own category.
+          background: CARD, border: `1px solid ${accent}4d`, boxShadow: `0 8px 24px ${accent}1f, 0 0 0 1px ${accent}14 inset`,
+          borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
-        {(() => { const Icon = ledgerIcon(l.template); return <Icon size={17} style={{ color: TEAL, flexShrink: 0 }} />; })()}
-        <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: accent, marginBottom: 4 }}>
+            {(() => { const Icon = ledgerIcon(l.template); return <Icon size={13} style={{ flexShrink: 0 }} />; })()}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(ledgerLabelKey(l.template))}</span>
+          </div>
+          <div style={{ fontSize: 19, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
+          {stats && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: SUB, marginTop: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 99, background: accent, flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {t("transactionsCount", { n: stats.count })}
+                {stats.lastUpdated && ` • ${t("updatedLine", { when: relativeUpdated(stats.lastUpdated, lang, t) })}`}
+              </span>
+            </div>
+          )}
+        </div>
         <ChevronRight size={17} style={{ color: SUB, flexShrink: 0 }} />
         <button className="ledger-row-more" onClick={(e) => { e.stopPropagation(); setX(xRef.current === 0 ? -LEDGER_ROW_ACTIONS_WIDTH : 0); }}
           aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0, background: "var(--card)" }}>

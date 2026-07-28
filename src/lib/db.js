@@ -50,6 +50,17 @@ export async function fetchLedgers() {
   if (error) throw error;
   return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id, currency: r.currency || "CAD" }));
 }
+// Picker-card-only (count + last activity) — kept out of fetchLedgers() itself
+// since every other caller (switchers, dropdowns) just needs name/icon and
+// would otherwise pay for this on every render. One query per ledger: the
+// exact count plus the single latest row come back together, no round trip.
+export async function fetchLedgerStats(ledgerId) {
+  const { data, count, error } = await supabase
+    .from("expenses").select("updated_at", { count: "exact" })
+    .eq("ledger_id", ledgerId).order("updated_at", { ascending: false }).limit(1);
+  if (error) throw error;
+  return { count: count || 0, lastUpdated: data[0]?.updated_at || null };
+}
 // Seeds at creation time rather than lazily on first open, so the "blank"
 // template stays blank instead of being backfilled with defaults.
 export async function createLedger(name, template = "household") {
