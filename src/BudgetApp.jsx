@@ -4511,7 +4511,9 @@ function HomeNavDropdown({ onInventory, onGrocery, t }) {
 function BrandHeader({ left, right }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 20, marginBottom: 16 }}>
-      <div style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{left}</div>
+      {/* overflow stays visible: the left slot holds a dropdown whose menu is
+          absolutely positioned and would be clipped otherwise. */}
+      <div style={{ minWidth: 0, whiteSpace: "nowrap" }}>{left}</div>
       <div style={{
         fontSize: 24, fontWeight: 800, letterSpacing: -0.4, whiteSpace: "nowrap",
         background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, white), var(--accent), color-mix(in srgb, var(--accent) 65%, white))",
