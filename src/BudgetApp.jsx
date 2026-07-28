@@ -1353,7 +1353,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             on the right — same string in every language, like the eyebrow on
             the sign-in screen. */}
         <BrandHeader
-          left={onNavigate ? <HomeNavDropdown onSwitch={onNavigate} t={t} /> : undefined}
+          left={onNavigate ? <ViewSwitcher current="ledger" label={t("navDropdownLabel")} hideIcon onSwitch={onNavigate} t={t} /> : undefined}
           right={<>
           <NotificationBell t={t} lang={lang} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
@@ -4465,38 +4465,6 @@ const glassCard = {
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
-// The picker's counterpart to ViewSwitcher: same trigger/menu chrome, sourced
-// from the same VIEW_OPTIONS so the two can't drift. "ledger" is dropped —
-// the picker's own list below already picks a ledger to open. Nothing is
-// marked active; the picker isn't one of these views. Picking one opens the
-// last-used ledger straight on that view.
-function HomeNavDropdown({ onSwitch, t }) {
-  const [open, setOpen] = useState(false);
-  const ref = useCloseOnOutside(open, () => setOpen(false));
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open}
-        style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: INK }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("navDropdownLabel")}</h2>
-        <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
-      </button>
-      {open && (
-        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
-          {VIEW_OPTIONS.filter((v) => v.key !== "ledger").map((v) => {
-            const Icon = v.icon;
-            return (
-              <button key={v.key} role="menuitem" onClick={() => { setOpen(false); onSwitch(v.key); }} style={menuItem}>
-                <Icon size={15} style={{ flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(v.labelKey)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Shared by the Bento home header and the picker's header — a CSS grid
 // (1fr auto 1fr), not flex+absolute-center: with true grid columns, the
 // brand middle column always centers on the row's own width, and the flanking
@@ -4738,7 +4706,11 @@ const VIEW_OPTIONS = [
 // jump straight to either sibling view (or back to the ledger itself)
 // without detouring through Home first — Home is still reachable too, via
 // the overflow menu's Home entry, same as before.
-function ViewSwitcher({ current, onSwitch, t }) {
+// `label`/`hideIcon` exist for the ledger picker's header, which reuses this
+// whole dropdown but titles it "Ledgers" with no icon — the picker isn't one
+// of VIEW_OPTIONS, it just sits in the ledger half of the app, so `current`
+// is "ledger" there and the tick lands on Ledger & Transactions.
+function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
   const [open, setOpen] = useState(false);
   const ref = useCloseOnOutside(open, () => setOpen(false));
   const active = VIEW_OPTIONS.find((v) => v.key === current);
@@ -4749,8 +4721,8 @@ function ViewSwitcher({ current, onSwitch, t }) {
         // color must be explicit: iOS Safari paints unstyled <button> text in
         // its own system blue, which is what made this title blue on iPhone.
         style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: INK }}>
-        <ActiveIcon size={18} style={{ color: TEAL, flexShrink: 0 }} />
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(active.labelKey)}</h2>
+        {!hideIcon && <ActiveIcon size={18} style={{ color: TEAL, flexShrink: 0 }} />}
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label || t(active.labelKey)}</h2>
         <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
