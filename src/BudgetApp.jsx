@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
-  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, LayoutGrid,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -4481,20 +4481,19 @@ function HomeNavDropdown({ onInventory, onGrocery, t }) {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open}
-        style={{ display: "flex", alignItems: "center", gap: 8, padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit" }}>
-        <LayoutGrid size={18} style={{ color: TEAL, flexShrink: 0 }} />
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: INK, whiteSpace: "nowrap" }}>{t("navDropdownLabel")}</h2>
+        style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: INK }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("navDropdownLabel")}</h2>
         <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
           <button role="menuitem" onClick={() => { setOpen(false); onInventory(); }} style={menuItem}>
-            <Package size={15} style={{ color: HOME_AMBER, flexShrink: 0 }} />
-            <span>{t("inventoryCardTitle")}</span>
+            <Package size={15} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("inventoryCardTitle")}</span>
           </button>
           <button role="menuitem" onClick={() => { setOpen(false); onGrocery(); }} style={menuItem}>
-            <ShoppingCart size={15} style={{ color: HOME_SKY, flexShrink: 0 }} />
-            <span>{t("groceryCardTitle")}</span>
+            <ShoppingCart size={15} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("groceryCardTitle")}</span>
           </button>
         </div>
       )}
@@ -4751,7 +4750,9 @@ function ViewSwitcher({ current, onSwitch, t }) {
   return (
     <div ref={ref} style={{ position: "relative", flex: 1, minWidth: 0 }}>
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
-        style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+        // color must be explicit: iOS Safari paints unstyled <button> text in
+        // its own system blue, which is what made this title blue on iPhone.
+        style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: INK }}>
         <ActiveIcon size={18} style={{ color: TEAL, flexShrink: 0 }} />
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(active.labelKey)}</h2>
         <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
