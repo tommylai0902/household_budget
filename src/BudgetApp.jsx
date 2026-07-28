@@ -146,6 +146,7 @@ const STRINGS = {
     greetingLine: "{greeting}, {name}!", viewingLedger: "Viewing: {name}",
     budgetBannerLine: "BUDGET: {spent} / {budget} Spent ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
+    noBudgetSetPrompt: "No budget set — tap to add one",
     recurring: "Recurring expenses", recurringAdd: "Add new", noRecurring: "No recurring expenses yet.",
     recurNew: "New recurring expense", recurEdit: "Edit recurring expense",
     freqWeekly: "Weekly", freqMonthly: "Monthly", freqYearly: "Yearly", frequency: "Frequency",
@@ -1000,7 +1001,7 @@ export default function App() {
     onOpen={(l) => openLedger(l, "ledger")} onHome={getLastLedgerId() ? goHome : undefined}
     currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
   return <Ledger ledger={ledger} startView={entryView} currentUserId={session.user.id} onExit={() => setLedger(null)}
-    onSwitchLedger={(l) => openLedger(l, "ledger")} lang={lang} changeLang={changeLang} t={t}
+    onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
     theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />;
 }
 
@@ -1059,10 +1060,17 @@ function Login({ lang, changeLang, t, hasInvite }) {
   const swap = () => { setMode(signup ? "signin" : "signup"); setError(""); setNotice(""); };
 
   return (
-    <div style={{ background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
-      <div style={{ width: "min(360px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
+    <div style={{ position: "relative", overflow: "hidden", background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
+      {/* Same ambient glow as the Bento home, so the very first screen already
+          reads as the same app rather than a plain, un-styled login form. */}
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(45,212,191,0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(56,189,248,0.16), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("eyebrow")}</div>
+          <div style={{
+            fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 800,
+            background: "linear-gradient(90deg, #5EEAD4, #34D399, #67E8F9)",
+            WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+          }}>{t("eyebrow")}</div>
           <LangToggle lang={lang} changeLang={changeLang} t={t} />
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>{signup ? t("signUpTitle") : t("signInTitle")}</h1>
@@ -1091,7 +1099,7 @@ function Login({ lang, changeLang, t, hasInvite }) {
         {error && <div style={{ ...errorBox, marginTop: 4 }}>{error}</div>}
         {notice && <div style={{ background: OK_BG, border: `1px solid ${OK_LINE}`, color: OK_INK, borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 4, fontWeight: 600 }}>{notice}</div>}
 
-        <button onClick={submit} disabled={busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail}
+        <button onClick={submit} disabled={busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail} className="btn-glow"
           style={{ ...addBtn, opacity: busy || !email || !pw || (nameRequired && !name.trim()) || nameEqualsEmail ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
           {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {signup ? t("signUpBtn") : t("signInBtn")}
         </button>
@@ -1160,7 +1168,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
                   : t("invitePrompt")}
               </p>
             </div>
-            <button onClick={accept} disabled={busy} style={{ ...addBtn, marginTop: 0, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+            <button onClick={accept} disabled={busy} className="btn-glow" style={{ ...addBtn, marginTop: 0, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
               {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {t("inviteAcceptBtn")}
             </button>
             <button onClick={() => onResult(null)} disabled={busy} style={{ display: "block", width: "100%", marginTop: 10, padding: 8, border: "none", background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
@@ -1240,8 +1248,9 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
   if (ledgers === null) return <Centered>{t("connecting")}</Centered>;
 
   return (
-    <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+    <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.14), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
         {/* Same header block as the Bento home now: greeting on the left, brand
             centered, bell/menu on the right — same string in every language,
             like the eyebrow on the sign-in screen. */}
@@ -1305,8 +1314,8 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => onOpen(l)} aria-label={t("openLedger", { name: l.name })}
-                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                  <button onClick={() => onOpen(l)} aria-label={t("openLedger", { name: l.name })} className="btn-glow"
+                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
                     {(() => { const Icon = ledgerIcon(l.template); return <Icon size={17} style={{ color: TEAL, flexShrink: 0 }} />; })()}
                     <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
                     <ChevronRight size={17} style={{ color: SUB }} />
@@ -1338,7 +1347,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
         <div style={{ display: "flex", gap: 8 }}>
           <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()}
             placeholder={t("newLedgerPh")} style={{ ...input, flex: 1 }} />
-          <button onClick={create} disabled={!name.trim() || busy}
+          <button onClick={create} disabled={!name.trim() || busy} className="btn-glow"
             style={{ ...addBtn, width: "auto", flexShrink: 0, marginTop: 0, whiteSpace: "nowrap", opacity: !name.trim() || busy ? 0.5 : 1, cursor: !name.trim() || busy ? "not-allowed" : "pointer" }}>
             {busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} {t("createLedger")}
           </button>
@@ -1540,7 +1549,7 @@ function KidActionModal({ kind, categories, members, t, onSave, onClose }) {
                 style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
             </div>
           </Field>
-          <button onClick={save} disabled={!valid}
+          <button onClick={save} disabled={!valid} className="btn-glow"
             style={{ ...addBtn, background: kind === "earn" ? KID_GREEN : KID_ORANGE, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
             {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("kidAdd")}
           </button>
@@ -1580,7 +1589,7 @@ function KidGoalEditor({ goal, t, onSave, onClose }) {
             style={{ border: "none", outline: "none", background: "none", padding: 0, font: "inherit", color: "inherit", width: "100%" }} />
         </div>
       </Field>
-      <button onClick={save} disabled={!valid} style={{ ...addBtn, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+      <button onClick={save} disabled={!valid} className="btn-glow" style={{ ...addBtn, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
         {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveGoal")}
       </button>
     </Overlay>
@@ -1647,7 +1656,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 }
 
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
+function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSwitchLedgerHome, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
   activeCurrency = ledger.currency || "CAD"; // set before children below read money()/currencySymbol()
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
@@ -1860,7 +1869,13 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang
   const label = monthName(month, lang);
 
   return (
-    <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+    <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+      {/* Home draws its own glow scoped to its own content — this one is for
+          every other view (ledger/inventory/grocery), so they aren't left on
+          a flat background while Home and the picker/login both glow. */}
+      {viewState !== "home" && (
+        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.16), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.12), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      )}
       <style>{`
         .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; transition:background .12s ease; }
         .exp-main { grid-column:1; grid-row:1; min-width:0; }
@@ -1875,7 +1890,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang
         }
         .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
-      <div style={{ maxWidth: 880, margin: "0 auto" }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
         {/* Header */}
         {/* minWidth keeps the title from shrinking to a stub, so on a narrow screen
@@ -1929,7 +1944,8 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang
         {viewState === "home" && (
           <HomePage ledgerId={ledger.id} ledgerName={ledger.name} t={t} spent={summary.total} budget={totalBudget} lastEntry={expenses[0] || null}
             onOpenLedger={onExit} onViewTransactions={() => setViewState("ledger")}
-            onOpenInventory={() => setViewState("inventory")} onOpenGrocery={() => setViewState("grocery")} />
+            onOpenInventory={() => setViewState("inventory")} onOpenGrocery={() => setViewState("grocery")}
+            onOpenBudget={() => setShowBudget(true)} onSwitchLedger={onSwitchLedgerHome} />
         )}
 
         {viewState === "ledger" && (
@@ -1937,10 +1953,10 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, lang
             <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t}
               total={summary.total} totalBudget={totalBudget} onCheckSettleUp={() => setShowSettlement(true)} />
 
-            <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
+            <button onClick={() => setEditing("new")} className="btn-glow" style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
 
             {/* List */}
-            <div style={{ marginTop: 14, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ marginTop: 14, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 14, overflow: "hidden" }}>
               {visibleRows.length === 0 ? (
                 <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
                   <Receipt size={26} style={{ opacity: 0.4 }} />
@@ -2117,7 +2133,7 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
   const SPEND_TINT = `color-mix(in srgb, ${WARN} 12%, transparent)`;
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: 14, marginTop: 14 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 14, padding: 14, marginTop: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
         {weekdayLabels.map((w, i) => (
           <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase" }}>{w}</div>
@@ -2348,7 +2364,7 @@ function ManageMembersModal({ ledger, isOwner, t, onClose }) {
         </Field>
         {err && <div style={{ color: DANGER, fontSize: 13 }}>{err}</div>}
         {!link ? (
-          <button onClick={generate} disabled={busy || !emailValid} style={{ ...addBtn, justifyContent: "center", opacity: busy || !emailValid ? 0.6 : 1, cursor: busy ? "wait" : !emailValid ? "not-allowed" : "pointer" }}>
+          <button onClick={generate} disabled={busy || !emailValid} className="btn-glow" style={{ ...addBtn, justifyContent: "center", opacity: busy || !emailValid ? 0.6 : 1, cursor: busy ? "wait" : !emailValid ? "not-allowed" : "pointer" }}>
             {busy ? <Loader2 size={18} className="spin" /> : <Users size={18} />} {t("generateInvite")}
           </button>
         ) : (
@@ -2424,7 +2440,7 @@ function RecurringPanel({ ledger, categories, members, features, lang, t, onClos
 
   return (
     <Overlay onClose={onClose} title={t("recurring")} t={t}>
-      <button onClick={() => setEditing("new")} style={{ ...addBtn, marginTop: 0, justifyContent: "center" }}>
+      <button onClick={() => setEditing("new")} className="btn-glow" style={{ ...addBtn, marginTop: 0, justifyContent: "center" }}>
         <Plus size={18} /> {t("recurringAdd")}
       </button>
       {err && <div style={{ color: DANGER, fontSize: 13 }}>{err}</div>}
@@ -2579,7 +2595,7 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
       {err && <div style={errorBox}>{err}</div>}
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
-        <button onClick={submit} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+        <button onClick={submit} disabled={!valid} className="btn-glow" style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
           {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveRule")}
         </button>
       </div>
@@ -2695,7 +2711,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
           {t("csvResult", { ok: result.ok, total: result.total })}{result.fail ? t("csvResultFail", { fail: result.fail }) : ""}
         </div>
       )}
-      <button onClick={confirm} disabled={!valid} style={{ ...addBtn, marginTop: 6, justifyContent: "center", opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+      <button onClick={confirm} disabled={!valid} className="btn-glow" style={{ ...addBtn, marginTop: 6, justifyContent: "center", opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
         {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {busy ? t("csvImporting") : t("csvConfirm")}
       </button>
     </Overlay>
@@ -3049,12 +3065,12 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
         // "image/*". (iOS Safari shows "Take Photo" in its picker regardless —
         // that's a platform quirk, no accept list avoids it.)
         <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
-          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+          <label className="btn-glow" style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
             <Camera size={18} /> {t("scanReceipt")}
             <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanReceipt(f); }} />
           </label>
-          <label style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
+          <label className="btn-glow" style={{ ...addBtn, marginTop: 0, flex: 1, justifyContent: "center", cursor: "pointer" }}>
             <Upload size={18} /> {t("uploadReceipt")}
             <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.heic,.pdf,.csv,text/csv" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importBatchFile(f); }} />
@@ -3242,7 +3258,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
       </Field>
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
-        <button onClick={submit} disabled={!valid} style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+        <button onClick={submit} disabled={!valid} className="btn-glow" style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
           {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {initial ? t("saveChanges") : t("addExpense")}
         </button>
       </div>
@@ -3289,7 +3305,7 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={t("newCatPh")} style={{ ...input, flex: 1 }} />
         <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
       </div>
-      <button onClick={done} style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveCategories")}</button>
+      <button onClick={done} className="btn-glow" style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveCategories")}</button>
     </Overlay>
   );
 }
@@ -3451,7 +3467,7 @@ function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, on
         })}
       </div>
       <div style={{ fontSize: 12, color: SUB }}>{t("budgetClearHint")}</div>
-      <button onClick={save} disabled={busy} style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
+      <button onClick={save} disabled={busy} className="btn-glow" style={{ ...addBtn, justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
         {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("budgetSave")}
       </button>
     </Overlay>
@@ -3691,7 +3707,7 @@ function StoreManager({ merchants, t, onChange, onClose }) {
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={t("newStorePh")} style={{ ...input, flex: 1 }} />
         <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
       </div>
-      <button onClick={done} style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveStores")}</button>
+      <button onClick={done} className="btn-glow" style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveStores")}</button>
     </Overlay>
   );
 }
@@ -3740,7 +3756,7 @@ function MemberManager({ members, t, onChange, onClose }) {
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={t("newMemberPh")} style={{ ...input, flex: 1 }} />
         <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
       </div>
-      <button onClick={done} style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveMembers")}</button>
+      <button onClick={done} className="btn-glow" style={{ ...addBtn, justifyContent: "center" }}><Check size={18} /> {t("saveMembers")}</button>
     </Overlay>
   );
 }
@@ -4047,7 +4063,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
               <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && saveName()} style={input} />
             </Field>
-            <button onClick={saveName} disabled={!nameDirty || nameBusy}
+            <button onClick={saveName} disabled={!nameDirty || nameBusy} className="btn-glow"
               style={{ ...addBtn, justifyContent: "center", opacity: nameDirty ? (nameBusy ? 0.6 : 1) : 0.5, cursor: nameDirty && !nameBusy ? "pointer" : "default" }}>
               {nameBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
               {nameDirty ? t("saveName") : t("nameSaved")}
@@ -4065,7 +4081,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
               <input type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && changePassword()} style={input} />
             </Field>
-            <button onClick={changePassword} disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+            <button onClick={changePassword} disabled={pwBusy || !currentPw || !newPw || !confirmPw} className="btn-glow"
               style={{ ...addBtn, justifyContent: "center", opacity: (pwBusy || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}>
               {pwBusy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("changePassword")}
             </button>
@@ -4098,7 +4114,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
             </button>
           ))}
         </div>
-        <button onClick={save} disabled={!dirty || busy}
+        <button onClick={save} disabled={!dirty || busy} className="btn-glow"
           style={{ ...addBtn, justifyContent: "center", opacity: dirty ? (busy ? 0.6 : 1) : 0.5, cursor: dirty && !busy ? "pointer" : "default" }}>
           {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
           {dirty ? t("saveAccent") : t("accentSaved")}
@@ -4258,7 +4274,44 @@ function BentoCardHeader({ icon: Icon, title, corner: Corner, accent, divider = 
   );
 }
 
-function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLedger, onViewTransactions, onOpenInventory, onOpenGrocery }) {
+// Same dropdown pattern as LedgerSwitcher (reuses its ledger-fetching/
+// open-state hook), styled as the small pill badge instead of a page
+// heading — picking a ledger here is the one thing that decides which
+// ledger's Home dashboard is showing, and it sticks (cacheLastLedgerId)
+// until picked again, here or via the in-ledger switcher.
+function HomeLedgerSwitcher({ ledgerId, ledgerName, t, onSwitch }) {
+  const { ledgers, open, setOpen } = useLedgerSwitcher(ledgerId);
+  const select = (l) => { setOpen(false); if (l.id !== ledgerId) onSwitch(l); };
+  return (
+    <div style={{ position: "relative", zIndex: 5, alignSelf: "flex-start" }} onClick={(e) => e.stopPropagation()}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} style={{
+        display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--badge-teal-border)", background: "var(--badge-teal-bg)",
+        borderRadius: 99, padding: "4px 12px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--badge-teal-ink)", cursor: "pointer",
+      }}>
+        <MapPin size={12} /> {t("viewingLedger", { name: ledgerName })}
+        <ChevronDown size={12} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 200, maxWidth: 300, zIndex: 60 }}>
+          {ledgers.map((l) => {
+            const Icon = ledgerIcon(l.template);
+            const active = l.id === ledgerId;
+            return (
+              <button key={l.id} role="menuitem" onClick={() => select(l)}
+                style={{ ...menuItem, background: active ? OK_BG : "none", color: active ? OK_INK : INK }}>
+                <Icon size={15} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+                {active && <Check size={14} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLedger, onViewTransactions, onOpenInventory, onOpenGrocery, onOpenBudget, onSwitchLedger }) {
   const [inventoryCount, setInventoryCount] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [pendingGrocery, setPendingGrocery] = useState(0);
@@ -4305,35 +4358,39 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
 
       {/* Greeting now lives in the shared header, next to the centered brand
           (see Ledger's header row) — this is just the multi-ledger context
-          label, styled as a small pill/badge. Plain text now — the click
-          target moved to the whole budget banner below (the "dashboard
-          status bar"); the Ledger & Transactions card still goes to the
-          picker instead. */}
-      <div style={{ position: "relative", zIndex: 1, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--badge-teal-border)", background: "var(--badge-teal-bg)", borderRadius: 99, padding: "4px 12px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--badge-teal-ink)" }}>
-        <MapPin size={12} /> {t("viewingLedger", { name: ledgerName })}
-      </div>
+          label, styled as a small pill/badge. Now a dropdown (same list/select
+          pattern as LedgerSwitcher) rather than plain text, so which ledger
+          Home displays is an explicit, sticky pick made right here instead of
+          a side-effect of whatever was opened last elsewhere in the app. */}
+      <HomeLedgerSwitcher ledgerId={ledgerId} ledgerName={ledgerName} t={t} onSwitch={onSwitchLedger} />
 
-      {budget > 0 && (
-        <button onClick={onViewTransactions} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 20, padding: 20, width: "100%" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, letterSpacing: 0.3, marginBottom: 12, color: INK }}>
-            <span>{t("budgetBannerLine", { spent: money(spent), budget: money(budget), pct })}</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: over ? DANGER : SUB }}>
-              {over ? t("budgetOverLine", { amount: money(spent - budget) }) : t("budgetRemainingLine", { amount: money(budget - spent) })}
-            </span>
+      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 20, padding: 20, width: "100%" }}>
+        {budget > 0 ? (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, letterSpacing: 0.3, marginBottom: 12, color: INK }}>
+              <span>{t("budgetBannerLine", { spent: money(spent), budget: money(budget), pct })}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: over ? DANGER : SUB }}>
+                {over ? t("budgetOverLine", { amount: money(spent - budget) }) : t("budgetRemainingLine", { amount: money(budget - spent) })}
+              </span>
+            </div>
+            {/* Own progress bar rather than the shared BudgetBar — that component
+                is reused by the plain Budget panel too, and this glow-gradient
+                treatment is specific to the Bento dashboard's premium look. */}
+            <div style={{ position: "relative", height: 12, borderRadius: 99, background: "var(--track)", overflow: "hidden" }}>
+              <div style={{
+                width: `${Math.min(100, Math.max(pct > 0 ? 2 : 0, pct))}%`, height: "100%", borderRadius: 99,
+                background: over ? "linear-gradient(90deg, #F87171, #FB923C)" : "linear-gradient(90deg, #10B981, #2DD4BF)",
+                boxShadow: over ? "0 0 12px rgba(248,113,113,0.5)" : "0 0 12px rgba(16,185,129,0.5)",
+                transition: "width .25s ease",
+              }} />
+            </div>
+          </>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: SUB }}>
+            <PiggyBank size={16} style={{ color: TEAL }} /> {t("noBudgetSetPrompt")}
           </div>
-          {/* Own progress bar rather than the shared BudgetBar — that component
-              is reused by the plain Budget panel too, and this glow-gradient
-              treatment is specific to the Bento dashboard's premium look. */}
-          <div style={{ position: "relative", height: 12, borderRadius: 99, background: "var(--track)", overflow: "hidden" }}>
-            <div style={{
-              width: `${Math.min(100, Math.max(pct > 0 ? 2 : 0, pct))}%`, height: "100%", borderRadius: 99,
-              background: over ? "linear-gradient(90deg, #F87171, #FB923C)" : "linear-gradient(90deg, #10B981, #2DD4BF)",
-              boxShadow: over ? "0 0 12px rgba(248,113,113,0.5)" : "0 0 12px rgba(16,185,129,0.5)",
-              transition: "width .25s ease",
-            }} />
-          </div>
-        </button>
-      )}
+        )}
+      </button>
 
       {/* auto-fit/minmax, not a fixed two-track grid: a real phone's content
           width (~340-400px) can't fit two 300px+ cards side by side without
@@ -4455,7 +4512,7 @@ function InventoryPanel({ ledgerId, t }) {
       </div>
       {error && <div style={errorBox}>{error}</div>}
       {showAddForm && (
-        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder={t("itemNamePh")} style={input} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -4472,7 +4529,7 @@ function InventoryPanel({ ledgerId, t }) {
           <Field label={t("minQuantityLabel")}>
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
-          <button onClick={addItem} disabled={!draft.name.trim() || saving} style={{ ...addBtn, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+          <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
             {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
           </button>
         </div>
@@ -4494,7 +4551,7 @@ function InventoryPanel({ ledgerId, t }) {
             const expired = isExpired(it.expiryDate);
             const expiring = !expired && isExpiring(it.expiryDate);
             return (
-              <div key={it.id} style={{ background: CARD, border: `1px solid ${low || expired ? BAD_LINE : LINE}`, borderRadius: 12, padding: 12 }}>
+              <div key={it.id} style={{ background: "var(--glass-bg)", border: `1px solid ${low || expired ? BAD_LINE : "var(--glass-border)"}`, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
@@ -4588,7 +4645,7 @@ function GroceryListPanel({ ledgerId, t }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((it) => (
-            <div key={it.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12 }}>
+            <div key={it.id} style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <input type="checkbox" checked={it.isCompleted} onChange={(e) => toggle(it.id, e.target.checked)} />
                 <span style={{ flex: 1, fontSize: 14, fontWeight: 700, textDecoration: it.isCompleted ? "line-through" : "none", color: it.isCompleted ? SUB : INK }}>
@@ -4613,16 +4670,31 @@ function GroceryListPanel({ ledgerId, t }) {
   );
 }
 
+// Glass slide-over, same treatment as the Bento home — this is the shared
+// wrapper behind ~18 panels (Budget, Reports, Settlement, Recurring,
+// Settings, Manage members, Batch import, Category/Store managers, Manage
+// reminders, Expense form, Inventory/Grocery's own panels don't use this one
+// but everything else does), so restyling it once carries the look almost
+// everywhere without touching each panel individually. The decorative glow
+// sits behind the scrollable content in its own layer (position:relative +
+// overflow:hidden on the panel) so it doesn't scroll away with the content.
 function Overlay({ title, onClose, t, children }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,26,32,0.4)", display: "flex", justifyContent: "flex-end", zIndex: 50 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: PAPER, width: "min(440px, 100%)", height: "100%", overflowY: "auto", padding: "18px 18px 32px", boxShadow: "-8px 0 40px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <Tag size={18} style={{ color: TEAL }} />
-          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</h2>
-          <button onClick={onClose} style={{ ...iconBtn, marginLeft: "auto", flexShrink: 0 }} aria-label={t("close")}><X size={18} /></button>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(4,10,12,0.55)", display: "flex", justifyContent: "flex-end", zIndex: 50 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        position: "relative", overflow: "hidden", width: "min(440px, 100%)", height: "100%", display: "flex", flexDirection: "column",
+        background: "var(--glass-bg)", borderLeft: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        boxShadow: "-8px 0 40px rgba(0,0,0,0.25), 0 0 40px rgba(52,211,153,0.08)",
+      }}>
+        <div aria-hidden="true" style={{ position: "absolute", inset: "-60px -40px auto -40px", height: 220, background: "radial-gradient(circle at 30% 20%, rgba(52,211,153,0.2), transparent 60%)", filter: "blur(30px)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", zIndex: 1, overflowY: "auto", padding: "18px 18px 32px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <Tag size={18} style={{ color: TEAL }} />
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</h2>
+            <button onClick={onClose} style={{ ...iconBtn, marginLeft: "auto", flexShrink: 0 }} aria-label={t("close")}><X size={18} /></button>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
     </div>
   );
