@@ -4292,13 +4292,17 @@ function HomeLedgerSwitcher({ ledgerId, ledgerName, t, onSwitch }) {
         <ChevronDown size={12} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
-        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 200, maxWidth: 300, zIndex: 60 }}>
+        <div role="menu" style={{
+          position: "absolute", left: 0, top: "calc(100% + 6px)", borderRadius: 12, padding: 6, minWidth: 200, maxWidth: 300, zIndex: 60,
+          background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          boxShadow: "0 10px 30px var(--glass-shadow), 0 0 24px rgba(52,211,153,0.1)",
+        }}>
           {ledgers.map((l) => {
             const Icon = ledgerIcon(l.template);
             const active = l.id === ledgerId;
             return (
               <button key={l.id} role="menuitem" onClick={() => select(l)}
-                style={{ ...menuItem, background: active ? OK_BG : "none", color: active ? OK_INK : INK }}>
+                style={{ ...menuItem, background: active ? "var(--badge-teal-bg)" : "none", color: active ? "var(--badge-teal-ink)" : INK }}>
                 <Icon size={15} style={{ flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
                 {active && <Check size={14} style={{ flexShrink: 0 }} />}
