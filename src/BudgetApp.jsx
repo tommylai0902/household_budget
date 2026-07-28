@@ -4478,25 +4478,23 @@ const glassCard = {
 
 function HomeNavDropdown({ onInventory, onGrocery, t }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
+  const ref = useCloseOnOutside(open, () => setOpen(false));
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={() => setOpen(o => !o)} style={{ ...ghostBtn, padding: "6px 10px", gap: 5 }}>
-        <LayoutGrid size={15} /><ChevronDown size={11} style={{ opacity: 0.6 }} />
+      <button onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit" }}>
+        <LayoutGrid size={18} style={{ color: TEAL, flexShrink: 0 }} />
+        <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--glass-border)", borderRadius: 14, padding: 6, zIndex: 100, minWidth: 170, boxShadow: "0 8px 32px var(--glass-shadow)" }}>
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
           <button role="menuitem" onClick={() => { setOpen(false); onInventory(); }} style={menuItem}>
-            <Package size={14} style={{ color: HOME_AMBER }} /> {t("inventoryCardTitle")}
+            <Package size={15} style={{ color: HOME_AMBER, flexShrink: 0 }} />
+            <span>{t("inventoryCardTitle")}</span>
           </button>
           <button role="menuitem" onClick={() => { setOpen(false); onGrocery(); }} style={menuItem}>
-            <ShoppingCart size={14} style={{ color: HOME_SKY }} /> {t("groceryCardTitle")}
+            <ShoppingCart size={15} style={{ color: HOME_SKY, flexShrink: 0 }} />
+            <span>{t("groceryCardTitle")}</span>
           </button>
         </div>
       )}
