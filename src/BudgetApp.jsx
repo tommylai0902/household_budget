@@ -2269,8 +2269,13 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
           </>
         )}
 
-        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} onSwitchView={setViewState} />}
-        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} t={t} onSwitchView={setViewState} />}
+        {/* "ledger" routes to the picker (onExit), not setViewState("ledger") —
+            matching what "Ledger & Transactions" already means everywhere
+            else it appears (the Home dashboard's card does the same); the
+            in-ledger transactions view is reached via the budget banner's
+            "View transactions" instead, same as from Home. */}
+        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
+        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} t={t} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
       </div>
 
       {detail && (
