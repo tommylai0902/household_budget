@@ -915,6 +915,7 @@ const relLuminance = (hex) => {
   return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
 };
 const accentInkFor = (hex) => (relLuminance(hex) > 0.179 ? "#1A1F24" : "#fff");
+const hexToRgb = (hex) => { const n = parseInt(hex.slice(1), 16); return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`; };
 // `amount` of `hex` blended into `base`. Used to derive the settle-up/shared
 // "OK" tint from whatever accent is picked, the same way the light/dark
 // theme's own OK_BG/OK_INK were hand-picked as a pale tint + a readable ink
@@ -1005,6 +1006,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", accent);
     document.documentElement.style.setProperty("--accent-ink", accentInkFor(accent));
+    document.documentElement.style.setProperty("--accent-rgb", hexToRgb(accent));
     // The settle-up bar and the "shared"/category tag next to it were still
     // the original fixed teal even after the accent picker shipped — this
     // ties that "OK" tint to whatever accent is picked instead, same as
@@ -1168,12 +1170,12 @@ function Login({ lang, changeLang, t, hasInvite }) {
     <div style={{ position: "relative", overflow: "hidden", background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
       {/* Same ambient glow as the Bento home, so the very first screen already
           reads as the same app rather than a plain, un-styled login form. */}
-      <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(45,212,191,0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(56,189,248,0.16), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(var(--accent-rgb),0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(var(--accent-rgb),0.12), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
       <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{
             fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 800,
-            background: "linear-gradient(90deg, #5EEAD4, #34D399, #67E8F9)",
+            background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, white), var(--accent), color-mix(in srgb, var(--accent) 65%, white))",
             WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
           }}>{t("eyebrow")}</div>
           <LangToggle lang={lang} changeLang={changeLang} t={t} />
@@ -1354,7 +1356,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
 
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.14), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.11), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
         {/* Same header block as the Bento home now: brand centered, bell/menu
             on the right — same string in every language, like the eyebrow on
@@ -1570,7 +1572,7 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#34D399", marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL, marginBottom: 6 }}>
             {(() => { const Icon = ledgerIcon(l.template); return <Icon size={14} style={{ flexShrink: 0 }} />; })()}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(ledgerLabelKey(l.template))}</span>
           </div>
@@ -1579,7 +1581,7 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
           {stats && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
               {/* Mint status dot with its own halo, same tone as the card glow. */}
-              <span style={{ width: 7, height: 7, borderRadius: 99, background: "#34D399", boxShadow: "0 0 6px rgba(52,211,153,0.9), 0 0 12px rgba(52,211,153,0.5)", flexShrink: 0 }} />
+              <span style={{ width: 7, height: 7, borderRadius: 99, background: TEAL, boxShadow: "0 0 6px rgba(var(--accent-rgb),0.9), 0 0 12px rgba(var(--accent-rgb),0.5)", flexShrink: 0 }} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {t("transactionsCount", { n: stats.count })}
                 {stats.lastUpdated && ` • ${t("updatedLine", { when: relativeUpdated(stats.lastUpdated, lang, t) })}`}
@@ -2131,7 +2133,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
           every other view (ledger/inventory/grocery), so they aren't left on
           a flat background while Home and the picker/login both glow. */}
       {viewState !== "home" && (
-        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.16), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.12), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.16), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.10), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       )}
       <style>{`
         .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; transition:background .12s ease; }
@@ -4465,7 +4467,7 @@ function ManageRemindersPanel({ t, lang, onClose }) {
 // Bento home's per-card colour coding — fixed hex (not var(--accent)) since
 // glassmorphism hues stay constant across light/dark; only the frosted
 // surface underneath (--glass-* in index.css) adapts to theme.
-const HOME_CYAN = "#34D399";
+const HOME_CYAN = "var(--accent)";
 const HOME_AMBER = "#FBBF24";
 const HOME_SKY = "#38BDF8";
 const glassCard = {
@@ -4514,7 +4516,7 @@ function BrandHeader({ left, right }) {
       <div style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{left}</div>
       <div style={{
         fontSize: 24, fontWeight: 800, letterSpacing: -0.4, whiteSpace: "nowrap",
-        background: "linear-gradient(90deg, #5EEAD4, #34D399, #67E8F9)",
+        background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, white), var(--accent), color-mix(in srgb, var(--accent) 65%, white))",
         WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
       }}>Monira</div>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>{right}</div>
@@ -4574,7 +4576,7 @@ function HomeLedgerSwitcher({ ledgerId, ledgerName, t, onSwitch }) {
         <div role="menu" style={{
           position: "absolute", left: 0, top: "calc(100% + 6px)", borderRadius: 12, padding: 6, minWidth: 200, maxWidth: 300, zIndex: 60,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-          boxShadow: "0 10px 30px var(--glass-shadow), 0 0 24px rgba(52,211,153,0.1)",
+          boxShadow: "0 10px 30px var(--glass-shadow), 0 0 24px rgba(var(--accent-rgb),0.1)",
         }}>
           {ledgers.map((l) => {
             const Icon = ledgerIcon(l.template);
@@ -4625,16 +4627,16 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           otherwise backdrop-filter has nothing to do against a flat page
           background. Fixed to this wrapper (overflow hidden further down),
           never intercepts clicks. */}
-      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.25), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.18), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.25), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.15), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       <style>{`
         .bento-glass { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
         .bento-glass:hover { transform: translateY(-2px); }
         .bento-glass-ledger:hover, .bento-glass-inventory:hover, .bento-glass-grocery:hover {
-          border-color: rgba(52,211,153,0.75) !important;
-          box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
+          border-color: rgba(var(--accent-rgb),0.75) !important;
+          box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
         }
-        .bento-glass-budget:hover { border-color: rgba(52,211,153,0.75) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important; }
-        .bento-glass-ledger:hover .ledger-corner-glow { box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+        .bento-glass-budget:hover { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
+        .bento-glass-ledger:hover .ledger-corner-glow { box-shadow: 0 0 12px rgba(var(--accent-rgb),0.4); }
         .price-match-pill { cursor: pointer; transition: background .18s ease; }
         .bento-glass-grocery:hover .price-match-pill { background: rgba(56,189,248,0.2) !important; }
       `}</style>
@@ -4662,8 +4664,8 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
             <div style={{ position: "relative", height: 12, borderRadius: 99, background: "var(--track)", overflow: "hidden" }}>
               <div style={{
                 width: `${Math.min(100, Math.max(pct > 0 ? 2 : 0, pct))}%`, height: "100%", borderRadius: 99,
-                background: over ? "linear-gradient(90deg, #F87171, #FB923C)" : "linear-gradient(90deg, #10B981, #2DD4BF)",
-                boxShadow: over ? "0 0 12px rgba(248,113,113,0.5)" : "0 0 12px rgba(16,185,129,0.5)",
+                background: over ? "linear-gradient(90deg, #F87171, #FB923C)" : "linear-gradient(90deg, color-mix(in srgb, var(--accent) 80%, white), var(--accent))",
+                boxShadow: over ? "0 0 12px rgba(248,113,113,0.5)" : "0 0 12px rgba(var(--accent-rgb),0.5)",
                 transition: "width .25s ease",
               }} />
             </div>
@@ -5193,9 +5195,9 @@ function Overlay({ title, onClose, t, children }) {
       <div onClick={(e) => e.stopPropagation()} style={{
         position: "relative", overflow: "hidden", width: "min(440px, 100%)", height: "100%", display: "flex", flexDirection: "column",
         background: "var(--glass-bg)", borderLeft: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        boxShadow: "-8px 0 40px rgba(0,0,0,0.25), 0 0 40px rgba(52,211,153,0.08)",
+        boxShadow: "-8px 0 40px rgba(0,0,0,0.25), 0 0 40px rgba(var(--accent-rgb),0.08)",
       }}>
-        <div aria-hidden="true" style={{ position: "absolute", inset: "-60px -40px auto -40px", height: 220, background: "radial-gradient(circle at 30% 20%, rgba(52,211,153,0.2), transparent 60%)", filter: "blur(30px)", pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: "-60px -40px auto -40px", height: 220, background: "radial-gradient(circle at 30% 20%, rgba(var(--accent-rgb),0.2), transparent 60%)", filter: "blur(30px)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1, overflowY: "auto", padding: "18px 18px 32px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <Tag size={18} style={{ color: TEAL }} />
@@ -5229,11 +5231,11 @@ function Toast({ message, onDone }) {
       display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "calc(100% - 32px)",
       background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
       backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-      boxShadow: "0 10px 34px var(--glass-shadow), 0 0 24px rgba(52,211,153,0.18)",
+      boxShadow: "0 10px 34px var(--glass-shadow), 0 0 24px rgba(var(--accent-rgb),0.18)",
       borderRadius: 99, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: INK,
       animation: "toast-in .18s ease", pointerEvents: "none",
     }}>
-      <Check size={16} style={{ color: "#34D399", flexShrink: 0 }} />
+      <Check size={16} style={{ color: TEAL, flexShrink: 0 }} />
       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{message}</span>
     </div>
   );
