@@ -4013,6 +4013,14 @@ function useMyProfile() {
 function NotificationBell({ t, lang }) {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  // Computed from the button's real on-screen position when it opens, not a
+  // CSS `right: 0` relative to the button's own tiny wrapper — that anchor
+  // is fine for the last icon in the header row, but this bell isn't the
+  // last one (the overflow menu sits to its right), so `right: 0` landed
+  // the panel well short of the true screen edge and, at up to 90vw wide,
+  // its left edge ran off the left side of the screen on a phone.
+  const [pos, setPos] = useState(null);
   const load = useCallback(() => { db.fetchNotifications().then(setItems).catch(() => {}); }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeNotifications(load), [load]);
@@ -4027,6 +4035,14 @@ function NotificationBell({ t, lang }) {
     };
   }, [open]);
 
+  const toggleOpen = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, right: Math.max(12, window.innerWidth - r.right) });
+    }
+    setOpen((o) => !o);
+  };
+
   const unread = items.filter((n) => !n.read);
   const markRead = async (id) => { try { await db.markNotificationsRead([id]); load(); } catch {} };
   const markAllRead = async () => { try { await db.markNotificationsRead(unread.map((n) => n.id)); load(); } catch {} };
@@ -4034,7 +4050,7 @@ function NotificationBell({ t, lang }) {
 
   return (
     <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
-      <button onClick={() => setOpen((o) => !o)} style={{ ...iconBtn, position: "relative" }}
+      <button ref={btnRef} onClick={toggleOpen} style={{ ...iconBtn, position: "relative" }}
         aria-label={t("notifications")} aria-haspopup="menu" aria-expanded={open}>
         <Bell size={16} />
         {unread.length > 0 && (
@@ -4043,8 +4059,8 @@ function NotificationBell({ t, lang }) {
           </span>
         )}
       </button>
-      {open && (
-        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", width: "min(340px, 90vw)", maxHeight: 420, overflowY: "auto", zIndex: 60 }}>
+      {open && pos && (
+        <div role="menu" style={{ position: "fixed", top: pos.top, right: pos.right, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", width: "min(340px, calc(100vw - 24px))", maxHeight: 420, overflowY: "auto", zIndex: 60 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "12px 14px", borderBottom: `1px solid ${LINE}`, position: "sticky", top: 0, background: CARD }}>
             <span style={{ fontWeight: 800, fontSize: 14 }}>{t("notifications")}</span>
             {unread.length > 0 && (
