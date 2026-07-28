@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
-  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -199,7 +199,7 @@ const STRINGS = {
     tplPersonal: "Personal", tplKid: "Kids", tplBlank: "Blank",
     tplHint: "{n} categories — you can rename or add more later",
     tplHintBlank: "No categories — add your own from inside the ledger",
-    deleteLedger: "Delete ledger", renameLedger: "Rename ledger",
+    deleteLedger: "Delete ledger", renameLedger: "Rename ledger", moreActions: "More actions",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
     currency: "Currency",
     vaultTitle: "Treasure Vault", earnedMoney: "Earned Money", boughtSomething: "Bought Something",
@@ -1313,16 +1313,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                   )}
                 </div>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => onOpen(l)} aria-label={t("openLedger", { name: l.name })} className="btn-glow"
-                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                    {(() => { const Icon = ledgerIcon(l.template); return <Icon size={17} style={{ color: TEAL, flexShrink: 0 }} />; })()}
-                    <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1 }}>{l.name}</span>
-                    <ChevronRight size={17} style={{ color: SUB }} />
-                  </button>
-                  <button onClick={() => startRename(l)} style={iconBtn} aria-label={t("renameLedger")}><Pencil size={15} /></button>
-                  <button onClick={() => remove(l)} style={{ ...iconBtn, color: DANGER }} aria-label={t("deleteLedger")}><Trash2 size={15} /></button>
-                </div>
+                <LedgerRow l={l} t={t} onOpen={onOpen} onRename={startRename} onDelete={remove} />
               )}
             </div>
             );
@@ -1352,9 +1343,118 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             {busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} {t("createLedger")}
           </button>
         </div>
-        <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <style>{`
+          .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+          /* Touch devices get no dead-tap-zone: pointer-events stays none there,
+             since touch relies on the swipe gesture, not this button. On
+             hover-capable devices it's a faint always-there hint (not fully
+             invisible — a mouse user should be able to tell it exists without
+             already knowing to hover first), sharpening on hover/focus. */
+          .ledger-row-more { opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+          @media (hover: hover) {
+            .ledger-row-more { opacity: 0.45; pointer-events: auto; }
+            .ledger-row:hover .ledger-row-more, .ledger-row-more:focus-visible { opacity: 1; }
+          }
+        `}</style>
       </div>
       {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
+    </div>
+  );
+}
+
+const LEDGER_ROW_ACTIONS_WIDTH = 92; // two 44px action tiles + a hairline gap
+
+// Rename/Delete used to sit as their own always-visible icon buttons next to
+// each row; now they live under it, revealed by dragging the row left —
+// touch drag, trackpad two-finger swipe, and mouse click-drag all drive the
+// same PointerEvent handlers (pointer events unify all three). Trackpads
+// that report a horizontal swipe as a wheel event (deltaX) are handled
+// separately in onWheel. Mice without a drag gesture get a hover-revealed
+// "more" button as a click fallback (CSS-only, see .ledger-row-more below).
+function LedgerRow({ l, t, onOpen, onRename, onDelete }) {
+  const [x, setXState] = useState(0);
+  const xRef = useRef(0);
+  const setX = (v) => { xRef.current = v; setXState(v); };
+  const dragRef = useRef(null); // { startX, startY, originX, axis, moved }
+  const [dragging, setDragging] = useState(false);
+  const suppressClickRef = useRef(false);
+  const wheelIdleRef = useRef(null);
+
+  const clamp = (v) => Math.min(0, Math.max(-LEDGER_ROW_ACTIONS_WIDTH, v));
+  const snap = () => setX(xRef.current < -LEDGER_ROW_ACTIONS_WIDTH / 2 ? -LEDGER_ROW_ACTIONS_WIDTH : 0);
+  const closeRow = () => setX(0);
+
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, originX: xRef.current, axis: null, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
+    if (!d.axis) {
+      if (Math.hypot(dx, dy) < 4) return; // not yet enough movement to tell a drag from a tap
+      d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; // vertical drags stay a page scroll
+      if (d.axis === "x") setDragging(true);
+    }
+    if (d.axis !== "x") return;
+    d.moved = true;
+    setX(clamp(d.originX + dx));
+  };
+  const onPointerUp = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDragging(false);
+    if (d && d.axis === "x") {
+      if (d.moved) suppressClickRef.current = true; // the drag's release shouldn't also count as a tap
+      snap();
+    }
+  };
+  const onWheel = (e) => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // vertical scroll, let the page handle it
+    e.preventDefault();
+    setX(clamp(xRef.current - e.deltaX));
+    clearTimeout(wheelIdleRef.current);
+    wheelIdleRef.current = setTimeout(snap, 150); // trackpad swipes arrive as a burst of small deltas, not a single up event
+  };
+  const handleRowClick = () => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+    if (xRef.current !== 0) { closeRow(); return; } // tapping an already-open row closes it instead of opening the ledger
+    onOpen(l);
+  };
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4 }}>
+        <button onClick={() => { closeRow(); onRename(l); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("renameLedger")}>
+          <Pencil size={17} />
+        </button>
+        <button onClick={() => { closeRow(); onDelete(l); }} style={{ ...swipeActionBtn, background: "#DC2626", color: "#fff" }} aria-label={t("deleteLedger")}>
+          <Trash2 size={17} />
+        </button>
+      </div>
+      <div role="button" tabIndex={0} aria-label={t("openLedger", { name: l.name })} className="ledger-row btn-glow"
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+        onWheel={onWheel} onClick={handleRowClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
+        style={{
+          position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
+          // Opaque, not the usual translucent glass-bg: this row sits directly
+          // over solid red/teal action tiles, and backdrop-filter's blur pulls
+          // their color through a translucent background at the edges.
+          background: CARD, border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
+          borderRadius: 12, padding: "15px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
+        }}>
+        {(() => { const Icon = ledgerIcon(l.template); return <Icon size={17} style={{ color: TEAL, flexShrink: 0 }} />; })()}
+        <span style={{ fontSize: 15, fontWeight: 700, color: INK, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+        <ChevronRight size={17} style={{ color: SUB, flexShrink: 0 }} />
+        <button className="ledger-row-more" onClick={(e) => { e.stopPropagation(); setX(xRef.current === 0 ? -LEDGER_ROW_ACTIONS_WIDTH : 0); }}
+          aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0, background: "var(--card)" }}>
+          <MoreHorizontal size={15} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -4760,6 +4860,7 @@ const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid ${BAD_LINE}`, background: CARD, color: DANGER, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: SUB, cursor: "pointer" };
+const swipeActionBtn = { width: 44, border: "none", display: "grid", placeItems: "center", cursor: "pointer" };
 const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 const suggestItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 12px", border: "none", background: "none", color: INK, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 // Dashed outline sets it apart from the coloured category pills — it's an action, not a category.
