@@ -5005,6 +5005,11 @@ function GroceryListPanel({ ledgerId, t, onSwitchView }) {
   const remove = async (id) => {
     try { await db.deleteGroceryItem(id); load(); } catch (e) { setError(e.message || String(e)); }
   };
+  const [editingId, setEditingId] = useState(null);
+  const saveEdit = async (id, fields) => {
+    try { await db.updateGroceryItem(id, fields); setEditingId(null); load(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
   const checkDeals = async (item) => {
     setCheckingId(item.id);
     setError("");
@@ -5038,27 +5043,95 @@ function GroceryListPanel({ ledgerId, t, onSwitchView }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((it) => (
-            <div key={it.id} style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="checkbox" checked={it.isCompleted} onChange={(e) => toggle(it.id, e.target.checked)} />
-                <span style={{ flex: 1, fontSize: 14, fontWeight: 700, textDecoration: it.isCompleted ? "line-through" : "none", color: it.isCompleted ? SUB : INK }}>
-                  {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
-                </span>
-                <button onClick={() => remove(it.id)} style={{ ...iconBtn, color: DANGER }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
-              </div>
-              <button onClick={() => checkDeals(it)} disabled={checkingId === it.id}
-                style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center", opacity: checkingId === it.id ? 0.6 : 1 }}>
-                {checkingId === it.id ? t("checkingDeals") : t("priceMatchCheck")}
-              </button>
-              {it.targetSupermarket && (
-                <div style={{ marginTop: 8, background: OK_BG, color: OK_INK, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700 }}>
-                  {t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
-                </div>
-              )}
-            </div>
+            editingId === it.id ? (
+              <GroceryItemForm key={it.id} item={it} t={t}
+                onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
+            ) : (
+              <GroceryRow key={it.id} it={it} t={t} checkingId={checkingId}
+                onToggle={toggle} onCheckDeals={checkDeals}
+                onEdit={() => setEditingId(it.id)} onDelete={() => remove(it.id)} />
+            )
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Same swipe-to-reveal treatment as InventoryRow — Edit/Delete live under
+// the row, revealed by dragging left, instead of the delete icon sitting
+// there permanently.
+function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelete }) {
+  const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
+  return (
+    <div style={{ position: "relative", borderRadius: 12 }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4, visibility: x ? "visible" : "hidden" }}>
+        <button onClick={() => { closeRow(); onEdit(); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("editItem")}>
+          <Pencil size={17} />
+        </button>
+        <button onClick={() => { closeRow(); onDelete(); }} style={{ ...swipeActionBtn, background: "#DC2626", color: "#fff" }} aria-label={t("deleteItem")}>
+          <Trash2 size={17} />
+        </button>
+      </div>
+      <div className="swipe-row" {...handlers} onClick={() => onTapOrClose(() => {})}
+        style={{
+          position: "relative", zIndex: 1,
+          background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+          borderRadius: 12, padding: 12,
+          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
+        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" checked={it.isCompleted} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(it.id, e.target.checked)} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.isCompleted ? "line-through" : "none", color: it.isCompleted ? SUB : INK }}>
+            {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
+          </span>
+          <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
+            aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
+            <MoreHorizontal size={15} />
+          </button>
+        </div>
+        <button className="press-fx" onClick={(e) => { e.stopPropagation(); onCheckDeals(it); }} disabled={checkingId === it.id}
+          style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center", opacity: checkingId === it.id ? 0.6 : 1 }}>
+          {checkingId === it.id ? t("checkingDeals") : t("priceMatchCheck")}
+        </button>
+        {it.targetSupermarket && (
+          <div style={{ marginTop: 8, background: OK_BG, color: OK_INK, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700 }}>
+            {t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// In-place edit form, swapped in for the row it's editing — grocery items
+// only have a name and a quantity, so this is much smaller than
+// InventoryItemForm.
+function GroceryItemForm({ item, t, onSave, onCancel }) {
+  const [name, setName] = useState(item.itemName);
+  const [quantity, setQuantity] = useState(String(item.quantityNeeded));
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    await onSave({ itemName: name.trim(), quantityNeeded: Math.max(1, Number(quantity) || 1) });
+    setSaving(false);
+  };
+  return (
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      <input autoFocus value={name} onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("addGroceryItemPh")} style={input} />
+      <Field label={t("quantity")} style={{ width: 90 }}>
+        <input type="number" inputMode="numeric" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} style={input} />
+      </Field>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
+        <button onClick={save} disabled={!name.trim() || saving} className="btn-glow"
+          style={{ ...addBtn, flex: 2, marginTop: 0, justifyContent: "center", opacity: name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveItem")}
+        </button>
+      </div>
     </div>
   );
 }

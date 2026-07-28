@@ -867,6 +867,11 @@ export async function toggleGroceryItem(id, isCompleted) {
   const { error } = await supabase.from("grocery_list").update({ is_completed: isCompleted }).eq("id", id);
   if (error) throw error;
 }
+export async function updateGroceryItem(id, { itemName, quantityNeeded }) {
+  const { error } = await supabase.from("grocery_list")
+    .update({ item_name: itemName, quantity_needed: quantityNeeded }).eq("id", id);
+  if (error) throw error;
+}
 export async function deleteGroceryItem(id) {
   const { error } = await supabase.from("grocery_list").delete().eq("id", id);
   if (error) throw error;
