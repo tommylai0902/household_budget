@@ -20,9 +20,9 @@ html, body, #root { margin: 0; height: 100%; }
      --accent-ink and --accent-rgb, computed in BudgetApp.jsx) as inline styles
      on <html>, which outrank these rules. Matches ACCENT_COLORS[0] — a neutral
      grey, dark enough that its ink is white, same as the rest of the palette. */
-  --accent: #656565;
-  --accent-ink: #fff;
-  --accent-rgb: 101, 101, 101;
+  --accent: #2DD4BF;
+  --accent-ink: #1A1F24;
+  --accent-rgb: 45, 212, 191;
 }
 :root, :root[data-theme="light"] {
   color-scheme: light;

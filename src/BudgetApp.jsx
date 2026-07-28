@@ -898,11 +898,11 @@ const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY
 // hardcoded across the app's buttons and hover states, so a fresh install's
 // picked accent doesn't clash with its own chrome.
 const ACCENT_COLORS = [
-  "#10B981", // green — same as the Home budget bar's fill (HomePage's progress bar)
-  "#38BDF8", // blue — same as HOME_SKY / the Travel ledger card's accent
-  "#7C3AED", // purple — same shade as the Kid Ledger's KID_PURPLE
-  "#BE185D", // pink
-  "#C2410C", // orange
+  "#2DD4BF", // mint teal — original app glow colour
+  "#38BDF8", // sky blue
+  "#A855F7", // purple
+  "#EC4899", // pink
+  "#F97316", // orange
 ];
 // WCAG relative luminance -> pick whichever of white/near-black ink contrasts
 // better against that background. Crossover is ~0.179 (solving
