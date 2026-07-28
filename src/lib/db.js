@@ -822,6 +822,22 @@ export async function adjustInventoryQuantity(id, delta) {
   if (updErr) throw updErr;
 }
 
+// A direct field update by id, unlike upsertInventoryItem (which matches by
+// name and accumulates quantity for the "add" flow) — this one's for the
+// edit form, which replaces every field outright.
+export async function updateInventoryItem(id, item) {
+  const { error } = await supabase.from("inventory_items").update({
+    name: item.name, quantity: Number(item.quantity) || 0, unit: item.unit || null,
+    min_quantity: item.minQuantity ?? null, expiry_date: item.expiryDate || null,
+  }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteInventoryItem(id) {
+  const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export function subscribeInventory(ledgerId, onChange) {
   const ch = supabase
     .channel(`inventory-${ledgerId}-${Math.random().toString(36).slice(2)}`)

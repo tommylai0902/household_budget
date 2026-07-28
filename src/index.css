@@ -89,3 +89,17 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
    applied to every button, since ghost/icon buttons aren't meant to glow. */
 .btn-glow { transition: box-shadow .18s ease, transform .18s ease; }
 .btn-glow:hover:not(:disabled) { box-shadow: 0 0 20px rgba(52,211,153,0.45); transform: translateY(-1px); }
+
+/* Desktop-mouse fallback for every swipeable row (ledger picker, inventory
+   list): a faint always-there "more" button, sharpening on hover/focus, as
+   an alternative to the drag gesture. */
+.swipe-more-btn { opacity: 0.7; pointer-events: auto; transition: opacity .15s ease; }
+.swipe-row:hover .swipe-more-btn, .swipe-more-btn:focus-visible { opacity: 1; }
+
+/* Same mint hover glow as the Bento home cards — one shared tone for every
+   swipeable row, not a per-item accent. */
+.swipe-row { transition: box-shadow .18s ease, border-color .18s ease; }
+.swipe-row:hover {
+  border-color: rgba(52,211,153,0.75) !important;
+  box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
+}

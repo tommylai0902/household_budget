@@ -137,6 +137,8 @@ const STRINGS = {
     quantity: "Quantity", unit: "Unit", expiryDate: "Expiry date",
     inventory: "Inventory", searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.",
     addItem: "Add Item", itemNamePh: "Item name", minQuantityLabel: "Low stock at (optional)",
+    editItem: "Edit item", deleteItem: "Delete item", saveItem: "Save changes",
+    deleteItemConfirm: 'Delete "{name}" from your inventory? This cannot be undone.',
     lowStock: "Low stock", expiringSoon: "Expiring soon", expired: "Expired",
     addToGroceryList: "Add to Grocery List", addedToGroceryList: "Added",
     alreadyOnGroceryList: "{name} is already on your grocery list. Add it again?", addAnyway: "Add anyway",
@@ -1368,23 +1370,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             {busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} {t("createLedger")}
           </button>
         </div>
-        <style>{`
-          .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-          /* Touch devices get no dead-tap-zone: pointer-events stays none there,
-             since touch relies on the swipe gesture, not this button. On
-             hover-capable devices it's a faint always-there hint (not fully
-             invisible — a mouse user should be able to tell it exists without
-             already knowing to hover first), sharpening on hover/focus. */
-          .ledger-row-more { opacity: 0.7; pointer-events: auto; transition: opacity .15s ease; }
-          .ledger-row:hover .ledger-row-more, .ledger-row-more:focus-visible { opacity: 1; }
-          /* Same hover glow as the Bento home cards — one shared mint tone for
-             every row, not the per-template accent. */
-          .ledger-row { transition: box-shadow .18s ease, border-color .18s ease; }
-          .ledger-row:hover {
-            border-color: rgba(52,211,153,0.75) !important;
-            box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(52,211,153,0.3), 0 0 40px rgba(52,211,153,0.14) !important;
-          }
-        `}</style>
+        <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
       {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
     </div>
@@ -1392,18 +1378,17 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
 }
 
 const LEDGER_ROW_ACTIONS_WIDTH = 92; // two 44px action tiles + a hairline gap
+const INVENTORY_ROW_ACTIONS_WIDTH = 92;
 
-// Rename/Delete used to sit as their own always-visible icon buttons next to
-// each row; now they live under it, revealed by dragging the row left —
-// touch drag, trackpad two-finger swipe, and mouse click-drag all drive the
-// same PointerEvent handlers (pointer events unify all three). Trackpads
-// that report a horizontal swipe as a wheel event (deltaX) are handled
-// separately in onWheel. Mice without a drag gesture get a hover-revealed
-// "more" button as a click fallback (CSS-only, see .ledger-row-more below).
-function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
-  const [stats, setStats] = useState(null); // { count, lastUpdated } | null while loading
-  useEffect(() => { let live = true; db.fetchLedgerStats(l.id).then((s) => live && setStats(s)).catch(() => {}); return () => { live = false; }; }, [l.id]);
-  const accent = ledgerAccent(l.template);
+// Shared drag-to-reveal machinery behind every swipeable row (ledger picker,
+// inventory list): touch drag, trackpad two-finger swipe, and mouse
+// click-drag all drive the same PointerEvent handlers (pointer events unify
+// all three); a trackpad's horizontal swipe can also arrive as a wheel event
+// (deltaX) instead, handled separately in onWheel. `onTapOrClose` is the
+// click handler every row wants: a tap while open just closes the row
+// instead of triggering whatever a plain tap does, and a drag's release
+// shouldn't also fire as a tap.
+function useSwipeReveal(actionsWidth) {
   const [x, setXState] = useState(0);
   const xRef = useRef(0);
   const setX = (v) => { xRef.current = v; setXState(v); };
@@ -1412,14 +1397,14 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
   const suppressClickRef = useRef(false);
   const wheelIdleRef = useRef(null);
 
-  const clamp = (v) => Math.min(0, Math.max(-LEDGER_ROW_ACTIONS_WIDTH, v));
-  const snap = () => setX(xRef.current < -LEDGER_ROW_ACTIONS_WIDTH / 2 ? -LEDGER_ROW_ACTIONS_WIDTH : 0);
+  const clamp = (v) => Math.min(0, Math.max(-actionsWidth, v));
+  const snap = () => setX(xRef.current < -actionsWidth / 2 ? -actionsWidth : 0);
   const closeRow = () => setX(0);
+  const toggle = () => setX(xRef.current === 0 ? -actionsWidth : 0);
 
   const onPointerDown = (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragRef.current = { startX: e.clientX, startY: e.clientY, originX: xRef.current, axis: null, moved: false };
-    e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e) => {
     const d = dragRef.current;
@@ -1428,7 +1413,13 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
     if (!d.axis) {
       if (Math.hypot(dx, dy) < 4) return; // not yet enough movement to tell a drag from a tap
       d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; // vertical drags stay a page scroll
-      if (d.axis === "x") setDragging(true);
+      if (d.axis === "x") {
+        setDragging(true);
+        // Capture only once this is definitely a drag, never on pointerdown:
+        // a captured pointer retargets the following click to the capturing
+        // element, which swallowed clicks on the row's own child buttons.
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
     }
     if (d.axis !== "x") return;
     d.moved = true;
@@ -1450,11 +1441,28 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
     clearTimeout(wheelIdleRef.current);
     wheelIdleRef.current = setTimeout(snap, 150); // trackpad swipes arrive as a burst of small deltas, not a single up event
   };
-  const handleRowClick = () => {
+  const onTapOrClose = (onTap) => {
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
-    if (xRef.current !== 0) { closeRow(); return; } // tapping an already-open row closes it instead of opening the ledger
-    onOpen(l);
+    if (xRef.current !== 0) { closeRow(); return; }
+    onTap();
   };
+
+  return {
+    x, xRef, dragging, closeRow, toggle, onTapOrClose,
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel },
+  };
+}
+
+// Rename/Delete used to sit as their own always-visible icon buttons next to
+// each row; now they live under it, revealed by dragging the row left. Mice
+// without a drag gesture get a hover-revealed "more" button as a click
+// fallback (CSS-only, see .swipe-more-btn in index.css).
+function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
+  const [stats, setStats] = useState(null); // { count, lastUpdated } | null while loading
+  useEffect(() => { let live = true; db.fetchLedgerStats(l.id).then((s) => live && setStats(s)).catch(() => {}); return () => { live = false; }; }, [l.id]);
+  const accent = ledgerAccent(l.template);
+  const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(LEDGER_ROW_ACTIONS_WIDTH);
+  const handleRowClick = () => onTapOrClose(() => onOpen(l));
 
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
@@ -1468,9 +1476,8 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
           <Trash2 size={17} />
         </button>
       </div>
-      <div role="button" tabIndex={0} aria-label={t("openLedger", { name: l.name })} className="ledger-row btn-glow"
-        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
-        onWheel={onWheel} onClick={handleRowClick}
+      <div role="button" tabIndex={0} aria-label={t("openLedger", { name: l.name })} className="swipe-row"
+        {...handlers} onClick={handleRowClick}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
         style={{
           position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
@@ -1501,7 +1508,7 @@ function LedgerRow({ l, t, lang, onOpen, onRename, onDelete }) {
           )}
         </div>
         <ChevronRight size={17} style={{ color: SUB, flexShrink: 0 }} />
-        <button className="ledger-row-more" onClick={(e) => { e.stopPropagation(); setX(xRef.current === 0 ? -LEDGER_ROW_ACTIONS_WIDTH : 0); }}
+        <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
           aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0, background: "var(--card)" }}>
           <MoreHorizontal size={15} />
         </button>
@@ -4599,6 +4606,17 @@ function InventoryPanel({ ledgerId, t }) {
   const adjust = async (id, delta) => {
     try { await db.adjustInventoryQuantity(id, delta); load(); } catch (e) { setError(e.message || String(e)); }
   };
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const saveEdit = async (id, fields) => {
+    try { await db.updateInventoryItem(id, fields); setEditingId(null); load(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+  const doDeleteItem = async () => {
+    const item = confirmDeleteItem;
+    setConfirmDeleteItem(null);
+    try { await db.deleteInventoryItem(item.id); load(); } catch (e) { setError(e.message || String(e)); }
+  };
   const [confirmAddItem, setConfirmAddItem] = useState(null); // inventory item pending "already on the list" confirmation
   const doAddToGrocery = async (item) => {
     try { await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity)); }
@@ -4682,35 +4700,17 @@ function InventoryPanel({ ledgerId, t }) {
         <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noInventoryItems")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {visible.map((it) => {
-            const low = isLow(it);
-            const expired = isExpired(it.expiryDate);
-            const expiring = !expired && isExpiring(it.expiryDate);
-            return (
-              <div key={it.id} style={{ background: "var(--glass-bg)", border: `1px solid ${low || expired ? BAD_LINE : "var(--glass-border)"}`, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
-                    <div style={{ fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
-                  </div>
-                  <button onClick={() => adjust(it.id, -1)} style={iconBtn} aria-label="-"><Minus size={14} /></button>
-                  <button onClick={() => adjust(it.id, 1)} style={iconBtn} aria-label="+"><Plus size={14} /></button>
-                </div>
-                {(low || expired || expiring) && (
-                  <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                    {low && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("lowStock")}</span>}
-                    {expired && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("expired")}</span>}
-                    {expiring && <span style={{ color: WARN, fontSize: 11, fontWeight: 700 }}>{t("expiringSoon")}</span>}
-                  </div>
-                )}
-                {low && (
-                  <button onClick={() => addToGrocery(it)} style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
-                    <ShoppingCart size={14} /> {t("addToGroceryList")}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {visible.map((it) => (
+            editingId === it.id ? (
+              <InventoryItemForm key={it.id} item={it} t={t}
+                onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
+            ) : (
+              <InventoryRow key={it.id} it={it} t={t}
+                low={isLow(it)} expired={isExpired(it.expiryDate)} expiring={!isExpired(it.expiryDate) && isExpiring(it.expiryDate)}
+                onAdjust={adjust} onAddToGrocery={addToGrocery}
+                onEdit={() => setEditingId(it.id)} onDelete={() => setConfirmDeleteItem(it)} />
+            )
+          ))}
         </div>
       )}
       {confirmAddItem && (
@@ -4720,6 +4720,111 @@ function InventoryPanel({ ledgerId, t }) {
           onConfirm={() => { doAddToGrocery(confirmAddItem); setConfirmAddItem(null); }}
           onCancel={() => setConfirmAddItem(null)} />
       )}
+      {confirmDeleteItem && (
+        <ConfirmDialog t={t}
+          message={t("deleteItemConfirm", { name: confirmDeleteItem.name })}
+          onConfirm={doDeleteItem} onCancel={() => setConfirmDeleteItem(null)} />
+      )}
+    </div>
+  );
+}
+
+// Same swipe-to-reveal treatment as the ledger picker rows, minus the "open
+// this" tap target — an inventory row has no detail view to open, so a tap
+// only ever closes an open row.
+function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery, onEdit, onDelete }) {
+  const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
+  return (
+    <div style={{ position: "relative", borderRadius: 12 }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 4, visibility: x ? "visible" : "hidden" }}>
+        <button onClick={() => { closeRow(); onEdit(); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("editItem")}>
+          <Pencil size={17} />
+        </button>
+        <button onClick={() => { closeRow(); onDelete(); }} style={{ ...swipeActionBtn, background: "#DC2626", color: "#fff" }} aria-label={t("deleteItem")}>
+          <Trash2 size={17} />
+        </button>
+      </div>
+      <div className="swipe-row" {...handlers} onClick={() => onTapOrClose(() => {})}
+        style={{
+          position: "relative", zIndex: 1,
+          background: "var(--glass-bg)", border: `1px solid ${low || expired ? BAD_LINE : "var(--glass-border)"}`,
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+          borderRadius: 12, padding: 12,
+          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
+        }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+            <div style={{ fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }} style={iconBtn} aria-label="-"><Minus size={14} /></button>
+          <button onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }} style={iconBtn} aria-label="+"><Plus size={14} /></button>
+          <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
+            aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
+            <MoreHorizontal size={15} />
+          </button>
+        </div>
+        {(low || expired || expiring) && (
+          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+            {low && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("lowStock")}</span>}
+            {expired && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("expired")}</span>}
+            {expiring && <span style={{ color: WARN, fontSize: 11, fontWeight: 700 }}>{t("expiringSoon")}</span>}
+          </div>
+        )}
+        {low && (
+          <button onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
+            <ShoppingCart size={14} /> {t("addToGroceryList")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// In-place edit form, swapped in for the row it's editing — same shape as the
+// "Add Item" form above it, but the quantity here replaces rather than adds.
+function InventoryItemForm({ item, t, onSave, onCancel }) {
+  const [draft, setDraft] = useState({
+    name: item.name, quantity: String(item.quantity), unit: item.unit,
+    minQuantity: item.minQuantity == null ? "" : String(item.minQuantity),
+    expiryDate: item.expiryDate || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (!draft.name.trim() || saving) return;
+    setSaving(true);
+    await onSave({
+      name: draft.name.trim(), quantity: draft.quantity, unit: draft.unit,
+      minQuantity: draft.minQuantity === "" ? null : Number(draft.minQuantity),
+      expiryDate: draft.expiryDate || null,
+    });
+    setSaving(false);
+  };
+  return (
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("itemNamePh")} style={input} />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Field label={t("quantity")} style={{ width: 90 }}>
+          <input type="number" inputMode="decimal" value={draft.quantity} onChange={(e) => setDraft({ ...draft, quantity: e.target.value })} style={input} />
+        </Field>
+        <Field label={t("unit")} style={{ width: 90 }}>
+          <input type="text" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} style={input} />
+        </Field>
+        <Field label={t("expiryDate")} style={{ flex: 1, minWidth: 140 }}>
+          <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
+        </Field>
+      </div>
+      <Field label={t("minQuantityLabel")}>
+        <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
+      </Field>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
+        <button onClick={save} disabled={!draft.name.trim() || saving} className="btn-glow"
+          style={{ ...addBtn, flex: 2, marginTop: 0, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveItem")}
+        </button>
+      </div>
     </div>
   );
 }
