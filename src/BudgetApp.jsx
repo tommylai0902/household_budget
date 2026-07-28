@@ -139,11 +139,10 @@ const STRINGS = {
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
     dealCheckErr: "Couldn't check prices: {msg}",
     backToDashboard: "Back to Dashboard",
-    greetingMorning: "Good morning", greetingAfternoon: "Good afternoon", greetingEvening: "Good evening",
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
     groceryCardTitle: "Smart Grocery & Deals", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
-    greetingLine: "{greeting}, {name}!", viewingLedger: "Viewing: {name}",
+    viewingLedger: "Viewing: {name}",
     budgetBannerLine: "BUDGET: {spent} / {budget} Spent ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
     noBudgetSetPrompt: "No budget set — tap to add one",
@@ -1251,10 +1250,10 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(45,212,191,0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(56,189,248,0.14), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
-        {/* Same header block as the Bento home now: greeting on the left, brand
-            centered, bell/menu on the right — same string in every language,
-            like the eyebrow on the sign-in screen. */}
-        <BrandHeader left={<Greeting t={t} />} right={<>
+        {/* Same header block as the Bento home now: brand centered, bell/menu
+            on the right — same string in every language, like the eyebrow on
+            the sign-in screen. */}
+        <BrandHeader right={<>
           <NotificationBell t={t} lang={lang} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
               — plus Home, which jumps back to wherever the Bento dashboard leads
@@ -1996,9 +1995,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
         {/* minWidth keeps the title from shrinking to a stub, so on a narrow screen
             the controls wrap to their own line; marginLeft:auto then holds them
             against the right edge instead of falling back to the left.
-            Home shows the greeting on the left and the brand centered (position:
-            relative/absolute, so it's centered on the row rather than the
-            available space next to a variable-width greeting); every other
+            Home shows the brand centered via BrandHeader's grid; every other
             view swaps that for a "Back to Dashboard" button — but only on
             "ledger", where it goes all the way out to the picker (onExit),
             a different destination than the overflow menu's Home entry.
@@ -2010,7 +2007,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             currency) outside of "home" — those don't mean anything until
             you're actually inside a ledger. */}
         {viewState === "home" ? (
-          <BrandHeader left={<Greeting t={t} />} right={<>
+          <BrandHeader right={<>
             <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
           </>} />
@@ -4305,23 +4302,6 @@ const glassCard = {
   backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
-
-// Lives in Ledger's header row (next to the centered brand) rather than
-// inside HomePage's own body, so it sits on the same row as "Monira" per the
-// approved mockup instead of stacked above it.
-function Greeting({ t }) {
-  const [profile] = useMyProfile();
-  const hour = new Date().getHours();
-  const isDay = hour >= 6 && hour < 18;
-  const greetingWord = hour < 12 ? t("greetingMorning") : hour < 18 ? t("greetingAfternoon") : t("greetingEvening");
-  const name = profile?.name || profile?.email?.split("@")[0] || "";
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 500, color: INK }}>
-      {isDay ? <Sun size={18} style={{ color: WARN }} /> : <Moon size={18} style={{ color: SUB }} />}
-      {name ? t("greetingLine", { greeting: greetingWord, name }) : greetingWord}
-    </div>
-  );
-}
 
 // Shared by the Bento home header and the picker's header — a CSS grid
 // (1fr auto 1fr), not flex+absolute-center: with true grid columns, the
