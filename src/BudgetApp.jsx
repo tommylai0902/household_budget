@@ -876,25 +876,33 @@ const money = (n) => moneyFmt(activeCurrency).format(Number(n || 0));
 const currencySymbol = (currency) =>
   moneyFmt(currency).formatToParts(0).find((p) => p.type === "currency")?.value || currency;
 const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "JPY", "KRW", "TWD", "HKD", "CNY", "THB", "AUD", "SGD"];
-// Settings → Accent colour. Deliberately its own dusty/muted (Morandi-style)
-// palette, not MEMBER_COLORS — those stay saturated on purpose, for telling
-// people apart at a glance in chips and charts, which is a different job
-// from an app-wide theme colour.
+// Settings → Accent colour. A small, curated set matching the app's own
+// glassmorphic glow palette — not MEMBER_COLORS, which stay saturated on
+// purpose for telling people apart at a glance in chips and charts, a
+// different job from an app-wide theme colour.
+//
+// green and blue are pulled verbatim from colours already on screen
+// elsewhere (the Home budget bar's fill, the Travel ledger card's accent),
+// for visual consistency with the app's own chrome — deliberately, over the
+// older rule below, which the other three still follow:
 //
 // Pastel/light entries were tried and pulled: the accent isn't only a fill
 // behind white text (where ACCENT_INK's light/dark switch would cover it) —
 // it's also used bare, as the colour of text and borders directly on the
 // page (unselected pills, links), and there's no "ink" to swap there. A pale
-// accent just goes low-contrast and washes out. So every entry here is kept
-// dark enough (WCAG luminance <= 0.179) to clear ~4.5:1 against white on its
-// own, not just as a fill. ACCENT_INK stays in place as a safety net, not
-// because this list currently needs the light-ink branch.
-// [0] is the default for anyone who's never picked one — a neutral grey, so a
-// fresh install doesn't look like it took a stance on colour.
+// accent just goes low-contrast and washes out. So every other entry here is
+// kept dark enough (WCAG luminance <= 0.179) to clear ~4.5:1 against white on
+// its own, not just as a fill — green/blue trade a little of that contrast
+// for matching the exact colours already established elsewhere in the app.
+// [0] (green) is the default — it matches the mint/teal glow already
+// hardcoded across the app's buttons and hover states, so a fresh install's
+// picked accent doesn't clash with its own chrome.
 const ACCENT_COLORS = [
-  "#656565", "#41625F", "#52667A", "#5B7250", "#816F56", "#914D46", "#8F5660", "#60434D",
-  "#636B74", "#6A6890", "#726B4E", "#565B54", "#B14B52", "#6D3F49", "#8C6432",
-  "#7A7281", "#965454", "#6B5152",
+  "#10B981", // green — same as the Home budget bar's fill (HomePage's progress bar)
+  "#38BDF8", // blue — same as HOME_SKY / the Travel ledger card's accent
+  "#7C3AED", // purple — same shade as the Kid Ledger's KID_PURPLE
+  "#BE185D", // pink
+  "#C2410C", // orange
 ];
 // WCAG relative luminance -> pick whichever of white/near-black ink contrasts
 // better against that background. Crossover is ~0.179 (solving
