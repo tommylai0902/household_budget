@@ -2169,9 +2169,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             same ledger, but those entries operate on transactions/
             categories/splits, which don't mean anything from either. */}
         {viewState === "home" ? (
-          <BrandHeader
-            left={<HomeNavDropdown onInventory={() => setViewState("inventory")} onGrocery={() => setViewState("grocery")} t={t} />}
-            right={<>
+          <BrandHeader right={<>
             <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
           </>} />
