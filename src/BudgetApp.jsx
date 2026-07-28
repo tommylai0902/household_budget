@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
-  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, LayoutGrid,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -1090,9 +1090,20 @@ export default function App() {
       if (match) openLedger(match, "home");
     } catch {}
   };
+  const makeGoView = (view) => async () => {
+    const cached = getLastLedgerId();
+    if (!cached) return;
+    try {
+      const all = await db.fetchLedgers();
+      const match = all.find((l) => l.id === cached);
+      if (match) openLedger(match, view);
+    } catch {}
+  };
 
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
     onOpen={(l) => openLedger(l, "ledger")} onHome={getLastLedgerId() ? goHome : undefined}
+    onInventory={getLastLedgerId() ? makeGoView("inventory") : undefined}
+    onGrocery={getLastLedgerId() ? makeGoView("grocery") : undefined}
     currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
   return <Ledger ledger={ledger} startView={entryView} currentUserId={session.user.id} onExit={() => setLedger(null)}
     onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
@@ -1277,7 +1288,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, inviteMsg, onDismissInvite, currentUserId }) {
+function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onInventory, onGrocery, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("household");
@@ -1348,7 +1359,9 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
         {/* Same header block as the Bento home now: brand centered, bell/menu
             on the right — same string in every language, like the eyebrow on
             the sign-in screen. */}
-        <BrandHeader right={<>
+        <BrandHeader
+          left={(onInventory || onGrocery) ? <HomeNavDropdown onInventory={onInventory} onGrocery={onGrocery} t={t} /> : undefined}
+          right={<>
           <NotificationBell t={t} lang={lang} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
               — plus Home, which jumps back to wherever the Bento dashboard leads
@@ -2154,7 +2167,9 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             same ledger, but those entries operate on transactions/
             categories/splits, which don't mean anything from either. */}
         {viewState === "home" ? (
-          <BrandHeader right={<>
+          <BrandHeader
+            left={<HomeNavDropdown onInventory={() => setViewState("inventory")} onGrocery={() => setViewState("grocery")} t={t} />}
+            right={<>
             <NotificationBell t={t} lang={lang} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
           </>} />
@@ -4458,6 +4473,34 @@ const glassCard = {
   backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
+
+function HomeNavDropdown({ onInventory, onGrocery, t }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button onClick={() => setOpen(o => !o)} style={{ ...ghostBtn, padding: "6px 10px", gap: 5 }}>
+        <LayoutGrid size={15} /><ChevronDown size={11} style={{ opacity: 0.6 }} />
+      </button>
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--glass-border)", borderRadius: 14, padding: 6, zIndex: 100, minWidth: 170, boxShadow: "0 8px 32px var(--glass-shadow)" }}>
+          <button role="menuitem" onClick={() => { setOpen(false); onInventory(); }} style={menuItem}>
+            <Package size={14} style={{ color: HOME_AMBER }} /> {t("inventoryCardTitle")}
+          </button>
+          <button role="menuitem" onClick={() => { setOpen(false); onGrocery(); }} style={menuItem}>
+            <ShoppingCart size={14} style={{ color: HOME_SKY }} /> {t("groceryCardTitle")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Shared by the Bento home header and the picker's header — a CSS grid
 // (1fr auto 1fr), not flex+absolute-center: with true grid columns, the
