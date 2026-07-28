@@ -147,6 +147,7 @@ const STRINGS = {
     dealCheckErr: "Couldn't check prices: {msg}",
     backToDashboard: "Back to Dashboard",
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
+    navDropdownLabel: "Ledgers",
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
     groceryCardTitle: "Smart Grocery & Deals", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
     viewingLedger: "Viewing: {name}",
@@ -4482,6 +4483,7 @@ function HomeNavDropdown({ onInventory, onGrocery, t }) {
       <button onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open}
         style={{ display: "flex", alignItems: "center", gap: 8, padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit" }}>
         <LayoutGrid size={18} style={{ color: TEAL, flexShrink: 0 }} />
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: INK, whiteSpace: "nowrap" }}>{t("navDropdownLabel")}</h2>
         <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
