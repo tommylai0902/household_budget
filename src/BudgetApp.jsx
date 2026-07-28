@@ -134,14 +134,14 @@ const STRINGS = {
     // Inventory / Grocery
     addToInventory: "Add to Inventory", addToInventoryHint: "Track this purchase in your inventory",
     quantity: "Quantity", unit: "Unit", expiryDate: "Expiry date",
-    inventory: "Inventory", searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.",
+    searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.",
     addItem: "Add Item", itemNamePh: "Item name", minQuantityLabel: "Low stock at (optional)",
     editItem: "Edit item", deleteItem: "Delete item", saveItem: "Save changes",
     deleteItemConfirm: 'Delete "{name}" from your inventory? This cannot be undone.',
     lowStock: "Low stock", expiringSoon: "Expiring soon", expired: "Expired",
     addToGroceryList: "Add to Grocery List", addedToGroceryList: "{name} added to your grocery list",
     alreadyOnGroceryList: "{name} is already on your grocery list. Add it again?", addAnyway: "Add anyway",
-    groceryList: "Grocery List", addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
+    addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
     dealCheckErr: "Couldn't check prices: {msg}",
@@ -295,14 +295,14 @@ const STRINGS = {
     // 存貨 / 買餸清單
     addToInventory: "加入存貨", addToInventoryHint: "將呢次買嘅嘢記入存貨",
     quantity: "數量", unit: "單位", expiryDate: "到期日",
-    inventory: "存貨", searchInventoryPh: "搵存貨…", noInventoryItems: "仲未有存貨。",
+    searchInventoryPh: "搵存貨…", noInventoryItems: "仲未有存貨。",
     addItem: "新增物品", itemNamePh: "物品名稱", minQuantityLabel: "低過幾多就提醒（可選）",
     editItem: "編輯物品", deleteItem: "刪除物品", saveItem: "儲存修改",
     deleteItemConfirm: "確定喺存貨度刪除「{name}」？呢個動作無法還原。",
     lowStock: "存貨唔夠", expiringSoon: "快到期", expired: "已過期",
     addToGroceryList: "加入買餸清單", addedToGroceryList: "已將「{name}」加入買餸清單",
     alreadyOnGroceryList: "「{name}」已經喺買餸清單度。要再加一次？", addAnyway: "照加",
-    groceryList: "買餸清單", addGroceryItemPh: "加樣嘢…", noGroceryItems: "買餸清單係空嘅。",
+    addGroceryItemPh: "加樣嘢…", noGroceryItems: "買餸清單係空嘅。",
     priceMatchCheck: "🔍 格價", checkingDeals: "格緊價…",
     postalCodePh: "郵政編碼（用嚟格價）", priceMatchBadge: "最平：{merchant} {price}",
     dealCheckErr: "格價失敗：{msg}",
@@ -448,14 +448,14 @@ const STRINGS = {
     // 库存 / 购物清单
     addToInventory: "加入库存", addToInventoryHint: "把这次购买记入库存",
     quantity: "数量", unit: "单位", expiryDate: "到期日",
-    inventory: "库存", searchInventoryPh: "搜索库存…", noInventoryItems: "还没有库存物品。",
+    searchInventoryPh: "搜索库存…", noInventoryItems: "还没有库存物品。",
     addItem: "新增物品", itemNamePh: "物品名称", minQuantityLabel: "低于多少时提醒（可选）",
     editItem: "编辑物品", deleteItem: "删除物品", saveItem: "保存修改",
     deleteItemConfirm: "确定从库存中删除「{name}」？此操作无法撤销。",
     lowStock: "库存不足", expiringSoon: "即将到期", expired: "已过期",
     addToGroceryList: "加入购物清单", addedToGroceryList: "已将「{name}」加入购物清单",
     alreadyOnGroceryList: "「{name}」已在购物清单中。要再加一次吗？", addAnyway: "仍然添加",
-    groceryList: "购物清单", addGroceryItemPh: "添加物品…", noGroceryItems: "购物清单是空的。",
+    addGroceryItemPh: "添加物品…", noGroceryItems: "购物清单是空的。",
     priceMatchCheck: "🔍 比价", checkingDeals: "比价中…",
     postalCodePh: "邮政编码（用于比价）", priceMatchBadge: "最低：{merchant} {price}",
     dealCheckErr: "比价失败：{msg}",
@@ -599,14 +599,14 @@ const STRINGS = {
     // Inventaire / Liste de courses
     addToInventory: "Ajouter à l'inventaire", addToInventoryHint: "Suivre cet achat dans votre inventaire",
     quantity: "Quantité", unit: "Unité", expiryDate: "Date de péremption",
-    inventory: "Inventaire", searchInventoryPh: "Rechercher dans l'inventaire…", noInventoryItems: "Aucun article pour l'instant.",
+    searchInventoryPh: "Rechercher dans l'inventaire…", noInventoryItems: "Aucun article pour l'instant.",
     addItem: "Ajouter un article", itemNamePh: "Nom de l'article", minQuantityLabel: "Alerte sous (facultatif)",
     editItem: "Modifier l'article", deleteItem: "Supprimer l'article", saveItem: "Enregistrer",
     deleteItemConfirm: "Supprimer « {name} » de votre inventaire ? Cette action est irréversible.",
     lowStock: "Stock faible", expiringSoon: "Bientôt périmé", expired: "Périmé",
     addToGroceryList: "Ajouter à la liste de courses", addedToGroceryList: "« {name} » ajouté à votre liste de courses",
     alreadyOnGroceryList: "« {name} » est déjà sur votre liste de courses. L'ajouter encore ?", addAnyway: "Ajouter quand même",
-    groceryList: "Liste de courses", addGroceryItemPh: "Ajouter un article…", noGroceryItems: "La liste de courses est vide.",
+    addGroceryItemPh: "Ajouter un article…", noGroceryItems: "La liste de courses est vide.",
     priceMatchCheck: "🔍 Comparer les prix", checkingDeals: "Vérification…",
     postalCodePh: "Code postal pour comparer les prix", priceMatchBadge: "Meilleur : {price} chez {merchant}",
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
@@ -750,14 +750,14 @@ const STRINGS = {
     // Inventario / Lista de la compra
     addToInventory: "Añadir al inventario", addToInventoryHint: "Registra esta compra en tu inventario",
     quantity: "Cantidad", unit: "Unidad", expiryDate: "Fecha de caducidad",
-    inventory: "Inventario", searchInventoryPh: "Buscar en el inventario…", noInventoryItems: "Aún no hay artículos.",
+    searchInventoryPh: "Buscar en el inventario…", noInventoryItems: "Aún no hay artículos.",
     addItem: "Añadir artículo", itemNamePh: "Nombre del artículo", minQuantityLabel: "Avisar por debajo de (opcional)",
     editItem: "Editar artículo", deleteItem: "Eliminar artículo", saveItem: "Guardar cambios",
     deleteItemConfirm: '¿Eliminar "{name}" de tu inventario? Esta acción no se puede deshacer.',
     lowStock: "Pocas existencias", expiringSoon: "Caduca pronto", expired: "Caducado",
     addToGroceryList: "Añadir a la lista de la compra", addedToGroceryList: '"{name}" añadido a tu lista de la compra',
     alreadyOnGroceryList: '"{name}" ya está en tu lista de la compra. ¿Añadirlo otra vez?', addAnyway: "Añadir igualmente",
-    groceryList: "Lista de la compra", addGroceryItemPh: "Añadir un artículo…", noGroceryItems: "La lista de la compra está vacía.",
+    addGroceryItemPh: "Añadir un artículo…", noGroceryItems: "La lista de la compra está vacía.",
     priceMatchCheck: "🔍 Comparar precios", checkingDeals: "Comprobando…",
     postalCodePh: "Código postal para comparar precios", priceMatchBadge: "Mejor: {price} en {merchant}",
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
@@ -2266,8 +2266,8 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
           </>
         )}
 
-        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} />}
-        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} t={t} />}
+        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} onSwitchView={setViewState} />}
+        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} t={t} onSwitchView={setViewState} />}
       </div>
 
       {detail && (
@@ -4678,7 +4678,52 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
 
 const NEW_INVENTORY_ITEM = { name: "", quantity: "1", unit: "", minQuantity: "", expiryDate: "" };
 
-function InventoryPanel({ ledgerId, t }) {
+// The three non-Home views a ledger has, in the order they appear here —
+// reused by ViewSwitcher below and by whichever view renders it.
+const VIEW_OPTIONS = [
+  { key: "ledger", icon: Wallet, labelKey: "ledgerCard" },
+  { key: "inventory", icon: Package, labelKey: "inventoryCardTitle" },
+  { key: "grocery", icon: ShoppingCart, labelKey: "groceryCardTitle" },
+];
+
+// Replaces Inventory/Grocery's static icon+title with a dropdown so you can
+// jump straight to either sibling view (or back to the ledger itself)
+// without detouring through Home first — Home is still reachable too, via
+// the overflow menu's Home entry, same as before.
+function ViewSwitcher({ current, onSwitch, t }) {
+  const [open, setOpen] = useState(false);
+  const ref = useCloseOnOutside(open, () => setOpen(false));
+  const active = VIEW_OPTIONS.find((v) => v.key === current);
+  const ActiveIcon = active.icon;
+  return (
+    <div ref={ref} style={{ position: "relative", flex: 1, minWidth: 0 }}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+        <ActiveIcon size={18} style={{ color: TEAL, flexShrink: 0 }} />
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(active.labelKey)}</h2>
+        <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
+          {VIEW_OPTIONS.map((v) => {
+            const Icon = v.icon;
+            const isActive = v.key === current;
+            return (
+              <button key={v.key} role="menuitem" onClick={() => { setOpen(false); if (!isActive) onSwitch(v.key); }}
+                style={{ ...menuItem, background: isActive ? OK_BG : "none", color: isActive ? OK_INK : INK }}>
+                <Icon size={15} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(v.labelKey)}</span>
+                {isActive && <Check size={14} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InventoryPanel({ ledgerId, t, onSwitchView }) {
   const [items, setItems] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -4750,9 +4795,8 @@ function InventoryPanel({ ledgerId, t }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Package size={18} style={{ color: TEAL }} />
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, flex: 1 }}>{t("inventory")}</h2>
-        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px" }}>
+        <ViewSwitcher current="inventory" onSwitch={onSwitchView} t={t} />
+        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
           <Plus size={15} /> {t("addItem")}
         </button>
       </div>
@@ -4930,7 +4974,7 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
   );
 }
 
-function GroceryListPanel({ ledgerId, t }) {
+function GroceryListPanel({ ledgerId, t, onSwitchView }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [newItem, setNewItem] = useState("");
@@ -4969,8 +5013,7 @@ function GroceryListPanel({ ledgerId, t }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <ShoppingCart size={18} style={{ color: TEAL }} />
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("groceryList")}</h2>
+        <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
       </div>
       {error && <div style={errorBox}>{error}</div>}
       <input value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
