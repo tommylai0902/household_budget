@@ -2147,10 +2147,12 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             "inventory"/"grocery" drop the button entirely: their only way
             back is Home, which already goes to the exact same place
             (setViewState("home")), so the button was a dead duplicate there.
-            Month-select is ledger-only. The overflow menu only offers
+            Month-select is ledger-only. So are the overflow menu's
             ledger-management entries (Budget/Reports/Recurring/members/
-            currency) outside of "home" — those don't mean anything until
-            you're actually inside a ledger. */}
+            stores/currency) — gated to viewState==="ledger" specifically,
+            not "every non-home view": Inventory/Grocery are part of the
+            same ledger, but those entries operate on transactions/
+            categories/splits, which don't mean anything from either. */}
         {viewState === "home" ? (
           <BrandHeader right={<>
             <NotificationBell t={t} lang={lang} />
@@ -2172,11 +2174,12 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
               <NotificationBell t={t} lang={lang} />
               <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
                 onHome={() => setViewState("home")}
-                onBudget={() => setShowBudget(true)} onReport={() => setShowReport(true)}
-                onStores={() => setManagingStores(true)}
-                onManageMembers={features.showSplit ? () => setShowManageMembers(true) : undefined}
-                onRecurring={features.hasRecurring ? () => setShowRecurring(true) : undefined}
-                currency={features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
+                onBudget={viewState === "ledger" ? () => setShowBudget(true) : undefined}
+                onReport={viewState === "ledger" ? () => setShowReport(true) : undefined}
+                onStores={viewState === "ledger" ? () => setManagingStores(true) : undefined}
+                onManageMembers={viewState === "ledger" && features.showSplit ? () => setShowManageMembers(true) : undefined}
+                onRecurring={viewState === "ledger" && features.hasRecurring ? () => setShowRecurring(true) : undefined}
+                currency={viewState === "ledger" && features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
             </div>
           </div>
         )}
