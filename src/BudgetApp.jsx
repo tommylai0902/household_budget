@@ -4028,6 +4028,12 @@ function NotificationBell({ t, lang }) {
   // last one (the overflow menu sits to its right), so `right: 0` landed
   // the panel well short of the true screen edge and, at up to 90vw wide,
   // its left edge ran off the left side of the screen on a phone.
+  // width is also computed here rather than left as a CSS `min(340px, ...)`:
+  // that only bounds against the *full* viewport, not against the space
+  // actually available to the right of wherever this particular right
+  // offset lands, so a bell sitting further from the edge could still leave
+  // the panel too wide to fit — capping width against `innerWidth - right`
+  // guarantees a left margin no matter where the button is.
   const [pos, setPos] = useState(null);
   const load = useCallback(() => { db.fetchNotifications().then(setItems).catch(() => {}); }, []);
   useEffect(() => { load(); }, [load]);
@@ -4046,7 +4052,9 @@ function NotificationBell({ t, lang }) {
   const toggleOpen = () => {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, right: Math.max(12, window.innerWidth - r.right) });
+      const right = Math.max(12, window.innerWidth - r.right);
+      const width = Math.min(340, window.innerWidth - right - 12);
+      setPos({ top: r.bottom + 6, right, width });
     }
     setOpen((o) => !o);
   };
@@ -4068,7 +4076,7 @@ function NotificationBell({ t, lang }) {
         )}
       </button>
       {open && pos && (
-        <div role="menu" style={{ position: "fixed", top: pos.top, right: pos.right, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", width: "min(340px, calc(100vw - 24px))", maxHeight: 420, overflowY: "auto", zIndex: 60 }}>
+        <div role="menu" style={{ position: "fixed", top: pos.top, right: pos.right, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", width: pos.width, maxHeight: 420, overflowY: "auto", zIndex: 60 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "12px 14px", borderBottom: `1px solid ${LINE}`, position: "sticky", top: 0, background: CARD }}>
             <span style={{ fontWeight: 800, fontSize: 14 }}>{t("notifications")}</span>
             {unread.length > 0 && (
