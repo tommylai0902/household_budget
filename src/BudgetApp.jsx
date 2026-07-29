@@ -4835,6 +4835,7 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
     } catch (e) { setError(e.message || String(e)); }
     setSaving(false);
   };
+  const cancelAddItem = () => { setDraft(NEW_INVENTORY_ITEM); setShowAddForm(false); };
 
   const today = todayISO();
   const isExpiring = (d) => !!d && d >= today && d <= addDays(today, 3);
@@ -4876,9 +4877,12 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
           <Field label={t("minQuantityLabel")}>
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
-          <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
-            {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={cancelAddItem} disabled={saving} style={{ ...ghostBtn, flex: 1, justifyContent: "center" }}>{t("cancel")}</button>
+            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+              {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
+            </button>
+          </div>
         </div>
       )}
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchInventoryPh")} style={input} />
