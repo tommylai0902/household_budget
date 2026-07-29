@@ -2519,10 +2519,16 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
           const badgeBg = isToday ? OK_BG : amt > 0 ? SPEND_TINT : "transparent";
           const badgeInk = isToday ? OK_INK : INK;
           return (
+            // justifyContent: flex-start, not center — a grid row stretches every
+            // cell to match its tallest (the ones with a second, amount line), and
+            // centering made a one-line cell's day number drift down to the middle
+            // of that taller box while a two-line cell's stayed pinned near the
+            // top. Same padding-top on every cell keeps every number aligned along
+            // one row regardless of which cells carry an amount underneath.
             <button key={iso} onClick={() => onSelectDay(isSelected ? null : iso)}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
-                minHeight: 46, borderRadius: 9, cursor: "pointer", fontFamily: "inherit", padding: 0, border: "none",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 3,
+                minHeight: 46, borderRadius: 9, cursor: "pointer", fontFamily: "inherit", padding: "6px 0 0", border: "none",
                 background: isSelected ? TEAL : "transparent", color: isSelected ? ACCENT_INK : INK,
               }}>
               <span style={{ display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 999, fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600, background: isSelected ? "transparent" : badgeBg, color: isSelected ? ACCENT_INK : badgeInk }}>
