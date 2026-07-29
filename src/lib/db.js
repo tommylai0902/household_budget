@@ -850,6 +850,7 @@ export function subscribeInventory(ledgerId, onChange) {
 const toAppGroceryItem = (r) => ({
   id: r.id, itemName: r.item_name, quantityNeeded: Number(r.quantity_needed),
   isCompleted: r.is_completed, targetSupermarket: r.target_supermarket || "",
+  brand: r.brand || "",
   dealPrice: r.deal_price != null ? Number(r.deal_price) : null,
   dealImageUrl: r.deal_image_url || "", dealItemName: r.deal_item_name || "",
   dealValidTo: r.deal_valid_to || null, dealMerchantLogo: r.deal_merchant_logo || "",
@@ -869,9 +870,9 @@ export async function toggleGroceryItem(id, isCompleted) {
   const { error } = await supabase.from("grocery_list").update({ is_completed: isCompleted }).eq("id", id);
   if (error) throw error;
 }
-export async function updateGroceryItem(id, { itemName, quantityNeeded }) {
+export async function updateGroceryItem(id, { itemName, quantityNeeded, brand }) {
   const { error } = await supabase.from("grocery_list")
-    .update({ item_name: itemName, quantity_needed: quantityNeeded }).eq("id", id);
+    .update({ item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null }).eq("id", id);
   if (error) throw error;
 }
 export async function deleteGroceryItem(id) {
@@ -896,10 +897,13 @@ export function subscribeGroceryList(ledgerId, onChange) {
   return () => supabase.removeChannel(ch);
 }
 
-/* ---- Flipp price-match, proxied + cached through /api/scan-deals ---- */
-export async function fetchDeals(query, postalCode) {
-  const res = await fetch(`/api/scan-deals?q=${encodeURIComponent(query)}&postalCode=${encodeURIComponent(postalCode || "")}`);
+/* ---- Flipp price-match, served from the weekly flyer mirror via /api/scan-deals ---- */
+// brand is an optional extra substring filter — see migration 026.
+export async function fetchDeals(query, postalCode, { brand } = {}) {
+  const params = new URLSearchParams({ q: query, postalCode: postalCode || "" });
+  if (brand) params.set("brand", brand);
+  const res = await fetch(`/api/scan-deals?${params}`);
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(out.error || res.statusText);
-  return out; // { query, deals, lowestPrice, lowestMerchant }
+  return out; // { query, deals, lowestPrice, lowestMerchant, pending? }
 }

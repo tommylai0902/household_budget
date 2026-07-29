@@ -29,6 +29,16 @@ export default async function handler(req, res) {
     .eq("postal_code", postalCode)
     .ilike("name", `%${escapeLike(q)}%`);
 
+  // Flipp writes the brand into the item name itself ("NEILSON CHOCOLATE MILK
+  // 750mL"), so narrowing is just a further substring match on the same column
+  // rather than a separate field. Optional; blank adds no filter.
+  //
+  // A `size` filter worked the same way and was dropped in migration 027 —
+  // matched as a substring it made results worse, "750" pulling in
+  // "MILK BONE DOG BISCUITS ... 750-900 G" on a search for milk.
+  const brand = (searchParams.get("brand") || "").trim();
+  if (brand) query = query.ilike("name", `%${escapeLike(brand)}%`);
+
   // Expired deals are worse than no deal — a cashier checks the date and turns
   // it down, having wasted the trip. Weekly flyers overlap, so the mirror
   // always holds some already-past items. Rows with no end date are kept: an

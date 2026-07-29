@@ -150,6 +150,8 @@ const STRINGS = {
     dealsNoneFound: "No flyer deals found for this item.",
     priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
+    brandLabel: "Brand", brandPh: "e.g. Neilson",
+    brandHint: "Optional — narrows the flyer search to the exact product.",
     backToDashboard: "Back to Dashboard",
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     navDropdownLabel: "Ledgers",
@@ -316,6 +318,8 @@ const STRINGS = {
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
     priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
+    brandLabel: "牌子", brandPh: "例如 Neilson",
+    brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
     recurring: "定期支出", recurringAdd: "新增", noRecurring: "仲未有定期支出。",
     recurNew: "新增定期支出", recurEdit: "編輯定期支出",
@@ -473,6 +477,8 @@ const STRINGS = {
     dealsNoneFound: "没有找到这件商品的传单优惠。",
     priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
+    brandLabel: "品牌", brandPh: "例如 Neilson",
+    brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
     recurring: "定期支出", recurringAdd: "新增", noRecurring: "还没有定期支出。",
     recurNew: "新增定期支出", recurEdit: "编辑定期支出",
@@ -628,6 +634,8 @@ const STRINGS = {
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
     priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
+    brandLabel: "Marque", brandPh: "p. ex. Neilson",
+    brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
     recurring: "Dépenses récurrentes", recurringAdd: "Ajouter", noRecurring: "Aucune dépense récurrente.",
     recurNew: "Nouvelle dépense récurrente", recurEdit: "Modifier la dépense récurrente",
@@ -783,6 +791,8 @@ const STRINGS = {
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
     priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
+    brandLabel: "Marca", brandPh: "p. ej. Neilson",
+    brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
     recurring: "Gastos recurrentes", recurringAdd: "Añadir", noRecurring: "Aún no hay gastos recurrentes.",
     recurNew: "Nuevo gasto recurrente", recurEdit: "Editar gasto recurrente",
@@ -5113,7 +5123,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     setCheckingId(item.id);
     setError("");
     try {
-      const result = await db.fetchDeals(item.itemName, postalCode);
+      const result = await db.fetchDeals(item.itemName, postalCode, { brand: item.brand });
       // `pending` = the weekly mirror hasn't run for this region yet. Nothing
       // to retry here — the lookup never touches Flipp live by design.
       if (result.pending) setToast({ id: Date.now(), text: t("dealsPending") });
@@ -5323,11 +5333,12 @@ function GroceryRow({ it, t, lang, checkingId, onToggle, onCheckDeals, onEdit, o
 function GroceryItemForm({ item, t, onSave, onCancel }) {
   const [name, setName] = useState(item.itemName);
   const [quantity, setQuantity] = useState(String(item.quantityNeeded));
+  const [brand, setBrand] = useState(item.brand || "");
   const [saving, setSaving] = useState(false);
   const save = async () => {
     if (!name.trim() || saving) return;
     setSaving(true);
-    await onSave({ itemName: name.trim(), quantityNeeded: Math.max(1, Number(quantity) || 1) });
+    await onSave({ itemName: name.trim(), quantityNeeded: Math.max(1, Number(quantity) || 1), brand: brand.trim() });
     setSaving(false);
   };
   return (
@@ -5337,6 +5348,16 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
       <Field label={t("quantity")} style={{ width: 90 }}>
         <input type="number" inputMode="numeric" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} style={input} />
       </Field>
+      {/* Narrows the flyer search rather than describing the item for its own
+          sake, so it says so — otherwise it reads as a busywork field. A size
+          field sat here too and was removed: matched as a substring it made
+          results worse, "750" turning up Milk-Bone dog biscuits (migration 027). */}
+      <Field label={t("brandLabel")}>
+        <input value={brand} onChange={(e) => setBrand(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }}
+          placeholder={t("brandPh")} style={input} />
+      </Field>
+      <div style={{ fontSize: 11.5, color: SUB, marginTop: -4 }}>{t("brandHint")}</div>
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
         <button onClick={save} disabled={!name.trim() || saving} className="btn-glow"
