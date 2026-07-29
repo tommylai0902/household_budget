@@ -5107,10 +5107,11 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
   );
 }
 
+const NEW_GROCERY_ITEM = { itemName: "", quantityNeeded: 1, brand: "" };
+
 function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
-  const [newItem, setNewItem] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   // The ledger's saved code wins over the device cache: the weekly flyer cron
   // looks up prices for whatever is stored on the ledger, so a stale
@@ -5125,10 +5126,16 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeGroceryList(ledgerId, load), [ledgerId, load]);
 
-  const add = async () => {
-    if (!newItem.trim()) return;
-    try { await db.addGroceryItem(ledgerId, newItem.trim()); setNewItem(""); load(); }
-    catch (e) { setError(e.message || String(e)); }
+  // Same form as editing, so brand can be set while adding. Bumping addKey
+  // remounts it blank: the form seeds its fields from props once, and the
+  // panel stays open because adding several in a row is the normal case.
+  const [addKey, setAddKey] = useState(0);
+  const add = async ({ itemName, quantityNeeded, brand }) => {
+    try {
+      await db.addGroceryItem(ledgerId, itemName, quantityNeeded, brand);
+      setAddKey((k) => k + 1);
+      load();
+    } catch (e) { setError(e.message || String(e)); }
   };
   const toggle = async (id, isCompleted) => {
     try { await db.toggleGroceryItem(id, isCompleted); load(); } catch (e) { setError(e.message || String(e)); }
@@ -5204,12 +5211,8 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       {/* Stays open after each add — the toast comment below spells out why
           adding several in a row is the normal case here. */}
       {showAddForm && (
-        <div style={{ display: "flex", gap: 8 }}>
-          <input autoFocus value={newItem} onChange={(e) => setNewItem(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") { setNewItem(""); setShowAddForm(false); } }}
-            placeholder={t("addGroceryItemPh")} style={{ ...input, flex: 1 }} />
-          <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
-        </div>
+        <GroceryItemForm key={addKey} item={NEW_GROCERY_ITEM} t={t}
+          onSave={add} onCancel={() => setShowAddForm(false)} />
       )}
       {items === null ? (
         <Centered>{t("connecting")}</Centered>
@@ -5397,9 +5400,15 @@ function GroceryRow({ it, t, lang, checkingId, onToggle, onCheckDeals, onEdit, o
 }
 
 // In-place edit form, swapped in for the row it's editing — grocery items
-// only have a name and a quantity, so this is much smaller than
+// only have a name, a quantity and a brand, so this is much smaller than
 // InventoryItemForm.
+//
+// Also the ADD form — an item with no id is a new one. Adding used to be a
+// lone name box, which meant the brand that makes price matching land on the
+// right product could only be filled in by editing the item afterwards, a
+// step nobody takes.
 function GroceryItemForm({ item, t, onSave, onCancel }) {
+  const isNew = !item.id;
   const [name, setName] = useState(item.itemName);
   const [quantity, setQuantity] = useState(String(item.quantityNeeded));
   const [brand, setBrand] = useState(item.brand || "");
@@ -5431,7 +5440,7 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
         <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
         <button onClick={save} disabled={!name.trim() || saving} className="btn-glow"
           style={{ ...addBtn, flex: 1, marginTop: 0, justifyContent: "center", opacity: name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
-          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveItem")}
+          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {isNew ? t("addItem") : t("saveItem")}
         </button>
       </div>
     </div>
