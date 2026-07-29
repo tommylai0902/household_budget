@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
+import { scanErrorResponse } from "./gemini.js";
 
 // Runs server-side only — GEMINI_API_KEY never reaches the browser.
 // (A VITE_ prefixed key would be bundled into the client JS and readable by anyone.)
@@ -105,8 +106,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json(JSON.parse(text));
   } catch (e) {
-    console.error("scan-receipt failed:", e);
-    const status = e?.status >= 400 && e.status < 600 ? e.status : 500;
-    return res.status(status).json({ error: e?.message || "scan failed" });
+    return scanErrorResponse(res, e, "scan-receipt");
   }
 }

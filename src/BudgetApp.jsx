@@ -177,6 +177,8 @@ const STRINGS = {
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
     scanReceipt: "Scan receipt", uploadReceipt: "Upload receipt", scanning: "Reading receipt…",
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
+    scanRetryIn: "Scanner busy — retrying in {secs}s…",
+    scanRateLimited: "too many scans just now. Wait a minute and try again.",
     currencyMismatch: "This receipt looks like it's in {scanned}, but this ledger is set to {ledger}. Amount was kept as printed — no conversion applied.",
     editCategories: "Edit categories", menu: "Menu",
     settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
@@ -337,6 +339,8 @@ const STRINGS = {
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
     scanReceipt: "掃描收據", uploadReceipt: "上載收據", scanning: "讀取收據中…",
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
+    scanRetryIn: "掃描器繁忙——{secs} 秒後再試…",
+    scanRateLimited: "一時間掃得太密。等一分鐘再試。",
     currencyMismatch: "呢張收據睇落係 {scanned},但呢本帳簿設定咗 {ledger}。金額已按原數保留，冇做轉換。",
     editCategories: "編輯類別", menu: "選單",
     settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
@@ -496,6 +500,8 @@ const STRINGS = {
     receiptEmpty: "还没有附上收据。扫描收据后，明细会显示在这里。",
     scanReceipt: "扫描收据", uploadReceipt: "上传收据", scanning: "读取收据中…",
     scanHint: "或自己填写", scanFailed: "读取不了这张收据：{msg}",
+    scanRetryIn: "扫描器繁忙——{secs} 秒后重试…",
+    scanRateLimited: "短时间内扫描太多次。等一分钟再试。",
     currencyMismatch: "这张收据看起来是 {scanned}，但本账本设置为 {ledger}。金额按原数保留，未做换算。",
     editCategories: "编辑类别", menu: "菜单",
     settings: "设置", appearance: "外观", light: "浅色", dark: "深色", accentColor: "主题色",
@@ -653,6 +659,8 @@ const STRINGS = {
     receiptEmpty: "Aucun reçu joint. Après la lecture d'un reçu, ses articles apparaîtront ici.",
     scanReceipt: "Scanner un reçu", uploadReceipt: "Téléverser un reçu", scanning: "Lecture du reçu…",
     scanHint: "ou remplissez vous-même", scanFailed: "Impossible de lire ce reçu : {msg}",
+    scanRetryIn: "Lecteur occupé — nouvelle tentative dans {secs} s…",
+    scanRateLimited: "trop de lectures d'un coup. Attendez une minute et réessayez.",
     currencyMismatch: "Ce reçu semble être en {scanned}, mais ce registre est en {ledger}. Le montant a été gardé tel quel — aucune conversion.",
     editCategories: "Modifier les catégories", menu: "Menu",
     settings: "Paramètres", appearance: "Apparence", light: "Clair", dark: "Sombre", accentColor: "Couleur d'accent",
@@ -810,6 +818,8 @@ const STRINGS = {
     receiptEmpty: "Aún no hay recibo adjunto. Al escanear uno, sus artículos aparecerán aquí.",
     scanReceipt: "Escanear recibo", uploadReceipt: "Subir recibo", scanning: "Leyendo el recibo…",
     scanHint: "o rellénalo tú", scanFailed: "No se pudo leer ese recibo: {msg}",
+    scanRetryIn: "Escáner ocupado — reintentando en {secs} s…",
+    scanRateLimited: "demasiados escaneos seguidos. Espera un minuto e inténtalo de nuevo.",
     currencyMismatch: "Este recibo parece estar en {scanned}, pero este libro usa {ledger}. El importe se mantuvo tal cual, sin conversión.",
     editCategories: "Editar categorías", menu: "Menú",
     settings: "Ajustes", appearance: "Apariencia", light: "Claro", dark: "Oscuro", accentColor: "Color de acento",
@@ -3197,6 +3207,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanErr, setScanErr] = useState("");
+  const [retryIn, setRetryIn] = useState(0); // seconds left on a rate-limit wait
   const [currencyMismatch, setCurrencyMismatch] = useState(null); // scanned receipt's ISO code, when it differs from the ledger's
   const [remember, setRemember] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -3220,23 +3231,33 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
 
   // Scanning only prefills the form — you still review and save it yourself.
   const scanReceipt = async (file) => {
-    setScanErr(""); setCurrencyMismatch(null); setScanning(true);
+    setScanErr(""); setCurrencyMismatch(null); setScanning(true); setRetryIn(0);
     try {
       const { image, mediaType } = await fileToUpload(file);
       const { data } = await supabase.auth.getSession();
-      const res = await fetch("/api/scan-receipt", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          image,
-          mediaType,
-          categories: categories.map((c) => c.name),
-          token: data.session?.access_token,
-          lang,
-        }),
+      const body = JSON.stringify({
+        image, mediaType, categories: categories.map((c) => c.name),
+        token: data.session?.access_token, lang,
       });
-      const out = await res.json();
-      if (!res.ok) throw new Error(out.error || res.statusText);
+      const post = async () => {
+        const res = await fetch("/api/scan-receipt", { method: "POST", headers: { "content-type": "application/json" }, body });
+        return { res, out: await res.json() };
+      };
+
+      let { res, out } = await post();
+      // Gemini's free tier allows only a handful of calls a minute and tells us
+      // exactly how long to wait. That's seconds, and the photo is already in
+      // hand — so sit out the wait once rather than making someone re-shoot a
+      // receipt over a limit that clears itself.
+      if (res.status === 429 && out.retryAfter) {
+        for (let s = out.retryAfter; s > 0; s--) {
+          setRetryIn(s);
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        setRetryIn(0);
+        ({ res, out } = await post());
+      }
+      if (!res.ok) throw new Error(out.code === "rate_limited" ? t("scanRateLimited") : (out.error || res.statusText));
       setD((prev) => ({
         ...prev,
         description: out.description || prev.description,
@@ -3253,7 +3274,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
     } catch (e) {
       setScanErr(e.message);
     } finally {
-      setScanning(false);
+      setScanning(false); setRetryIn(0);
     }
   };
 
@@ -3372,7 +3393,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
     <Overlay onClose={onClose} title={initial ? t("editExpense") : t("addExpense")} t={t}>
       {scanning ? (
         <div style={{ ...addBtn, marginTop: 0, width: "100%", justifyContent: "center", cursor: "wait", opacity: 0.6 }}>
-          <Loader2 size={18} className="spin" /> {t("scanning")}
+          <Loader2 size={18} className="spin" /> {retryIn ? t("scanRetryIn", { secs: retryIn }) : t("scanning")}
         </div>
       ) : (
         // Scan and Upload do different things, not just different sources: Scan

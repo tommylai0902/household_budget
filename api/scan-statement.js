@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
+import { scanErrorResponse } from "./gemini.js";
 
 // Sibling of scan-receipt.js: same security/validation shape, different job —
 // this reads a screenshot or PDF of a card/bank statement and pulls out every
@@ -93,8 +94,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json(JSON.parse(text));
   } catch (e) {
-    console.error("scan-statement failed:", e);
-    const status = e?.status >= 400 && e.status < 600 ? e.status : 500;
-    return res.status(status).json({ error: e?.message || "scan failed" });
+    return scanErrorResponse(res, e, "scan-statement");
   }
 }
