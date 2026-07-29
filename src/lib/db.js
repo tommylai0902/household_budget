@@ -854,7 +854,15 @@ const toAppGroceryItem = (r) => ({
   dealPrice: r.deal_price != null ? Number(r.deal_price) : null,
   dealImageUrl: r.deal_image_url || "", dealItemName: r.deal_item_name || "",
   dealValidTo: r.deal_valid_to || null, dealMerchantLogo: r.deal_merchant_logo || "",
+  dealFlyerId: r.deal_flyer_id || null, dealPostalCode: r.deal_postal_code || "",
 });
+
+// Flipp publishes each flyer at this public URL; the city segment and name
+// slug that appear in their own links are optional, so the numeric id we
+// already store is enough. Used for "view the whole flyer" at the till —
+// see migration 028 for why this links out instead of mirroring the pages.
+export const flyerUrl = (flyerId, postalCode) =>
+  flyerId ? `https://flipp.com/en-ca/flyer/${flyerId}?postal_code=${encodeURIComponent((postalCode || "").toUpperCase().replace(/\s+/g, ""))}` : "";
 
 export async function fetchGroceryList(ledgerId) {
   const { data, error } = await supabase.from("grocery_list").select("*").eq("ledger_id", ledgerId).order("created_at");
@@ -879,12 +887,13 @@ export async function deleteGroceryItem(id) {
   const { error } = await supabase.from("grocery_list").delete().eq("id", id);
   if (error) throw error;
 }
-export async function setGroceryDeal(id, { targetSupermarket, dealPrice, dealImageUrl, dealItemName, dealValidTo, dealMerchantLogo }) {
+export async function setGroceryDeal(id, { targetSupermarket, dealPrice, dealImageUrl, dealItemName, dealValidTo, dealMerchantLogo, dealFlyerId, dealPostalCode }) {
   const { error } = await supabase.from("grocery_list")
     .update({
       target_supermarket: targetSupermarket, deal_price: dealPrice,
       deal_image_url: dealImageUrl || null, deal_item_name: dealItemName || null,
       deal_valid_to: dealValidTo || null, deal_merchant_logo: dealMerchantLogo || null,
+      deal_flyer_id: dealFlyerId || null, deal_postal_code: dealPostalCode || null,
     }).eq("id", id);
   if (error) throw error;
 }

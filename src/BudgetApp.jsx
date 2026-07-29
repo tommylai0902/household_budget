@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
-  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, ExternalLink,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -150,6 +150,7 @@ const STRINGS = {
     dealsNoneFound: "No flyer deals found for this item.",
     priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
+    viewFullFlyer: "View the whole flyer",
     brandLabel: "Brand", brandPh: "e.g. Neilson",
     brandHint: "Optional — narrows the flyer search to the exact product.",
     backToDashboard: "Back to Dashboard",
@@ -320,6 +321,7 @@ const STRINGS = {
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
     priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
+    viewFullFlyer: "睇成份海報",
     brandLabel: "牌子", brandPh: "例如 Neilson",
     brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
@@ -481,6 +483,7 @@ const STRINGS = {
     dealsNoneFound: "没有找到这件商品的传单优惠。",
     priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
+    viewFullFlyer: "查看整份传单",
     brandLabel: "品牌", brandPh: "例如 Neilson",
     brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
@@ -640,6 +643,7 @@ const STRINGS = {
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
     priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
+    viewFullFlyer: "Voir la circulaire complète",
     brandLabel: "Marque", brandPh: "p. ex. Neilson",
     brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
@@ -799,6 +803,7 @@ const STRINGS = {
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
     priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
+    viewFullFlyer: "Ver el folleto completo",
     brandLabel: "Marca", brandPh: "p. ej. Neilson",
     brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
@@ -5161,6 +5166,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
         targetSupermarket: deal.merchant, dealPrice: deal.price,
         dealImageUrl: deal.imageUrl, dealItemName: deal.name,
         dealValidTo: deal.validTo, dealMerchantLogo: deal.merchantLogo,
+        dealFlyerId: deal.flyerId, dealPostalCode: deal.postalCode,
       });
       setDealsFor(null);
       load();
@@ -5228,7 +5234,8 @@ function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
       <div style={{ fontSize: 12.5, color: SUB, marginBottom: 4 }}>{t("priceMatchHint")}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {deals.map((d, i) => (
-          <button key={i} onClick={() => onPick(d)} className="press-fx"
+          <div key={i} style={{ position: "relative" }}>
+          <button onClick={() => onPick(d)} className="press-fx"
             style={{
               display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%",
               background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 12,
@@ -5250,6 +5257,16 @@ function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
               {d.validTo && <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("dealValidUntil", { date: shortDate(d.validTo, lang) })}</div>}
             </div>
           </button>
+          {/* Its own control, not nested in the card button — a link inside a
+              button is invalid HTML and picking the deal would swallow the tap. */}
+          {d.flyerId && (
+            <a href={db.flyerUrl(d.flyerId, d.postalCode)} target="_blank" rel="noopener noreferrer"
+              title={t("viewFullFlyer")} aria-label={t("viewFullFlyer")}
+              style={{ ...iconBtn, position: "absolute", top: 8, right: 8, width: 28, height: 28, background: CARD }}>
+              <ExternalLink size={14} />
+            </a>
+          )}
+          </div>
         ))}
       </div>
     </Overlay>
@@ -5341,6 +5358,16 @@ function GroceryRow({ it, t, lang, checkingId, onToggle, onCheckDeals, onEdit, o
               </div>
               <div style={{ fontSize: 19, fontWeight: 800, color: OK_INK, flexShrink: 0 }}>{money(it.dealPrice)}</div>
             </div>
+            {/* Some cashiers want the whole flyer, not just the cutout. Links
+                out to Flipp's own page rather than mirroring it — see
+                migration 028. stopPropagation so it doesn't collapse the row. */}
+            {it.dealFlyerId && (
+              <a href={db.flyerUrl(it.dealFlyerId, it.dealPostalCode)} target="_blank" rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center", textDecoration: "none", boxSizing: "border-box" }}>
+                <ExternalLink size={14} /> {t("viewFullFlyer")}
+              </a>
+            )}
           </div>
         )}
       </div>

@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
   let query = supabase
     .from("flyer_items")
-    .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo")
+    .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id")
     .eq("postal_code", postalCode)
     .ilike("name", `%${escapeLike(q)}%`);
 
@@ -55,6 +55,8 @@ export default async function handler(req, res) {
     name: d.name, price: Number(d.price), merchant: d.merchant,
     validFrom: d.valid_from, validTo: d.valid_to,
     imageUrl: d.image_url, merchantLogo: d.merchant_logo,
+    // Enough to rebuild the public flyer URL client-side — see migration 028.
+    flyerId: d.flyer_id, postalCode,
   }));
 
   // No rows for the region at all means the weekly mirror hasn't run for it
