@@ -3230,9 +3230,14 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   // deleting it on the next save.
   const [d, setD] = useState(() => ({
     ...(initial || {
-      // A day tapped on the calendar wins over the usual mid-month guess.
+      // A day tapped on the calendar wins; otherwise today, if the ledger is
+      // currently showing the month today falls in — a stray future/past date
+      // wasn't the point, and a mid-month guess made every untapped expense
+      // land on the 15th regardless of when it was actually added. Viewing a
+      // different month (via Reports' selector) keeps the old 15th-of-that-
+      // month fallback, since "today" wouldn't even be in it.
       description: "", amount: "", categoryId: categories[0]?.id || null,
-      date: defaultDate || `${defaultMonth}-15`, note: "", paidById: members[0]?.id || null,
+      date: defaultDate || (monthOf(todayISO()) === defaultMonth ? todayISO() : `${defaultMonth}-15`), note: "", paidById: members[0]?.id || null,
       // Follows this ledger's last entry (expenses come back newest-first), so a
       // household that doesn't split taps Personal once instead of on every
       // expense. Ticking nobody is not the way to say "don't split" — that's a
