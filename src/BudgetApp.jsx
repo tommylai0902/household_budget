@@ -151,6 +151,7 @@ const STRINGS = {
     priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
     viewFullFlyer: "View the whole flyer", completedCount: "Completed ({n})",
+    scanBarcode: "Scan a product", scanNoProduct: "Couldn't tell what that is. Try the barcode or the front of the pack.",
     brandLabel: "Brand", brandPh: "e.g. Neilson",
     brandHint: "Optional — narrows the flyer search to the exact product.",
     backToDashboard: "Back to Dashboard",
@@ -322,6 +323,7 @@ const STRINGS = {
     priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
     viewFullFlyer: "睇成份海報", completedCount: "已買（{n}）",
+    scanBarcode: "掃描貨品", scanNoProduct: "認唔出係咩嚟。試吓影條碼或者包裝正面。",
     brandLabel: "牌子", brandPh: "例如 Neilson",
     brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
@@ -484,6 +486,7 @@ const STRINGS = {
     priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
     viewFullFlyer: "查看整份传单", completedCount: "已完成（{n}）",
+    scanBarcode: "扫描商品", scanNoProduct: "认不出这是什么。试试拍条形码或包装正面。",
     brandLabel: "品牌", brandPh: "例如 Neilson",
     brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
@@ -644,6 +647,7 @@ const STRINGS = {
     priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
     viewFullFlyer: "Voir la circulaire complète", completedCount: "Terminés ({n})",
+    scanBarcode: "Scanner un produit", scanNoProduct: "Impossible d'identifier ce produit. Essayez le code-barres ou le devant de l'emballage.",
     brandLabel: "Marque", brandPh: "p. ex. Neilson",
     brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
@@ -804,6 +808,7 @@ const STRINGS = {
     priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
     viewFullFlyer: "Ver el folleto completo", completedCount: "Completados ({n})",
+    scanBarcode: "Escanear un producto", scanNoProduct: "No se pudo identificar. Prueba con el código de barras o el frente del envase.",
     brandLabel: "Marca", brandPh: "p. ej. Neilson",
     brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
@@ -2356,7 +2361,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             else it appears (the Home dashboard's card does the same); the
             in-ledger transactions view is reached via the budget banner's
             "View transactions" instead, same as from Home. */}
-        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
+        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
         {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} ledgerPostalCode={ledger.postalCode} t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
       </div>
 
@@ -4834,7 +4839,7 @@ function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
   );
 }
 
-function InventoryPanel({ ledgerId, t, onSwitchView }) {
+function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
   const [items, setItems] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -4842,6 +4847,33 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [draft, setDraft] = useState(NEW_INVENTORY_ITEM);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  // Photograph a product (or its barcode) and open the add form already
+  // filled in. It reads the label rather than decoding the barcode: Safari
+  // has no BarcodeDetector, and this is an iPhone PWA — see api/scan-product.js.
+  // Everything stays editable; nothing is saved until Add Item is pressed.
+  const scanProduct = async (file) => {
+    setScanning(true); setError("");
+    try {
+      const { image, mediaType } = await fileToUpload(file);
+      const { data } = await supabase.auth.getSession();
+      const out = await db.scanProduct({ image, mediaType, token: data.session?.access_token, lang });
+      // Brand is worth having on the shelf label, but not twice over — plenty
+      // of products already lead with it ("Astro Original").
+      const name = out.brand && !out.name.toLowerCase().includes(out.brand.toLowerCase())
+        ? `${out.brand} ${out.name}` : out.name;
+      setDraft({ ...NEW_INVENTORY_ITEM, name, unit: out.unit || "" });
+      setShowAddForm(true);
+    } catch (e) {
+      setError(
+        e.code === "no_product" ? t("scanNoProduct")
+        : e.code === "rate_limited" ? t("scanRateLimited")
+        : (e.message || String(e)),
+      );
+    }
+    setScanning(false);
+  };
   const load = useCallback(() => {
     db.fetchInventoryItems(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
   }, [ledgerId]);
@@ -4908,6 +4940,14 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="inventory" onSwitch={onSwitchView} t={t} />
+        {/* A label, not a button — the file input is what has to be clicked to
+            open the camera, and wrapping it is the only way to style that. */}
+        <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+          style={{ ...ghostBtn, padding: "8px 10px", flexShrink: 0, cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+          {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />}
+          <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
+        </label>
         <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
           <Plus size={15} /> {t("addItem")}
         </button>

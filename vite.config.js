@@ -21,6 +21,7 @@ const apiDevServer = (env) => ({
   configureServer(server) {
     Object.assign(process.env, env)
     mountApi(server, '/api/scan-receipt', '/api/scan-receipt.js')
+    mountApi(server, '/api/scan-product', '/api/scan-product.js')
     mountApi(server, '/api/scan-deals', '/api/scan-deals.js')
     // Vercel runs this one on a Thursday cron; mounted here so you can trigger
     // a refresh by hand (?force=1 skips the "already ran this week" guard).

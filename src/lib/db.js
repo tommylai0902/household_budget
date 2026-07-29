@@ -908,6 +908,21 @@ export function subscribeGroceryList(ledgerId, onChange) {
   return () => supabase.removeChannel(ch);
 }
 
+/* ---- product identification from a photo, via /api/scan-product ---- */
+// Returns { name, brand, unit, barcode }. Throws with the API's `code` attached
+// so callers can tell "nothing recognisable in the photo" and "rate limited"
+// apart from a genuine failure.
+export async function scanProduct({ image, mediaType, token, lang }) {
+  const res = await fetch("/api/scan-product", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ image, mediaType, token, lang }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(out.error || res.statusText), { code: out.code, retryAfter: out.retryAfter });
+  return out;
+}
+
 /* ---- Flipp price-match, served from the weekly flyer mirror via /api/scan-deals ---- */
 // brand is an optional extra substring filter — see migration 026.
 export async function fetchDeals(query, postalCode, { brand } = {}) {
