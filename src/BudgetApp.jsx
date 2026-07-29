@@ -4878,15 +4878,10 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
           <div style={{ display: "flex", gap: 8 }}>
-            {/* Derived from addBtn (not ghostBtn) so the pair shares the exact
-                same shape/radius/weight — only the fill and text colour swap
-                to a neutral, borderless look instead of the accent's solid one. */}
-            <button onClick={cancelAddItem} disabled={saving} style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", background: MUTED_BG, color: INK }}>{t("cancel")}</button>
-            {/* color: "#fff" overrides addBtn's computed ACCENT_INK — that
-                picks near-black on this mint accent for WCAG contrast, but
-                reads as washed-out on the actual button fill, so this pair
-                (the only paired confirm button on a full accent fill) opts
-                for plain white instead. */}
+            {/* Both derived from addBtn with the same "#fff" override — a
+                matched mint-green pair instead of the accent computing its
+                own ACCENT_INK (near-black), which read as washed-out here. */}
+            <button onClick={cancelAddItem} disabled={saving} style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff" }}>{t("cancel")}</button>
             <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
               {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
             </button>
