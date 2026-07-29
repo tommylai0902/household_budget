@@ -146,6 +146,10 @@ const STRINGS = {
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
     dealCheckErr: "Couldn't check prices: {msg}",
+    dealsPending: "No flyer prices for this yet — the weekly update runs Thursday.",
+    dealsNoneFound: "No flyer deals found for this item.",
+    priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
+    dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
     backToDashboard: "Back to Dashboard",
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     navDropdownLabel: "Ledgers",
@@ -308,6 +312,10 @@ const STRINGS = {
     priceMatchCheck: "🔍 格價", checkingDeals: "格緊價…",
     postalCodePh: "郵政編碼（用嚟格價）", priceMatchBadge: "最平：{merchant} {price}",
     dealCheckErr: "格價失敗：{msg}",
+    dealsPending: "呢樣嘢仲未有海報價，星期四先更新。",
+    dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
+    priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
+    dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
     moreActions: "更多操作",
     recurring: "定期支出", recurringAdd: "新增", noRecurring: "仲未有定期支出。",
     recurNew: "新增定期支出", recurEdit: "編輯定期支出",
@@ -461,6 +469,10 @@ const STRINGS = {
     priceMatchCheck: "🔍 比价", checkingDeals: "比价中…",
     postalCodePh: "邮政编码（用于比价）", priceMatchBadge: "最低：{merchant} {price}",
     dealCheckErr: "比价失败：{msg}",
+    dealsPending: "这件商品还没有传单价格，每周四更新。",
+    dealsNoneFound: "没有找到这件商品的传单优惠。",
+    priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
+    dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
     moreActions: "更多操作",
     recurring: "定期支出", recurringAdd: "新增", noRecurring: "还没有定期支出。",
     recurNew: "新增定期支出", recurEdit: "编辑定期支出",
@@ -612,6 +624,10 @@ const STRINGS = {
     priceMatchCheck: "🔍 Comparer les prix", checkingDeals: "Vérification…",
     postalCodePh: "Code postal pour comparer les prix", priceMatchBadge: "Meilleur : {price} chez {merchant}",
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
+    dealsPending: "Pas encore de prix de circulaire — la mise à jour hebdomadaire a lieu le jeudi.",
+    dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
+    priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
+    dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
     moreActions: "Plus d'actions",
     recurring: "Dépenses récurrentes", recurringAdd: "Ajouter", noRecurring: "Aucune dépense récurrente.",
     recurNew: "Nouvelle dépense récurrente", recurEdit: "Modifier la dépense récurrente",
@@ -763,6 +779,10 @@ const STRINGS = {
     priceMatchCheck: "🔍 Comparar precios", checkingDeals: "Comprobando…",
     postalCodePh: "Código postal para comparar precios", priceMatchBadge: "Mejor: {price} en {merchant}",
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
+    dealsPending: "Aún no hay precios de folleto — la actualización semanal es el jueves.",
+    dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
+    priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
+    dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
     moreActions: "Más acciones",
     recurring: "Gastos recurrentes", recurringAdd: "Añadir", noRecurring: "Aún no hay gastos recurrentes.",
     recurNew: "Nuevo gasto recurrente", recurEdit: "Editar gasto recurrente",
@@ -2312,7 +2332,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             in-ledger transactions view is reached via the budget banner's
             "View transactions" instead, same as from Home. */}
         {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
-        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} t={t} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
+        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} ledgerPostalCode={ledger.postalCode} t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
       </div>
 
       {detail && (
@@ -5051,11 +5071,17 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
   );
 }
 
-function GroceryListPanel({ ledgerId, t, onSwitchView }) {
+function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [newItem, setNewItem] = useState("");
-  const [postalCode, setPostalCode] = useState(getPostalCode);
+  const [showAddForm, setShowAddForm] = useState(false);
+  // The ledger's saved code wins over the device cache: the weekly flyer cron
+  // looks up prices for whatever is stored on the ledger, so a stale
+  // localStorage value from another device would query a region nothing was
+  // ever cached for and every lookup would come back "pending" forever.
+  const [postalCode, setPostalCode] = useState(() => ledgerPostalCode || getPostalCode());
+  const [toast, setToast] = useState(null);
   const [checkingId, setCheckingId] = useState(null);
   const load = useCallback(() => {
     db.fetchGroceryList(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
@@ -5079,32 +5105,61 @@ function GroceryListPanel({ ledgerId, t, onSwitchView }) {
     try { await db.updateGroceryItem(id, fields); setEditingId(null); load(); }
     catch (e) { setError(e.message || String(e)); }
   };
+  // Opens the match list rather than silently stamping the cheapest hit on the
+  // row: the flyer cutout is the whole point at the till, and only a person
+  // can tell whether "Milk 2L" is actually the thing in their basket.
+  const [dealsFor, setDealsFor] = useState(null); // { item, deals }
   const checkDeals = async (item) => {
     setCheckingId(item.id);
     setError("");
     try {
       const result = await db.fetchDeals(item.itemName, postalCode);
-      if (result.lowestMerchant) await db.setGroceryDeal(item.id, { targetSupermarket: result.lowestMerchant, dealPrice: result.lowestPrice });
-      load();
+      // `pending` = the weekly mirror hasn't run for this region yet. Nothing
+      // to retry here — the lookup never touches Flipp live by design.
+      if (result.pending) setToast({ id: Date.now(), text: t("dealsPending") });
+      else if (!result.deals?.length) setToast({ id: Date.now(), text: t("dealsNoneFound") });
+      else setDealsFor({ item, deals: result.deals });
     } catch (e) {
       setError(t("dealCheckErr", { msg: e.message || String(e) }));
     }
     setCheckingId(null);
+  };
+  const pickDeal = async (deal) => {
+    try {
+      await db.setGroceryDeal(dealsFor.item.id, {
+        targetSupermarket: deal.merchant, dealPrice: deal.price,
+        dealImageUrl: deal.imageUrl, dealItemName: deal.name,
+        dealValidTo: deal.validTo, dealMerchantLogo: deal.merchantLogo,
+      });
+      setDealsFor(null);
+      load();
+    } catch (e) { setError(e.message || String(e)); }
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
+        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
+          <Plus size={15} /> {t("addItem")}
+        </button>
       </div>
       {error && <div style={errorBox}>{error}</div>}
+      {/* Saved to the ledger on blur, not per keystroke — the cron reads it
+          from there to know which region's flyers to pull. */}
       <input value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
+        onBlur={() => db.updateLedger(ledgerId, { postal_code: postalCode.trim() || null }).catch((e) => setError(e.message || String(e)))}
         placeholder={t("postalCodePh")} style={input} />
-      <div style={{ display: "flex", gap: 8 }}>
-        <input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder={t("addGroceryItemPh")} style={{ ...input, flex: 1 }} />
-        <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
-      </div>
+      {/* Stays open after each add — the toast comment below spells out why
+          adding several in a row is the normal case here. */}
+      {showAddForm && (
+        <div style={{ display: "flex", gap: 8 }}>
+          <input autoFocus value={newItem} onChange={(e) => setNewItem(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") { setNewItem(""); setShowAddForm(false); } }}
+            placeholder={t("addGroceryItemPh")} style={{ ...input, flex: 1 }} />
+          <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
+        </div>
+      )}
       {items === null ? (
         <Centered>{t("connecting")}</Centered>
       ) : items.length === 0 ? (
@@ -5116,28 +5171,76 @@ function GroceryListPanel({ ledgerId, t, onSwitchView }) {
               <GroceryItemForm key={it.id} item={it} t={t}
                 onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
             ) : (
-              <GroceryRow key={it.id} it={it} t={t} checkingId={checkingId}
+              <GroceryRow key={it.id} it={it} t={t} lang={lang} checkingId={checkingId}
                 onToggle={toggle} onCheckDeals={checkDeals}
                 onEdit={() => setEditingId(it.id)} onDelete={() => remove(it.id)} />
             )
           ))}
         </div>
       )}
+      {dealsFor && (
+        <PriceMatchPanel deals={dealsFor.deals} itemName={dealsFor.item.itemName} t={t} lang={lang}
+          onPick={pickDeal} onClose={() => setDealsFor(null)} />
+      )}
+      {toast && <Toast key={toast.id} message={toast.text} onDone={() => setToast(null)} />}
     </div>
+  );
+}
+
+// The thing you actually hold up at the till. Each row is the flyer's own
+// cutout artwork — the product clipped straight out of this week's flyer with
+// its price on it — plus the merchant and the expiry date, which is what a
+// cashier checks before honouring a match. A number alone proves nothing.
+function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
+  return (
+    <Overlay title={t("priceMatchTitle", { name: itemName })} onClose={onClose} t={t}>
+      <div style={{ fontSize: 12.5, color: SUB, marginBottom: 4 }}>{t("priceMatchHint")}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {deals.map((d, i) => (
+          <button key={i} onClick={() => onPick(d)} className="press-fx"
+            style={{
+              display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%",
+              background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 12,
+              padding: 10, cursor: "pointer", fontFamily: "inherit", color: INK,
+            }}>
+            {/* Fixed box so a missing or slow image doesn't reflow the list. */}
+            <div style={{ width: 74, height: 74, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: MUTED_BG, display: "grid", placeItems: "center" }}>
+              {d.imageUrl
+                ? <img src={d.imageUrl} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                : <Tag size={20} style={{ color: SUB }} />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: OK_INK }}>{money(d.price)}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, marginTop: 2 }}>
+                {d.merchantLogo && <img src={d.merchantLogo} alt="" loading="lazy" style={{ height: 14, maxWidth: 60, objectFit: "contain" }} />}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.merchant}</span>
+              </div>
+              <div style={{ fontSize: 11.5, color: SUB, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
+              {d.validTo && <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("dealValidUntil", { date: shortDate(d.validTo, lang) })}</div>}
+            </div>
+          </button>
+        ))}
+      </div>
+    </Overlay>
   );
 }
 
 // Same swipe-to-reveal treatment as InventoryRow — Edit/Delete live under
 // the row, revealed by dragging left, instead of the delete icon sitting
-// there permanently. Ticking an item off is this list's whole point, so a
-// tap anywhere on the row toggles it and the tick target is a big accent
-// circle — the native <input type="checkbox"> that used to sit here read as
-// decoration next to a full-width Price Match button, so people missed that
-// the list was checkable at all. Price Match is now a compact icon instead.
-function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelete }) {
+// there permanently.
+//
+// Two taps, two jobs, deliberately split: the big accent circle ticks the item
+// off, and a tap anywhere else opens the saved flyer cutout. The row used to
+// toggle on any tap, but once an item carries proof for the till that has to
+// be reachable in one tap while standing at the counter — and the circle is
+// now a large, obvious target in its own right, which is what the earlier
+// "the checklist isn't obvious" pass was actually fixing.
+function GroceryRow({ it, t, lang, checkingId, onToggle, onCheckDeals, onEdit, onDelete }) {
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
+  const [open, setOpen] = useState(false);
   const done = it.isCompleted;
   const checking = checkingId === it.id;
+  const hasDeal = !!it.targetSupermarket;
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
@@ -5148,31 +5251,33 @@ function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelet
           <Trash2 size={17} />
         </button>
       </div>
-      <div className="swipe-row" {...handlers} role="checkbox" aria-checked={done} tabIndex={0}
-        onClick={() => onTapOrClose(() => onToggle(it.id, !done))}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(it.id, !done); } }}
+      <div className="swipe-row" {...handlers}
+        onClick={() => onTapOrClose(() => hasDeal && setOpen((o) => !o))}
         style={{
           position: "relative", zIndex: 1,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
           backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
-          borderRadius: 12, padding: 12, cursor: "pointer", opacity: done ? 0.55 : 1,
+          borderRadius: 12, padding: 12, cursor: hasDeal ? "pointer" : "default", opacity: done ? 0.55 : 1,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease, opacity .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span aria-hidden="true" style={{
-            display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 99, flexShrink: 0,
-            border: done ? "2px solid transparent" : `2px solid ${SUB}`, background: done ? TEAL : "transparent",
-            color: ACCENT_INK, boxShadow: done ? ACCENT_GLOW : "none", transition: "background .15s ease",
-          }}>
+          <button role="checkbox" aria-checked={done} aria-label={it.itemName}
+            onClick={(e) => { e.stopPropagation(); onToggle(it.id, !done); }}
+            style={{
+              display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 99, flexShrink: 0, padding: 0, cursor: "pointer",
+              border: done ? "2px solid transparent" : `2px solid ${SUB}`, background: done ? TEAL : "transparent",
+              color: ACCENT_INK, boxShadow: done ? ACCENT_GLOW : "none", transition: "background .15s ease",
+            }}>
             {done && <Check size={14} strokeWidth={3} />}
-          </span>
+          </button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: done ? "line-through" : "none", color: done ? SUB : INK }}>
               {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
             </div>
-            {it.targetSupermarket && (
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: OK_INK, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
+            {hasDeal && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: OK_INK, marginTop: 3, overflow: "hidden", whiteSpace: "nowrap" }}>
+                <ChevronDown size={12} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}</span>
               </div>
             )}
           </div>
@@ -5186,6 +5291,27 @@ function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelet
             <MoreHorizontal size={15} />
           </button>
         </div>
+        {/* The proof, sized to be readable across a counter rather than as a
+            thumbnail — this is meant to be turned around and shown to someone. */}
+        {open && hasDeal && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--glass-border)" }}>
+            {it.dealImageUrl ? (
+              <img src={it.dealImageUrl} alt={it.dealItemName || it.itemName}
+                style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 8, background: "#fff" }} />
+            ) : (
+              <div style={{ fontSize: 12, color: SUB }}>{t("dealNoImage")}</div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              {it.dealMerchantLogo && <img src={it.dealMerchantLogo} alt="" style={{ height: 16, maxWidth: 70, objectFit: "contain" }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700 }}>{it.targetSupermarket}</div>
+                {it.dealItemName && <div style={{ fontSize: 11.5, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.dealItemName}</div>}
+                {it.dealValidTo && <div style={{ fontSize: 11, color: SUB }}>{t("dealValidUntil", { date: shortDate(it.dealValidTo, lang) })}</div>}
+              </div>
+              <div style={{ fontSize: 19, fontWeight: 800, color: OK_INK, flexShrink: 0 }}>{money(it.dealPrice)}</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

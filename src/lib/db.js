@@ -48,7 +48,7 @@ const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.
 export async function fetchLedgers() {
   const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id, currency: r.currency || "CAD" }));
+  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id, currency: r.currency || "CAD", postalCode: r.postal_code || "" }));
 }
 // Picker-card-only (count + last activity) — kept out of fetchLedgers() itself
 // since every other caller (switchers, dropdowns) just needs name/icon and
@@ -851,6 +851,8 @@ const toAppGroceryItem = (r) => ({
   id: r.id, itemName: r.item_name, quantityNeeded: Number(r.quantity_needed),
   isCompleted: r.is_completed, targetSupermarket: r.target_supermarket || "",
   dealPrice: r.deal_price != null ? Number(r.deal_price) : null,
+  dealImageUrl: r.deal_image_url || "", dealItemName: r.deal_item_name || "",
+  dealValidTo: r.deal_valid_to || null, dealMerchantLogo: r.deal_merchant_logo || "",
 });
 
 export async function fetchGroceryList(ledgerId) {
@@ -876,9 +878,13 @@ export async function deleteGroceryItem(id) {
   const { error } = await supabase.from("grocery_list").delete().eq("id", id);
   if (error) throw error;
 }
-export async function setGroceryDeal(id, { targetSupermarket, dealPrice }) {
+export async function setGroceryDeal(id, { targetSupermarket, dealPrice, dealImageUrl, dealItemName, dealValidTo, dealMerchantLogo }) {
   const { error } = await supabase.from("grocery_list")
-    .update({ target_supermarket: targetSupermarket, deal_price: dealPrice }).eq("id", id);
+    .update({
+      target_supermarket: targetSupermarket, deal_price: dealPrice,
+      deal_image_url: dealImageUrl || null, deal_item_name: dealItemName || null,
+      deal_valid_to: dealValidTo || null, deal_merchant_logo: dealMerchantLogo || null,
+    }).eq("id", id);
   if (error) throw error;
 }
 

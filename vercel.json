@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/refresh-flyers",
+      "schedule": "0 8 * * 4"
+    }
+  ],
+  "functions": {
+    "api/refresh-flyers.js": {
+      "maxDuration": 300
+    }
+  }
+}
