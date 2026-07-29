@@ -10,6 +10,20 @@ import './index.css'
 // the standard fix: it satisfies that requirement once, for the whole page.
 document.addEventListener('touchstart', () => {}, { passive: true })
 
+// skipWaiting + clientsClaim (vite.config.js) let a new service worker take
+// over instantly instead of waiting for every tab to close — but an
+// already-open tab still keeps running the JS bundle it already loaded until
+// something reloads it. Without this listener, updates only reach a device
+// after the user manually force-closes and reopens the app.
+if ('serviceWorker' in navigator) {
+  let reloading = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return
+    reloading = true
+    window.location.reload()
+  })
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
