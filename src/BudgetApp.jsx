@@ -4935,9 +4935,23 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
   );
 }
 
+// Glowing dot + label, same halo recipe as the ledger row's status dot —
+// used for the Low stock / Expiring soon / Expired badges on an inventory row.
+function StatusPill({ color, bg, border, label }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 99, background: bg, border: `1px solid ${border}`, color, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
+      <span style={{ width: 6, height: 6, borderRadius: 99, background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+      {label}
+    </span>
+  );
+}
+
 // Same swipe-to-reveal treatment as the ledger picker rows, minus the "open
 // this" tap target — an inventory row has no detail view to open, so a tap
-// only ever closes an open row.
+// only ever closes an open row. Quantity stepper and the grocery-list cart
+// button live inline on their own line (no expand/collapse) — they were
+// tried behind a tap-to-expand first, but that stacked a second hidden
+// interaction on top of the swipe-to-reveal Edit/Delete already there.
 function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery, onEdit, onDelete }) {
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
   return (
@@ -4953,35 +4967,33 @@ function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery,
       <div className="swipe-row" {...handlers} onClick={() => onTapOrClose(() => {})}
         style={{
           position: "relative", zIndex: 1,
-          background: "var(--glass-bg)", border: `1px solid ${low || expired ? BAD_LINE : "var(--glass-border)"}`,
+          background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
           backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
           borderRadius: 12, padding: 12,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
-            <div style={{ fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
-          </div>
+          <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+          {(low || expired || expiring) && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
+              {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
+              {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
+            </div>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }} style={iconBtn} aria-label="-"><Minus size={14} /></button>
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }} style={iconBtn} aria-label="+"><Plus size={14} /></button>
+          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={iconBtn} aria-label={t("addToGroceryList")}>
+            <ShoppingCart size={14} />
+          </button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
             aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
             <MoreHorizontal size={15} />
           </button>
         </div>
-        {(low || expired || expiring) && (
-          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-            {low && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("lowStock")}</span>}
-            {expired && <span style={{ background: BAD_BG, color: BAD_INK, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>{t("expired")}</span>}
-            {expiring && <span style={{ color: WARN, fontSize: 11, fontWeight: 700 }}>{t("expiringSoon")}</span>}
-          </div>
-        )}
-        {low && (
-          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
-            <ShoppingCart size={14} /> {t("addToGroceryList")}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -5031,7 +5043,7 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
         <button onClick={save} disabled={!draft.name.trim() || saving} className="btn-glow"
-          style={{ ...addBtn, flex: 2, marginTop: 0, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+          style={{ ...addBtn, flex: 1, marginTop: 0, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
           {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveItem")}
         </button>
       </div>
@@ -5185,7 +5197,7 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
         <button onClick={save} disabled={!name.trim() || saving} className="btn-glow"
-          style={{ ...addBtn, flex: 2, marginTop: 0, justifyContent: "center", opacity: name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+          style={{ ...addBtn, flex: 1, marginTop: 0, justifyContent: "center", opacity: name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
           {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveItem")}
         </button>
       </div>
