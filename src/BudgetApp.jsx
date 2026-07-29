@@ -5169,15 +5169,14 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
           <LabelSelect label={t("invLocation")} value={draft.locationId} labels={locations}
             placeholder={t("noLocation")} manageLabel={t("manageLabels")}
             onChange={(v) => setDraft({ ...draft, locationId: v })} onManage={() => setManageKind("location")} />
-          <div style={{ display: "flex", gap: 8 }}>
-            {/* Both derived from addBtn with the same "#fff" override — a
-                matched mint-green pair instead of the accent computing its
-                own ACCENT_INK (near-black), which read as washed-out here. */}
-            <button onClick={cancelAddItem} disabled={saving} style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff" }}>{t("cancel")}</button>
-            {/* No opacity dimming while the name is empty — disabled + the
-                click-guard in addItem() already stop an empty submit, and
-                dimming just broke the matched mint-green look with Cancel. */}
-            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            {/* Back to the same ghostBtn/addBtn pairing every other Cancel/Save
+                pair in the app uses (InventoryItemForm, GroceryItemForm) — the
+                matched mint-green pair was a deliberate one-off for this form
+                specifically, but read as inconsistent against those. */}
+            <button onClick={cancelAddItem} disabled={saving} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
+            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow"
+              style={{ ...addBtn, flex: 1, marginTop: 0, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
               {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
             </button>
           </div>
