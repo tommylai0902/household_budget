@@ -4878,7 +4878,10 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={cancelAddItem} disabled={saving} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
+            {/* Derived from addBtn (not ghostBtn) so the pair shares the exact
+                same shape/radius/weight — only the fill and text colour swap
+                to a neutral, borderless look instead of the accent's solid one. */}
+            <button onClick={cancelAddItem} disabled={saving} style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", background: MUTED_BG, color: INK }}>{t("cancel")}</button>
             {/* color: "#fff" overrides addBtn's computed ACCENT_INK — that
                 picks near-black on this mint accent for WCAG contrast, but
                 reads as washed-out on the actual button fill, so this pair
