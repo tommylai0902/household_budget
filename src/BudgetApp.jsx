@@ -5129,9 +5129,15 @@ function GroceryListPanel({ ledgerId, t, onSwitchView }) {
 
 // Same swipe-to-reveal treatment as InventoryRow — Edit/Delete live under
 // the row, revealed by dragging left, instead of the delete icon sitting
-// there permanently.
+// there permanently. Ticking an item off is this list's whole point, so a
+// tap anywhere on the row toggles it and the tick target is a big accent
+// circle — the native <input type="checkbox"> that used to sit here read as
+// decoration next to a full-width Price Match button, so people missed that
+// the list was checkable at all. Price Match is now a compact icon instead.
 function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelete }) {
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
+  const done = it.isCompleted;
+  const checking = checkingId === it.id;
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
@@ -5142,33 +5148,44 @@ function GroceryRow({ it, t, checkingId, onToggle, onCheckDeals, onEdit, onDelet
           <Trash2 size={17} />
         </button>
       </div>
-      <div className="swipe-row" {...handlers} onClick={() => onTapOrClose(() => {})}
+      <div className="swipe-row" {...handlers} role="checkbox" aria-checked={done} tabIndex={0}
+        onClick={() => onTapOrClose(() => onToggle(it.id, !done))}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(it.id, !done); } }}
         style={{
           position: "relative", zIndex: 1,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
           backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
-          borderRadius: 12, padding: 12,
-          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
+          borderRadius: 12, padding: 12, cursor: "pointer", opacity: done ? 0.55 : 1,
+          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease, opacity .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" checked={it.isCompleted} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(it.id, e.target.checked)} />
-          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.isCompleted ? "line-through" : "none", color: it.isCompleted ? SUB : INK }}>
-            {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span aria-hidden="true" style={{
+            display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 99, flexShrink: 0,
+            border: done ? "2px solid transparent" : `2px solid ${SUB}`, background: done ? TEAL : "transparent",
+            color: ACCENT_INK, boxShadow: done ? ACCENT_GLOW : "none", transition: "background .15s ease",
+          }}>
+            {done && <Check size={14} strokeWidth={3} />}
           </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: done ? "line-through" : "none", color: done ? SUB : INK }}>
+              {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
+            </div>
+            {it.targetSupermarket && (
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: OK_INK, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
+              </div>
+            )}
+          </div>
+          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onCheckDeals(it); }} disabled={checking}
+            aria-label={t("priceMatchCheck")} title={t("priceMatchCheck")}
+            style={{ ...iconBtn, flexShrink: 0, opacity: checking ? 0.6 : 1 }}>
+            {checking ? <Loader2 size={15} className="spin" /> : <Search size={15} />}
+          </button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
             aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
             <MoreHorizontal size={15} />
           </button>
         </div>
-        <button className="press-fx" onClick={(e) => { e.stopPropagation(); onCheckDeals(it); }} disabled={checkingId === it.id}
-          style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center", opacity: checkingId === it.id ? 0.6 : 1 }}>
-          {checkingId === it.id ? t("checkingDeals") : t("priceMatchCheck")}
-        </button>
-        {it.targetSupermarket && (
-          <div style={{ marginTop: 8, background: OK_BG, color: OK_INK, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700 }}>
-            {t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
-          </div>
-        )}
       </div>
     </div>
   );
