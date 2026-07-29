@@ -1418,7 +1418,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                       const Icon = ledgerIcon(k);
                       return (
                         <button key={k} onClick={() => setDraftTpl(k)} aria-label={t("tpl" + k[0].toUpperCase() + k.slice(1))}
-                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : CARD, color: draftTpl === k ? ACCENT_INK : SUB }}>
+                          style={{ ...iconBtn, width: 38, height: 38, borderColor: draftTpl === k ? TEAL : LINE, background: draftTpl === k ? TEAL : CARD, color: draftTpl === k ? ACCENT_INK : SUB, boxShadow: draftTpl === k ? ACCENT_GLOW : "none" }}>
                           <Icon size={16} />
                         </button>
                       );
@@ -3429,7 +3429,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 <div style={{ display: "flex", gap: 4 }}>
                   {[["split", t("itemSplit"), Users], ["personal", t("itemPersonal"), User], ["drop", t("itemDrop"), Trash2]].map(([mode, label, Icon]) => (
                     <button key={mode} onClick={() => setItemMode(idx, mode)} aria-label={label} title={label}
-                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : CARD, color: it.mode === mode ? ACCENT_INK : SUB }}>
+                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : CARD, color: it.mode === mode ? ACCENT_INK : SUB, boxShadow: it.mode === mode ? ACCENT_GLOW : "none" }}>
                       <Icon size={13} />
                     </button>
                   ))}
@@ -5335,10 +5335,15 @@ const backdrop = { position: "fixed", inset: 0, zIndex: 20 };
 function pill(color) {
   return { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, border: "none", fontSize: 12.5, fontWeight: 700, color: "#fff", background: color, fontFamily: "inherit", whiteSpace: "nowrap" };
 }
+// Same accent-glow recipe as .accent-glow/.swipe-row:hover in index.css —
+// baked inline (rather than a className) since these return plain style
+// objects, not JSX, so every "selected" pill/chip in the app halos the same
+// way as a focused input or an open swipe row.
+const ACCENT_GLOW = "0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14)";
 function selectablePill(color, active) {
   // Only ever called with TEAL as `color` — ACCENT_INK is that colour's
   // matching text, not a generic "white on any fill" assumption.
-  return { padding: "6px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: active ? ACCENT_INK : color, background: active ? color : "transparent", border: `1.5px solid ${color}`, fontFamily: "inherit" };
+  return { padding: "6px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: active ? ACCENT_INK : color, background: active ? color : "transparent", border: `1.5px solid ${color}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit" };
 }
 // Unified selectable chip: neutral grey when off, brand green when on. Category
 // and member tags share it, so the form reads as one system rather than a row of
@@ -5347,7 +5352,7 @@ function chip(active) {
   // Unselected used to be a flat light-gray fill that needed no border to read
   // as a pill; now that it's CARD (white in light mode, dark in night mode) a
   // border keeps it visible against the page background in both themes.
-  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
 }
 // One grey track, the active half lifts to green — a proper segmented control.
 function segItem(active) {

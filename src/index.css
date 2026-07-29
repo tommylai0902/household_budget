@@ -85,18 +85,18 @@ input[type="number"] { -moz-appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* Accent-coloured glow on whichever field the user is actively filling in —
-   checkboxes/radios keep their native look, everything else gets a matching
-   border + halo so it reads as "this one's live" against the plain LINE
-   border every field has at rest. */
+/* One accent glow recipe for every "this one's active" state — the field
+   you're typing into, a selected pill/chip (selectablePill, chip), a
+   swiped-open row. Same border-color + box-shadow numbers everywhere so the
+   app reads as one consistent highlight instead of several near-misses. */
+.accent-glow, input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:focus {
+  border-color: rgba(var(--accent-rgb),0.75) !important;
+  box-shadow: 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
+}
 input:not([type="checkbox"]):not([type="radio"]), textarea, select {
   transition: box-shadow .15s ease, border-color .15s ease;
 }
-input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:focus {
-  border-color: rgba(var(--accent-rgb), 0.7);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18), 0 0 14px rgba(var(--accent-rgb), 0.3);
-  outline: none;
-}
+input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:focus { outline: none; }
 
 /* Give tapping a fair target on touch screens without changing the desktop look. */
 @media (pointer: coarse) {
