@@ -4882,7 +4882,10 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
                 matched mint-green pair instead of the accent computing its
                 own ACCENT_INK (near-black), which read as washed-out here. */}
             <button onClick={cancelAddItem} disabled={saving} style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff" }}>{t("cancel")}</button>
-            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+            {/* No opacity dimming while the name is empty — disabled + the
+                click-guard in addItem() already stop an empty submit, and
+                dimming just broke the matched mint-green look with Cancel. */}
+            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff", opacity: saving ? 0.6 : 1 }}>
               {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
             </button>
           </div>
