@@ -3696,8 +3696,12 @@ function CategoryManager({ categories, lang, t, onChange, onClose }) {
 
 // Green under 80% of a budget, amber approaching it, red once past. A bar never
 // overflows its track — how far over you are is in the number, not the bar.
+// The over-budget case uses a fixed hex, not DANGER — that var is tuned for
+// destructive TEXT on a dark background (soft coral, so it doesn't glare) and
+// reads as pink instead of red when used as a solid fill. Same #DC2626 the
+// delete buttons already use for solid destructive fills, in both themes.
 const budgetBarColor = (spent, budget) =>
-  !budget ? LINE : spent > budget ? DANGER : spent / budget > 0.8 ? "#D97706" : TEAL;
+  !budget ? LINE : spent > budget ? "#DC2626" : spent / budget > 0.8 ? "#D97706" : TEAL;
 
 // `pace` (0-100, only passed for the month actually in progress) marks how
 // far through the month "today" is — a quick "on track or not" cue next to
