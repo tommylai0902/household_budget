@@ -4878,8 +4878,13 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={cancelAddItem} disabled={saving} style={{ ...ghostBtn, flex: 1, justifyContent: "center" }}>{t("cancel")}</button>
-            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
+            <button onClick={cancelAddItem} disabled={saving} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
+            {/* color: "#fff" overrides addBtn's computed ACCENT_INK — that
+                picks near-black on this mint accent for WCAG contrast, but
+                reads as washed-out on the actual button fill, so this pair
+                (the only paired confirm button on a full accent fill) opts
+                for plain white instead. */}
+            <button onClick={addItem} disabled={!draft.name.trim() || saving} className="btn-glow" style={{ ...addBtn, flex: 1, justifyContent: "center", marginTop: 0, padding: "12px", color: "#fff", opacity: draft.name.trim() ? (saving ? 0.6 : 1) : 0.5 }}>
               {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("addItem")}
             </button>
           </div>
