@@ -2815,7 +2815,7 @@ function RecurringForm({ initial, categories, members, features, lang, t, onClos
           </div>
         </Field>
         <Field label={t("startDate")} style={{ flex: 1, minWidth: 0 }}>
-          <input type="date" value={d.startDate} onChange={(e) => setD({ ...d, startDate: e.target.value })} style={input} />
+          <input type="date" value={d.startDate} onChange={(e) => setD({ ...d, startDate: e.target.value })} style={dateInput} />
         </Field>
       </div>
       <Field label={t("frequency")}>
@@ -2965,7 +2965,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
             {rows.map((r) => (
               <div key={r.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input type="date" value={r.date} onChange={(e) => patchRow(r.id, { date: e.target.value })} style={{ ...input, width: 132, fontSize: 12, padding: "6px 8px" }} />
+                  <input type="date" value={r.date} onChange={(e) => patchRow(r.id, { date: e.target.value })} style={{ ...dateInput, width: 132, fontSize: 12, padding: "6px 8px" }} />
                   <input type="text" value={r.description} onChange={(e) => patchRow(r.id, { description: e.target.value })} style={{ ...input, flex: 1, fontSize: 13, padding: "6px 8px" }} />
                   <button onClick={() => removeRow(r.id)} style={{ ...iconBtn, width: 28, height: 28, color: DANGER, flexShrink: 0 }} aria-label={t("csvRemoveRow")}><Trash2 size={13} /></button>
                 </div>
@@ -3412,7 +3412,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
           </div>
         </Field>
         <Field label={t("date")} style={{ flex: 1, minWidth: 0 }}>
-          <input type="date" value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} style={input} />
+          <input type="date" value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} style={dateInput} />
         </Field>
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer", marginTop: -4 }}>
@@ -3488,7 +3488,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 flex-shrink/minWidth, so cramming it in with the other two let it
                 overflow the card edge on a phone. */}
             <Field label={t("expiryDate")} style={{ marginTop: 8 }}>
-              <input type="date" value={d.invExpiryDate || ""} onChange={(e) => setD({ ...d, invExpiryDate: e.target.value })} style={input} />
+              <input type="date" value={d.invExpiryDate || ""} onChange={(e) => setD({ ...d, invExpiryDate: e.target.value })} style={dateInput} />
             </Field>
           </>
         )}
@@ -3501,7 +3501,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
           </label>
           {d.hasReminder && (
             <input type="date" value={d.reminderDate} onChange={(e) => setD({ ...d, reminderDate: e.target.value })}
-              style={{ ...input, marginTop: 8 }} />
+              style={{ ...dateInput, marginTop: 8 }} />
           )}
         </Field>
       )}
@@ -4469,7 +4469,7 @@ function ManageRemindersPanel({ t, lang, onClose }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
                   <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
-                    style={{ ...input, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
+                    style={{ ...dateInput, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
                   {auto && <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("autoReminderHint")}</div>}
                 </div>
                 {!auto && (
@@ -4872,7 +4872,7 @@ function InventoryPanel({ ledgerId, t, onSwitchView }) {
               flex-shrink/minWidth, so cramming it in with the other two let it
               overflow the card edge on a phone. */}
           <Field label={t("expiryDate")}>
-            <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
+            <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={dateInput} />
           </Field>
           <Field label={t("minQuantityLabel")}>
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
@@ -5020,7 +5020,7 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
           flex-shrink/minWidth, so cramming it in with the other two let it
           overflow the card edge on a phone. */}
       <Field label={t("expiryDate")}>
-        <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={input} />
+        <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={dateInput} />
       </Field>
       <Field label={t("minQuantityLabel")}>
         <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
@@ -5302,6 +5302,11 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 /* ----------------------------- Styles ----------------------------- */
 const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: CARD, fontSize: 15, color: INK, outline: "none", fontFamily: "inherit" };
+// iOS Safari renders <input type="date">'s calendar-icon/text as native chrome
+// that can bleed past the box's own width regardless of CSS width/min-width —
+// not a flex or box-sizing bug, appearance:none is what actually stops it
+// (the date picker itself still opens on tap).
+const dateInput = { ...input, WebkitAppearance: "none", appearance: "none" };
 // fontSize 16, not input's 15: below 16px, iOS Safari zooms in on focus and,
 // for a <select>, sometimes doesn't fully zoom back out after you pick a
 // value — leaving the page clipped/squeezed at the top until you scroll.
