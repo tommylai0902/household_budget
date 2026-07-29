@@ -1,4 +1,25 @@
 html, body, #root { margin: 0; height: 100%; }
+/* iOS's standalone "Add to Home Screen" WebView bounces the whole document on
+   any drag past an edge — and doesn't reliably honor overscroll-behavior the
+   way regular mobile Safari does, so that alone isn't enough there. The fix
+   that actually holds: pin html/body so there's no document scroll left to
+   bounce at all, and move all scrolling onto #root instead, which bounces
+   only within its own box (normal, contained momentum scroll) instead of
+   dragging the whole page and exposing black space beside/behind it. */
+html, body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+#root {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
 
 /* Theme colors. The colour constants at the top of BudgetApp.jsx (INK, SUB,
    LINE, PAPER, CARD, the OK/BAD tint pairs, TRACK, DANGER, WARN) point at
@@ -66,14 +87,6 @@ html, body, #root { margin: 0; height: 100%; }
    `width: 100%` plus padding — the side panel, the full-width buttons —
    ends up wider than the screen and bleeds off both edges on a phone. */
 *, *::before, *::after { box-sizing: border-box; }
-
-/* A stray overflow shouldn't let the whole page slide sideways. Standalone
-   PWAs have no browser chrome to absorb it, so without this a horizontal
-   swipe anywhere rubber-bands the whole viewport and exposes black space
-   beside the app — nothing here needs horizontal scroll/pan, only the
-   swipe-reveal rows, which drive their translateX via JS pointer events,
-   not native panning, so this doesn't interfere with them. */
-html, body { overflow-x: hidden; overscroll-behavior-x: none; touch-action: pan-y; }
 
 /* iOS Safari zooms the page in when you focus a field under 16px and does
    not zoom back out. Keep form text at 16 so tapping a field stays put. */
