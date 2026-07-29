@@ -783,8 +783,72 @@ export function subscribeLedgerList(onChange) {
 const toAppInventoryItem = (r) => ({
   id: r.id, name: r.name, quantity: Number(r.quantity), unit: r.unit || "",
   minQuantity: r.min_quantity != null ? Number(r.min_quantity) : null,
-  expiryDate: r.expiry_date || null, category: r.category || "",
+  expiryDate: r.expiry_date || null,
+  categoryId: r.category_id || null, locationId: r.location_id || null,
 });
+
+/* ---- inventory labels: categories and storage locations (migration 029) ---- */
+// One table, split by `kind` — same shape, same CRUD, so callers pass the kind
+// rather than there being two of everything.
+export async function fetchInventoryLabels(ledgerId) {
+  const { data, error } = await supabase
+    .from("inventory_labels").select("*").eq("ledger_id", ledgerId).order("sort_order").order("name");
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, kind: r.kind, name: r.name }));
+}
+
+// Replace-semantics, matching the category/store managers: the manager hands
+// back the whole list and this reconciles it. Renames keep the row (and so
+// every item pointing at it); deletes null out the items' reference rather
+// than removing them, per the FK's `on delete set null`.
+export async function saveInventoryLabels(ledgerId, kind, list) {
+  const existing = (await fetchInventoryLabels(ledgerId)).filter((l) => l.kind === kind);
+  const keep = new Set(list.filter((l) => !l.isNew).map((l) => l.id));
+
+  const removed = existing.filter((l) => !keep.has(l.id)).map((l) => l.id);
+  if (removed.length) {
+    const { error } = await supabase.from("inventory_labels").delete().in("id", removed);
+    if (error) throw error;
+  }
+  for (const [i, l] of list.entries()) {
+    const name = l.name.trim();
+    if (!name) continue;
+    if (l.isNew) {
+      const { error } = await supabase.from("inventory_labels")
+        .insert({ ledger_id: ledgerId, kind, name, sort_order: i });
+      // A name that already exists isn't an error worth failing the save over.
+      if (error && error.code !== "23505") throw error;
+    } else {
+      const before = existing.find((e) => e.id === l.id);
+      if (before && before.name === name) continue; // untouched
+      const { error } = await supabase.from("inventory_labels").update({ name, sort_order: i }).eq("id", l.id);
+      if (error && error.code !== "23505") throw error;
+    }
+  }
+}
+
+// Looks up an existing label by name for that ledger+kind. Deliberately does
+// NOT create one: the caller is the expense form's "add to inventory", which
+// only knows the EXPENSE category's name, and those are a different taxonomy —
+// expenses are filed by where the money went ("Rent", "Mochi"), inventory by
+// what the thing is ("Dairy", "Frozen"). Auto-creating meant every expense
+// category eventually appeared as an inventory category. So it reuses a match
+// if the name happens to line up, and otherwise leaves the item unfiled.
+export async function matchInventoryLabel(ledgerId, kind, name) {
+  const clean = (name || "").trim();
+  if (!clean) return null;
+  const { data } = await supabase.from("inventory_labels")
+    .select("id").eq("ledger_id", ledgerId).eq("kind", kind).ilike("name", clean).maybeSingle();
+  return data?.id ?? null;
+}
+
+export function subscribeInventoryLabels(ledgerId, onChange) {
+  const ch = supabase
+    .channel(`inv-labels-${ledgerId}-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "inventory_labels", filter: `ledger_id=eq.${ledgerId}` }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}
 
 export async function fetchInventoryItems(ledgerId) {
   const { data, error } = await supabase.from("inventory_items").select("*").eq("ledger_id", ledgerId).order("name");
@@ -806,9 +870,14 @@ export async function upsertInventoryItem(ledgerId, item) {
     if (error) throw error;
     return existing.id;
   }
+  // `category` arrives as a name (the expense form knows the expense's category
+  // by name, not by any inventory label id), so it's matched against the
+  // ledger's own inventory categories — reused if one lines up, dropped if not.
+  const categoryId = item.categoryId ?? await matchInventoryLabel(ledgerId, "category", item.category);
   const { data, error } = await supabase.from("inventory_items").insert({
     ledger_id: ledgerId, name: item.name, quantity: Number(item.quantity) || 0, unit: item.unit || null,
-    min_quantity: item.minQuantity ?? null, expiry_date: item.expiryDate || null, category: item.category || null,
+    min_quantity: item.minQuantity ?? null, expiry_date: item.expiryDate || null,
+    category_id: categoryId, location_id: item.locationId || null,
   }).select("id").single();
   if (error) throw error;
   return data.id;
@@ -829,6 +898,7 @@ export async function updateInventoryItem(id, item) {
   const { error } = await supabase.from("inventory_items").update({
     name: item.name, quantity: Number(item.quantity) || 0, unit: item.unit || null,
     min_quantity: item.minQuantity ?? null, expiry_date: item.expiryDate || null,
+    category_id: item.categoryId || null, location_id: item.locationId || null,
   }).eq("id", id);
   if (error) throw error;
 }

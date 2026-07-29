@@ -152,6 +152,12 @@ const STRINGS = {
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
     viewFullFlyer: "View the whole flyer", completedCount: "Completed ({n})",
     scanBarcode: "Scan a product", scanNoProduct: "Couldn't tell what that is. Try the barcode or the front of the pack.",
+    invCategory: "Category", invLocation: "Stored in", manageLabels: "Manage",
+    uncategorised: "No category", noLocation: "No location", allLocations: "Everywhere",
+    invCategories: "Inventory categories", invLocations: "Storage locations",
+    noInvCategories: "No categories yet.", noInvLocations: "No locations yet.",
+    newInvCategoryPh: "New category, e.g. Dairy", newInvLocationPh: "New location, e.g. Freezer",
+    labelDeleteHint: "Deleting one only unfiles its items — the items themselves stay.",
     brandLabel: "Brand", brandPh: "e.g. Neilson",
     brandHint: "Optional — narrows the flyer search to the exact product.",
     backToDashboard: "Back to Dashboard",
@@ -324,6 +330,12 @@ const STRINGS = {
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
     viewFullFlyer: "睇成份海報", completedCount: "已買（{n}）",
     scanBarcode: "掃描貨品", scanNoProduct: "認唔出係咩嚟。試吓影條碼或者包裝正面。",
+    invCategory: "分類", invLocation: "擺喺邊", manageLabels: "管理",
+    uncategorised: "冇分類", noLocation: "冇指定位置", allLocations: "全部位置",
+    invCategories: "存貨分類", invLocations: "存放位置",
+    noInvCategories: "仲未有分類。", noInvLocations: "仲未有位置。",
+    newInvCategoryPh: "新分類，例如：奶類", newInvLocationPh: "新位置，例如：冰格",
+    labelDeleteHint: "刪咗淨係將啲貨品變返冇分類／冇位置，貨品本身唔會冇咗。",
     brandLabel: "牌子", brandPh: "例如 Neilson",
     brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
@@ -487,6 +499,12 @@ const STRINGS = {
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
     viewFullFlyer: "查看整份传单", completedCount: "已完成（{n}）",
     scanBarcode: "扫描商品", scanNoProduct: "认不出这是什么。试试拍条形码或包装正面。",
+    invCategory: "分类", invLocation: "存放位置", manageLabels: "管理",
+    uncategorised: "无分类", noLocation: "未指定位置", allLocations: "全部位置",
+    invCategories: "库存分类", invLocations: "存放位置",
+    noInvCategories: "还没有分类。", noInvLocations: "还没有位置。",
+    newInvCategoryPh: "新分类，例如：乳制品", newInvLocationPh: "新位置，例如：冷冻室",
+    labelDeleteHint: "删除只会让物品变成未分类／未指定位置，物品本身不会删除。",
     brandLabel: "品牌", brandPh: "例如 Neilson",
     brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
@@ -648,6 +666,12 @@ const STRINGS = {
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
     viewFullFlyer: "Voir la circulaire complète", completedCount: "Terminés ({n})",
     scanBarcode: "Scanner un produit", scanNoProduct: "Impossible d'identifier ce produit. Essayez le code-barres ou le devant de l'emballage.",
+    invCategory: "Catégorie", invLocation: "Rangé dans", manageLabels: "Gérer",
+    uncategorised: "Sans catégorie", noLocation: "Aucun emplacement", allLocations: "Partout",
+    invCategories: "Catégories d'inventaire", invLocations: "Emplacements de rangement",
+    noInvCategories: "Aucune catégorie pour l'instant.", noInvLocations: "Aucun emplacement pour l'instant.",
+    newInvCategoryPh: "Nouvelle catégorie, p. ex. Produits laitiers", newInvLocationPh: "Nouvel emplacement, p. ex. Congélateur",
+    labelDeleteHint: "La suppression ne fait que déclasser les articles — ils restent dans l'inventaire.",
     brandLabel: "Marque", brandPh: "p. ex. Neilson",
     brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
@@ -809,6 +833,12 @@ const STRINGS = {
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
     viewFullFlyer: "Ver el folleto completo", completedCount: "Completados ({n})",
     scanBarcode: "Escanear un producto", scanNoProduct: "No se pudo identificar. Prueba con el código de barras o el frente del envase.",
+    invCategory: "Categoría", invLocation: "Guardado en", manageLabels: "Gestionar",
+    uncategorised: "Sin categoría", noLocation: "Sin ubicación", allLocations: "En todas partes",
+    invCategories: "Categorías de inventario", invLocations: "Ubicaciones de almacenamiento",
+    noInvCategories: "Aún no hay categorías.", noInvLocations: "Aún no hay ubicaciones.",
+    newInvCategoryPh: "Nueva categoría, p. ej. Lácteos", newInvLocationPh: "Nueva ubicación, p. ej. Congelador",
+    labelDeleteHint: "Borrar solo desclasifica los artículos — los artículos siguen ahí.",
     brandLabel: "Marca", brandPh: "p. ej. Neilson",
     brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
@@ -4786,7 +4816,86 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
   );
 }
 
-const NEW_INVENTORY_ITEM = { name: "", quantity: "1", unit: "", minQuantity: "", expiryDate: "" };
+const NEW_INVENTORY_ITEM = { name: "", quantity: "1", unit: "", minQuantity: "", expiryDate: "", categoryId: "", locationId: "" };
+
+// Categories and storage locations are the same thing — a per-ledger list of
+// names you tag items with — so one manager serves both, told apart by `kind`.
+// Same edit-in-place shape as CategoryManager/StoreManager: the whole list is
+// handed back on save and reconciled in db.saveInventoryLabels.
+function InventoryLabelManager({ kind, labels, t, onSave, onClose }) {
+  const [list, setList] = useState(labels);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isCat = kind === "category";
+
+  const add = () => {
+    if (!name.trim()) return;
+    setList([...list, { id: uid(), name: name.trim(), isNew: true }]);
+    setName("");
+  };
+  const patch = (id, val) => setList(list.map((l) => (l.id === id ? { ...l, name: val } : l)));
+  const del = (id) => setList(list.filter((l) => l.id !== id));
+  // Same as the other managers: a name typed but not yet added still counts.
+  const done = async () => {
+    if (saving) return;
+    setSaving(true);
+    const pending = name.trim();
+    try {
+      await onSave(pending ? [...list, { id: uid(), name: pending, isNew: true }] : list);
+      onClose();
+    } catch (e) { setSaving(false); throw e; }
+  };
+
+  return (
+    <Overlay onClose={onClose} title={t(isCat ? "invCategories" : "invLocations")} t={t}>
+      {list.length === 0 && (
+        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "22px 16px", textAlign: "center", color: SUB, fontSize: 13 }}>
+          {isCat ? <Tag size={20} style={{ opacity: 0.4 }} /> : <MapPin size={20} style={{ opacity: 0.4 }} />}
+          <div style={{ marginTop: 8 }}>{t(isCat ? "noInvCategories" : "noInvLocations")}</div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {list.map((l) => (
+          <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {isCat ? <Tag size={15} style={{ color: SUB, flexShrink: 0 }} /> : <MapPin size={15} style={{ color: SUB, flexShrink: 0 }} />}
+            <input value={l.name} onChange={(e) => patch(l.id, e.target.value)} style={{ ...input, flex: 1 }} />
+            <button onClick={() => del(l.id)} style={{ ...iconBtn, color: DANGER }} aria-label={t("delete")}><Trash2 size={15} /></button>
+          </div>
+        ))}
+      </div>
+      {/* Deleting only unfiles the items — worth saying, since "delete the
+          Freezer" sounds like it might take the frozen peas with it. */}
+      <div style={{ fontSize: 11.5, color: SUB, marginTop: 8 }}>{t("labelDeleteHint")}</div>
+      <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 12, paddingTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={t(isCat ? "newInvCategoryPh" : "newInvLocationPh")} style={{ ...input, flex: 1 }} />
+        <button onClick={add} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
+      </div>
+      <button onClick={done} disabled={saving} className="btn-glow" style={{ ...addBtn, justifyContent: "center", opacity: saving ? 0.6 : 1 }}>
+        {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("saveChanges")}
+      </button>
+    </Overlay>
+  );
+}
+
+// Label picker used by both inventory forms: a plain <select> plus a link to
+// manage the list, mirroring how the expense form pairs Category with
+// "Edit categories".
+function LabelSelect({ label, value, labels, placeholder, manageLabel, onChange, onManage }) {
+  return (
+    <Field label={
+      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ flex: 1 }}>{label}</span>
+        <button onClick={onManage} style={{ ...categoryLink, color: TEAL, fontSize: 12 }}>{manageLabel}</button>
+      </span>
+    }>
+      <select value={value || ""} onChange={(e) => onChange(e.target.value)} style={input}>
+        <option value="">{placeholder}</option>
+        {labels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+      </select>
+    </Field>
+  );
+}
 
 // The three non-Home views a ledger has, in the order they appear here —
 // reused by ViewSwitcher below and by whichever view renders it.
@@ -4844,6 +4953,7 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all"); // all | low | expiring
+  const [placeFilter, setPlaceFilter] = useState(""); // "" = every location
   const [showAddForm, setShowAddForm] = useState(false);
   const [draft, setDraft] = useState(NEW_INVENTORY_ITEM);
   const [saving, setSaving] = useState(false);
@@ -4879,6 +4989,22 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
   }, [ledgerId]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeInventory(ledgerId, load), [ledgerId, load]);
+
+  const [labels, setLabels] = useState([]);
+  const [manageKind, setManageKind] = useState(null); // 'category' | 'location' while its manager is open
+  const loadLabels = useCallback(() => {
+    db.fetchInventoryLabels(ledgerId).then(setLabels).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
+  useEffect(() => { loadLabels(); }, [loadLabels]);
+  useEffect(() => db.subscribeInventoryLabels(ledgerId, loadLabels), [ledgerId, loadLabels]);
+  const categories = labels.filter((l) => l.kind === "category");
+  const locations = labels.filter((l) => l.kind === "location");
+  const labelName = (id) => labels.find((l) => l.id === id)?.name || "";
+  const saveLabels = async (kind, list) => {
+    await db.saveInventoryLabels(ledgerId, kind, list);
+    loadLabels();
+    load(); // a deleted label leaves its items unfiled — reflect that straight away
+  };
 
   const adjust = async (id, delta) => {
     try { await db.adjustInventoryQuantity(id, delta); load(); } catch (e) { setError(e.message || String(e)); }
@@ -4918,6 +5044,7 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
         name: draft.name.trim(), quantity: draft.quantity, unit: draft.unit,
         minQuantity: draft.minQuantity === "" ? null : Number(draft.minQuantity),
         expiryDate: draft.expiryDate || null,
+        categoryId: draft.categoryId || null, locationId: draft.locationId || null,
       });
       setDraft(NEW_INVENTORY_ITEM);
       setShowAddForm(false);
@@ -4934,7 +5061,11 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
 
   const visible = (items || [])
     .filter((it) => it.name.toLowerCase().includes(query.toLowerCase()))
-    .filter((it) => filter === "all" || (filter === "low" && isLow(it)) || (filter === "expiring" && (isExpiring(it.expiryDate) || isExpired(it.expiryDate))));
+    .filter((it) => filter === "all" || (filter === "low" && isLow(it)) || (filter === "expiring" && (isExpiring(it.expiryDate) || isExpired(it.expiryDate))))
+    // "What's in the freezer" is the question a location is for, so it filters
+    // rather than only labelling. Kept separate from the status chips above —
+    // they answer a different question and you want both at once.
+    .filter((it) => !placeFilter || it.locationId === placeFilter);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -4975,6 +5106,12 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
           <Field label={t("minQuantityLabel")}>
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
+          <LabelSelect label={t("invCategory")} value={draft.categoryId} labels={categories}
+            placeholder={t("uncategorised")} manageLabel={t("manageLabels")}
+            onChange={(v) => setDraft({ ...draft, categoryId: v })} onManage={() => setManageKind("category")} />
+          <LabelSelect label={t("invLocation")} value={draft.locationId} labels={locations}
+            placeholder={t("noLocation")} manageLabel={t("manageLabels")}
+            onChange={(v) => setDraft({ ...draft, locationId: v })} onManage={() => setManageKind("location")} />
           <div style={{ display: "flex", gap: 8 }}>
             {/* Both derived from addBtn with the same "#fff" override — a
                 matched mint-green pair instead of the accent computing its
@@ -4990,11 +5127,18 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
         </div>
       )}
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchInventoryPh")} style={input} />
-      <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {[["all", t("showAll")], ["low", t("lowStock")], ["expiring", t("expiringSoon")]].map(([k, label]) => (
           <button key={k} onClick={() => setFilter(k)} style={chip(filter === k)}>{label}</button>
         ))}
       </div>
+      {/* Only worth showing once there's somewhere to filter by. */}
+      {locations.length > 0 && (
+        <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} style={input}>
+          <option value="">{t("allLocations")}</option>
+          {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </select>
+      )}
       {items === null ? (
         <Centered>{t("connecting")}</Centered>
       ) : visible.length === 0 ? (
@@ -5003,10 +5147,12 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visible.map((it) => (
             editingId === it.id ? (
-              <InventoryItemForm key={it.id} item={it} t={t}
+              <InventoryItemForm key={it.id} item={it} t={t} categories={categories} locations={locations}
+                onManage={setManageKind}
                 onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
             ) : (
               <InventoryRow key={it.id} it={it} t={t}
+                categoryName={labelName(it.categoryId)} locationName={labelName(it.locationId)}
                 low={isLow(it)} expired={isExpired(it.expiryDate)} expiring={!isExpired(it.expiryDate) && isExpiring(it.expiryDate)}
                 onAdjust={adjust} onAddToGrocery={addToGrocery}
                 onEdit={() => setEditingId(it.id)} onDelete={() => setConfirmDeleteItem(it)} />
@@ -5025,6 +5171,11 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
         <ConfirmDialog t={t}
           message={t("deleteItemConfirm", { name: confirmDeleteItem.name })}
           onConfirm={doDeleteItem} onCancel={() => setConfirmDeleteItem(null)} />
+      )}
+      {manageKind && (
+        <InventoryLabelManager kind={manageKind} t={t}
+          labels={(manageKind === "category" ? categories : locations).map((l) => ({ id: l.id, name: l.name }))}
+          onSave={(list) => saveLabels(manageKind, list)} onClose={() => setManageKind(null)} />
       )}
       {toast && <Toast key={toast.id} message={toast.text} onDone={() => setToast(null)} />}
     </div>
@@ -5048,7 +5199,7 @@ function StatusPill({ color, bg, border, label }) {
 // button live inline on their own line (no expand/collapse) — they were
 // tried behind a tap-to-expand first, but that stacked a second hidden
 // interaction on top of the swipe-to-reveal Edit/Delete already there.
-function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery, onEdit, onDelete }) {
+function InventoryRow({ it, t, categoryName, locationName, low, expired, expiring, onAdjust, onAddToGrocery, onEdit, onDelete }) {
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
@@ -5079,7 +5230,13 @@ function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery,
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: SUB }}>{it.quantity} {it.unit}</div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span>{it.quantity} {it.unit}</span>
+            {/* Location earns the pin icon; a category is just a word. Both are
+                optional, and an unfiled item simply shows neither. */}
+            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Tag size={11} /> {categoryName}</span>}
+            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><MapPin size={11} /> {locationName}</span>}
+          </div>
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }} style={iconBtn} aria-label="-"><Minus size={14} /></button>
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }} style={iconBtn} aria-label="+"><Plus size={14} /></button>
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={iconBtn} aria-label={t("addToGroceryList")}>
@@ -5097,11 +5254,12 @@ function InventoryRow({ it, t, low, expired, expiring, onAdjust, onAddToGrocery,
 
 // In-place edit form, swapped in for the row it's editing — same shape as the
 // "Add Item" form above it, but the quantity here replaces rather than adds.
-function InventoryItemForm({ item, t, onSave, onCancel }) {
+function InventoryItemForm({ item, t, categories = [], locations = [], onManage, onSave, onCancel }) {
   const [draft, setDraft] = useState({
     name: item.name, quantity: String(item.quantity), unit: item.unit,
     minQuantity: item.minQuantity == null ? "" : String(item.minQuantity),
     expiryDate: item.expiryDate || "",
+    categoryId: item.categoryId || "", locationId: item.locationId || "",
   });
   const [saving, setSaving] = useState(false);
   const save = async () => {
@@ -5111,6 +5269,7 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
       name: draft.name.trim(), quantity: draft.quantity, unit: draft.unit,
       minQuantity: draft.minQuantity === "" ? null : Number(draft.minQuantity),
       expiryDate: draft.expiryDate || null,
+      categoryId: draft.categoryId || null, locationId: draft.locationId || null,
     });
     setSaving(false);
   };
@@ -5136,6 +5295,12 @@ function InventoryItemForm({ item, t, onSave, onCancel }) {
       <Field label={t("minQuantityLabel")}>
         <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
       </Field>
+      <LabelSelect label={t("invCategory")} value={draft.categoryId} labels={categories}
+        placeholder={t("uncategorised")} manageLabel={t("manageLabels")}
+        onChange={(v) => setDraft({ ...draft, categoryId: v })} onManage={() => onManage?.("category")} />
+      <LabelSelect label={t("invLocation")} value={draft.locationId} labels={locations}
+        placeholder={t("noLocation")} manageLabel={t("manageLabels")}
+        onChange={(v) => setDraft({ ...draft, locationId: v })} onManage={() => onManage?.("location")} />
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onCancel} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: 12 }}>{t("cancel")}</button>
         <button onClick={save} disabled={!draft.name.trim() || saving} className="btn-glow"
