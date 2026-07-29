@@ -152,7 +152,7 @@ const STRINGS = {
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
     groceryCardTitle: "Smart Grocery & Deals", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
     viewingLedger: "Viewing: {name}",
-    budgetBannerLine: "BUDGET: {spent} / {budget} Spent ({pct}%)",
+    budgetBannerLine: "SPENT: {spent}/{budget} ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
     noBudgetSetPrompt: "No budget set — tap to add one",
     recurring: "Recurring expenses", recurringAdd: "Add new", noRecurring: "No recurring expenses yet.",
