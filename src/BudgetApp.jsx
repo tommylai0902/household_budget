@@ -164,7 +164,7 @@ const STRINGS = {
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     navDropdownLabel: "Ledgers",
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
-    groceryCardTitle: "Smart Grocery & Deals", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
+    groceryCardTitle: "Smart Grocery & Deals", groceryShortTitle: "Smart Grocery", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
     viewingLedger: "Viewing: {name}",
     budgetBannerLine: "SPENT: {spent}/{budget} ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
@@ -339,6 +339,7 @@ const STRINGS = {
     brandLabel: "牌子", brandPh: "例如 Neilson",
     brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
+    groceryCardTitle: "智能買餸格價", groceryShortTitle: "智能買餸", pendingItemsLabel: "未買：", dealsActiveBadge: "有優惠喇！· 格價",
     recurring: "定期支出", recurringAdd: "新增", noRecurring: "仲未有定期支出。",
     recurNew: "新增定期支出", recurEdit: "編輯定期支出",
     freqWeekly: "每週", freqMonthly: "每月", freqYearly: "每年", frequency: "頻率",
@@ -508,6 +509,7 @@ const STRINGS = {
     brandLabel: "品牌", brandPh: "例如 Neilson",
     brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
+    groceryCardTitle: "智能购物比价", groceryShortTitle: "智能购物", pendingItemsLabel: "待购：", dealsActiveBadge: "有优惠了！· 比价",
     recurring: "定期支出", recurringAdd: "新增", noRecurring: "还没有定期支出。",
     recurNew: "新增定期支出", recurEdit: "编辑定期支出",
     freqWeekly: "每周", freqMonthly: "每月", freqYearly: "每年", frequency: "频率",
@@ -675,6 +677,8 @@ const STRINGS = {
     brandLabel: "Marque", brandPh: "p. ex. Neilson",
     brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
+    groceryCardTitle: "Courses intelligentes et offres", groceryShortTitle: "Courses intelligentes",
+    pendingItemsLabel: "Articles en attente :", dealsActiveBadge: "Offres actives ! · Comparer les prix",
     recurring: "Dépenses récurrentes", recurringAdd: "Ajouter", noRecurring: "Aucune dépense récurrente.",
     recurNew: "Nouvelle dépense récurrente", recurEdit: "Modifier la dépense récurrente",
     freqWeekly: "Hebdomadaire", freqMonthly: "Mensuelle", freqYearly: "Annuelle", frequency: "Fréquence",
@@ -842,6 +846,8 @@ const STRINGS = {
     brandLabel: "Marca", brandPh: "p. ej. Neilson",
     brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
+    groceryCardTitle: "Compras inteligentes y ofertas", groceryShortTitle: "Compras inteligentes",
+    pendingItemsLabel: "Artículos pendientes:", dealsActiveBadge: "¡Ofertas activas! · Comparar precios",
     recurring: "Gastos recurrentes", recurringAdd: "Añadir", noRecurring: "Aún no hay gastos recurrentes.",
     recurNew: "Nuevo gasto recurrente", recurEdit: "Editar gasto recurrente",
     freqWeekly: "Semanal", freqMonthly: "Mensual", freqYearly: "Anual", frequency: "Frecuencia",
@@ -4914,10 +4920,14 @@ function LabelSelect({ label, value, labels, placeholder, manageLabel, onChange,
 
 // The three non-Home views a ledger has, in the order they appear here —
 // reused by ViewSwitcher below and by whichever view renders it.
+// `shortLabelKey` is optional, for the header title only (see ActiveIcon's h2
+// below) — the dropdown menu has room for the full name, but "Smart Grocery &
+// Deals" next to the icon/chevron/Add-Item button truncated to "Smart Grocery
+// & De…" at phone width.
 const VIEW_OPTIONS = [
   { key: "ledger", icon: Wallet, labelKey: "ledgerCard" },
   { key: "inventory", icon: Package, labelKey: "inventoryCardTitle" },
-  { key: "grocery", icon: ShoppingCart, labelKey: "groceryCardTitle" },
+  { key: "grocery", icon: ShoppingCart, labelKey: "groceryCardTitle", shortLabelKey: "groceryShortTitle" },
 ];
 
 // Replaces Inventory/Grocery's static icon+title with a dropdown so you can
@@ -4940,7 +4950,7 @@ function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
         // its own system blue, which is what made this title blue on iPhone.
         style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: INK }}>
         {!hideIcon && <ActiveIcon size={18} style={{ color: TEAL, flexShrink: 0 }} />}
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label || t(active.labelKey)}</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label || t(active.shortLabelKey || active.labelKey)}</h2>
         <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
