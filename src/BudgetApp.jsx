@@ -150,7 +150,7 @@ const STRINGS = {
     dealsNoneFound: "No flyer deals found for this item.",
     priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
-    viewFullFlyer: "View the whole flyer",
+    viewFullFlyer: "View the whole flyer", completedCount: "Completed ({n})",
     brandLabel: "Brand", brandPh: "e.g. Neilson",
     brandHint: "Optional — narrows the flyer search to the exact product.",
     backToDashboard: "Back to Dashboard",
@@ -321,7 +321,7 @@ const STRINGS = {
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
     priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
-    viewFullFlyer: "睇成份海報",
+    viewFullFlyer: "睇成份海報", completedCount: "已買（{n}）",
     brandLabel: "牌子", brandPh: "例如 Neilson",
     brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
@@ -483,7 +483,7 @@ const STRINGS = {
     dealsNoneFound: "没有找到这件商品的传单优惠。",
     priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
-    viewFullFlyer: "查看整份传单",
+    viewFullFlyer: "查看整份传单", completedCount: "已完成（{n}）",
     brandLabel: "品牌", brandPh: "例如 Neilson",
     brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
@@ -643,7 +643,7 @@ const STRINGS = {
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
     priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
-    viewFullFlyer: "Voir la circulaire complète",
+    viewFullFlyer: "Voir la circulaire complète", completedCount: "Terminés ({n})",
     brandLabel: "Marque", brandPh: "p. ex. Neilson",
     brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
@@ -803,7 +803,7 @@ const STRINGS = {
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
     priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
-    viewFullFlyer: "Ver el folleto completo",
+    viewFullFlyer: "Ver el folleto completo", completedCount: "Completados ({n})",
     brandLabel: "Marca", brandPh: "p. ej. Neilson",
     brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
@@ -5160,6 +5160,20 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     }
     setCheckingId(null);
   };
+  const [showDone, setShowDone] = useState(false);
+  const pending = (items || []).filter((it) => !it.isCompleted);
+  const done = (items || []).filter((it) => it.isCompleted);
+  // Both lists render the same thing; only which bucket they sit in differs.
+  const renderRow = (it) =>
+    editingId === it.id ? (
+      <GroceryItemForm key={it.id} item={it} t={t}
+        onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
+    ) : (
+      <GroceryRow key={it.id} it={it} t={t} lang={lang} checkingId={checkingId}
+        onToggle={toggle} onCheckDeals={checkDeals}
+        onEdit={() => setEditingId(it.id)} onDelete={() => remove(it.id)} />
+    );
+
   const pickDeal = async (deal) => {
     try {
       await db.setGroceryDeal(dealsFor.item.id, {
@@ -5202,18 +5216,25 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       ) : items.length === 0 ? (
         <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noGroceryItems")}</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((it) => (
-            editingId === it.id ? (
-              <GroceryItemForm key={it.id} item={it} t={t}
-                onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
-            ) : (
-              <GroceryRow key={it.id} it={it} t={t} lang={lang} checkingId={checkingId}
-                onToggle={toggle} onCheckDeals={checkDeals}
-                onEdit={() => setEditingId(it.id)} onDelete={() => remove(it.id)} />
-            )
-          ))}
-        </div>
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{pending.map(renderRow)}</div>
+          {/* Ticked-off items drop out of the shopping list into a collapsed
+              pile at the bottom. What's left to buy is the only thing worth
+              scanning while you're in the aisle; done items are just proof the
+              trip is going well, so they stay one tap away rather than in the
+              way. Collapsed by default, and the count carries the reassurance
+              without opening it. */}
+          {done.length > 0 && (
+            <div style={{ marginTop: 2 }}>
+              <button onClick={() => setShowDone((s) => !s)} aria-expanded={showDone}
+                style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 2px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: SUB }}>
+                <ChevronDown size={14} style={{ transition: "transform .15s", transform: showDone ? "rotate(180deg)" : "none", flexShrink: 0 }} />
+                <span style={{ flex: 1, textAlign: "left" }}>{t("completedCount", { n: done.length })}</span>
+              </button>
+              {showDone && <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{done.map(renderRow)}</div>}
+            </div>
+          )}
+        </>
       )}
       {dealsFor && (
         <PriceMatchPanel deals={dealsFor.deals} itemName={dealsFor.item.itemName} t={t} lang={lang}
