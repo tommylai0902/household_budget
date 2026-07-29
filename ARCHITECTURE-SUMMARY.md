@@ -237,8 +237,74 @@ Template 值儲喺 `ledgers.template` 欄(`household` / `personal` / `travel` / 
 
 ---
 
-## 16. 未驗證 / 已知限制(交低俾下一個對話)
+## 16. UI 打磨 session:accent 系統全面貫通、picker 排名、date input 修復、PWA 修復
 
+呢個 session 冇加新功能,純粹一輪 UI/UX 打磨——但撞到幾個**通用、以後隨時再中招**嘅陷阱,值得詳細記低。
+
+### 16a. Picker 頂部 nav dropdown(`ViewSwitcher` 一個 component 兩邊用)
+
+- Ledger 入面原有 `ViewSwitcher`(Ledger & Transactions / Inventory Hub / Smart Grocery & Deals 三選一,useState `viewState` 控制)。而家 **LedgerPicker 嘅 `BrandHeader` 左邊都攞嚟用**,加咗兩個 opt-in prop:`label`(覆蓋顯示文字,picker 度傳 `t("navDropdownLabel")`="Ledgers")、`hideIcon`(picker 冇對應嘅 `current` icon 可以顯示,因為 `current="ledger"` 淨係用嚟令 tick 落喺「Ledger & Transactions」度,唔代表 picker 本身係嗰個 view)。
+- **中間試過一個獨立 `HomeNavDropdown` component,最後刪咗**——一開始淨係得 Inventory/Grocery 兩項,用戶要求加返「Ledger & Transactions」先發現同 `ViewSwitcher` 九成似,索性刪咗 `HomeNavDropdown`,兩個 opt-in prop 解決埋。**教訓**:「兩個 dropdown 睇落差唔多」嗰下,寧願早啲問/早啲驗證使唔使真係要兩份,唔好等用戶嚟回嚟去先發現。
+- Bento home(`viewState==="home"`)嗰邊試過都裝呢粒 dropdown,用戶話唔要,已經**刪返**——`BrandHeader` 嘅 `left` 淨係 picker 嗰邊有傳嘢入去。
+- **`BrandHeader` 嘅 `left` 欄一開始有 `overflow:hidden`**(舊年代用嚟 truncate 一句問候語,依家嗰句已經冇咗)——冇留意到嘅話,dropdown 個選單會被剪到得返 0 高,睇落好似「撳咗冇反應」。已改成冇 `overflow`,`whiteSpace:nowrap` 就夠。
+
+### 16b. Accent colour 貫通 CSS class(唔淨係 inline style)
+
+- 第 6 節講嘅 accent 機制(`--accent`/`--accent-ink` 兩個 inline style on `<html>`)**唔夠**——`index.css` 入面成拃 CSS class 規則(`.swipe-row:hover`、`.btn-glow:hover`、`--glass-border`、`--badge-teal-*`)全部係**寫死** `rgba(45,212,191,…)`/`rgba(52,211,153,…)` 呢類 teal hex,JS 冧完全冧唔到佢哋——換咗 accent 色,呢啲 CSS class 定義嘅光暈/邊框繼續係綠色。
+- **修法**:加多一個 `document.documentElement.style.setProperty("--accent-rgb", hexToRgb(accent))`(逗號分隔嘅 R,G,B 數字,冇 `rgb()`包住),`index.css` 嗰堆寫死 hex 全部改用 `rgba(var(--accent-rgb), 0.x)`。`hexToRgb()` 就喺 `accentInkFor` 隔籬,新加嘅細 helper。
+- **教訓,通用**:以後淨係加 `--accent` 一個 CSS var 唔夠,任何有透明度嘅光暈/邊框都要 `--accent-rgb`(因為 `rgba()` 唔食 hex,要拆做三個逗號分隔數字)。搵齪嘅方法:成個 repo grep 寫死嘅 teal hex(`#34D399` `#2DD4BF` `#10B981` 呢類)同 `rgba(45,212,191` `rgba(52,211,153` 呢類,兩邊(BudgetApp.jsx 同 index.css)都要搵。
+
+### 16c. Accent 色盤重新調過(第 6 節嘅結論已經改咗)
+
+- **第 6 節寫嘅「18 隻深色,luminance ≤ 0.179」已經係舊決定**,用戶呢個 session 要求改返做 5 隻:`#2DD4BF`(薄荷綠,app 原本個 glow 色)、`#38BDF8`(藍)、`#A855F7`(紫)、`#EC4899`(粉紅)、`#F97316`(橙)——**部分光度已經超過 0.179**,即係話「揀咗嗰隻色喺未選中嘅 pill 邊框/連結文字(冇經過 `ACCENT_INK` 轉換嘅場合)」喺淺色主題下對比度可能冇咁靚。用戶睇完效果冇提出異議,但**下一個 session 如果又有人話邊個 pill 睇唔清楚,呢個係第一個懷疑對象**,同第 6 節嗰句「已解決」矛盾,記得以呢節做準。
+- `ACCENT_COLORS[0]`(default)由灰色(`#656565`)改咗做薄荷綠(`#2DD4BF`)——`index.css` 嘅 `:root { --accent }` fallback、`--accent-rgb` fallback 都同步跟咗。
+
+### 16d. Ledger picker:自動揀「最常用 3 個」+ 「view all」
+
+- `LedgerPicker` 而家喺 `load()` 入面一次過 `Promise.all` 攞晒每個 ledger 嘅 `fetchLedgerStats()`(交易筆數),存做 `statsById`,再用 `useMemo` 按筆數由高到低排(`rankedLedgers`)。**淨係顯示頭 3 個**(`visibleLedgers`),多過 3 個先出「View all N ledgers」呢粒掣(同三張卡一樣嘅 glass card 樣式,撳到再展開/收返)。
+- **順手execute咗嘅重構**:`LedgerRow` 一開始自己 `useEffect` 攞自己嗰個 ledger 嘅 stats(逐行一個 query),而家改由 `LedgerPicker` 一次過攞晒再用 prop 落去(`<LedgerRow stats={statsById[l.id]} .../>`)——因為要排名,一定要喺 render 之前知道晒全部 ledger 嘅筆數,唔可以逐行自己 lazy load。
+- 「用量」淨係得交易筆數呢個訊號(schema 冇記錄「最後打開時間」),如果之後想改做「最近打開」呢類更準嘅排名,要新加一個時間戳欄(例如 `ledgers.last_opened_at`),依家個 doc 冧冇呢個欄。
+
+### 16e. `<input type="date">` overflow——兩種唔同陷阱,分開修
+
+第一種(`Field` 本身,已經有部分場合中過):
+- `Field` component(第 9 節提過嘅「曾經係 `<label>`」嗰個)一開始 `display:"block"` 冇設 `minWidth`。放喺 `display:flex; flexDirection:column` 嘅卡入面(例如 Inventory add-item form)時,`Field` 變成 flex item,**flex item 預設 `min-width:auto`**(唔係 `0`)——即係唔會縮到細過個 content 嘅 min-content 闊度。`<input type="date">` 喺 iOS 嘅 min-content 闊度好闊,結果 `Field` 成個 box 撐爆個卡,overflow 出邊界。**已修**:`Field` 加咗 `minWidth:0`(唔影響非 flex 場合)。
+
+第二種(`<input type="date">` 本身,`Field` 修完之後仲有):
+- 就算 `Field` 唔再撐爆,`<input type="date">` iOS 自己嘅 native chrome(calendar icon + 日期文字嗰嚿嘢)**可以喺 CSS box 之外自己畫出嚟**——呢個唔關 flex/box-sizing 事,係 WebKit rendering 層面嘅嘢,`width:100%`/`minWidth:0` 都冧唔到。**真正修法**:`-webkit-appearance:none; appearance:none`(唔會冧走個 native date picker,撳落照樣彈)。已經整咗一個 `dateInput = {...input, WebkitAppearance:"none", appearance:"none"}`,**全部 8 個 `type="date"` 都要用呢個 style,唔淨係得出事嗰個**(已經逐個換晒)。
+- **教訓**:見到 overflow 唔好即刻當係 flex/box-model 問題,`<input type="date">`/`type="time"` 呢類 native control 有自己嘅 rendering 陷阱,兩種要分開判斷、分開修。
+
+### 16f. 統一「accent glow」——input focus、selected pill/chip、swipe row 全部同一個recipe
+
+- 之前(第 6 節之後)分別加咗:input `:focus` 一個 box-shadow recipe、`.swipe-row:hover` 另一個 recipe——用戶要求兩者用返同一款,已經統一做:
+  - **CSS**(`index.css`):`.accent-glow` class + `input:focus`/`textarea:focus`/`select:focus`,同 `.swipe-row:hover` 三者共用 `border-color: rgba(var(--accent-rgb),0.75); box-shadow: 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14);`。
+  - **JS**(`BudgetApp.jsx`):`ACCENT_GLOW` 呢個字串常數(同上面果條 box-shadow 一樣嘅數值),`selectablePill()`/`chip()` 兩個 shared style function 嘅 `active===true` 分支,同兩個度身訂造嘅 icon-toggle button(template 揀色、split-mode 揀鍵)嘅 selected 狀態,全部加咗 `boxShadow: active ? ACCENT_GLOW : "none"`。
+- **教訓**:CSS class(`.accent-glow`)同 JS 字串常數(`ACCENT_GLOW`)數值要人手對齊,冇自動同步機制——以後如果改呢個 recipe,兩處都要跟手改。
+
+### 16g. Inventory add-item form:Cancel/Add Item 掣配對,踩過幾次先定案
+
+- **最終形態**:兩個掣都 derive 自 `addBtn`(`{...addBtn, ...}`,唔係各自寫一份),兩個都係實心薄荷綠底、白字(`color:"#fff"`,冧用 `ACCENT_INK` 因為喺呢隻 accent 色度算出嚟係近黑色,喺實色底上面睇落洗色)。
+- **Add Item 一開始有 `opacity:0.5`(name 空白時)**——同 Cancel(冇呢個 dimming)擺埋一齊時色調唔一致,用戶多次話「兩個掣冇統一」。最後刪咗呢個 dimming(`disabled` 屬性 + `addItem()` 入面嘅 early-return guard 已經夠攔住空白提交,dimming 淨係得返視覺上唔一致嘅副作用)。
+- **教訓**:配對出現嘅兩個掣(Cancel/Confirm 呢類),`disabled` 狀態嘅視覺處理(dimming/opacity)如果得一邊有、另一邊冇,好易畀用戶當成「未做完」。
+
+### 16h. PWA:service worker 唔會自動生效(`skipWaiting`/`clientsClaim` 唔夠)
+
+- `vite.config.js` 加咗 `workbox:{skipWaiting:true, clientsClaim:true}` 之後,新 SW 會即刻接管**新開嘅 tab**,但**已經開住嗰個 tab**(即係用戶部電話已經放喺 home screen 嗰個 PWA)唔會自動 reload——佢會繼續行緊已經 load 咗嗰份舊 JS,直到用戶自己成個 app force-close 再開返。
+- **真正修法**:`main.jsx` 加咗 `navigator.serviceWorker.addEventListener("controllerchange", ...)`,一偵測到新 SW 接管咗就 `window.location.reload()`(用 `reloading` flag 擋重複觸發)。**呢個 fix 本身都要用戶手動 close/reopen 一次先會生效**(因為冇呢段 code 之前,舊 tab 本身冧唔到自己更新)——之後嘅每次改動就唔使再手動咁做。
+- **教訓**:PWA 更新流程係兩層——(1)新 SW 幾時接管(`skipWaiting`/`clientsClaim` 控制)、(2)已經開住嗰版頁面幾時知道要 reload(`controllerchange` 監聽控制)。淨係做(1)冇做(2),用戶會覺得「點解 update 咗都冧唔到」。
+
+### 16i. iOS standalone PWA:邊緣拖拉/彈跳,`overscroll-behavior` 唔夠可靠
+
+- 第一次修法:`html,body{overflow-x:hidden; overscroll-behavior-x:none; touch-action:pan-y;}`——喺一般 mobile Safari 有用,但用戶部電話(iOS「Add to Home Screen」standalone WebView)**繼續拖到成個 app 側向彈,漏出黑邊**。`overscroll-behavior` 呢個屬性喺 standalone WebView 度冧唔可靠(同一般 Safari tab 用緊唔同套彈跳機制)。
+- **真正修法**(已經生效嘅版本):`html,body{position:fixed; inset:0; overflow:hidden;}`——即係話 body 本身**完全冇嘢可以 scroll/bounce**;改由 `#root{position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;}` 做**唯一**嘅 scroll container,垂直彈跳淨係喺呢個 box 入面發生,唔會拖到成版走位。
+- **呢個改法嘅前提**(已經 grep 確認過):成個 codebase 冇任何地方靠 `window.scrollY`/`window.scrollTo`/`document.body.scroll*`——如果之後加呢類 code,要改做操作 `#root` 嗰個 DOM node,唔係 `window`/`document.body`。
+- **一樣要 force-close/reopen 一次先生效**(呢個係 CSS 改動,唔係 SW,但 PWA 舊 tab 一樣要重新載入先食到新嘅 `index.css`)。
+
+---
+
+## 17. 未驗證 / 已知限制(交低俾下一個對話)
+
+- **16i 嘅 iOS 邊緣彈跳 fix(`position:fixed` + `#root` scroll)未經用戶親身確認**——呢個環境冧唔到真實 iOS 觸控手勢,淨係推咗 code,用戶重新開個 app 之後有冇再彈,要下一個 session 主動問返。如果仲有問題,下一步可以懷疑:(a) `#root` 入面某個 element 自己都有 `overflow` 令 bounce 喺子層再出現,(b) 某個 fixed-position overlay(`Overlay`/toast)嘅 `inset:0` 喺呢個新 layout 底下計錯,(c) iOS 版本太舊連呢招都唔食,要再退一步試 `preventDefault()` 喺 `touchmove` 手動擋。
 - `/api/scan-statement.js` 嘅 AI 讀 statement 路徑(需要真實相/PDF + 有效 Gemini key,呢邊環境驗唔到)。
 - iOS Safari「Take Photo」**已實測確認冇消失**——accept 入面只要有 image MIME type,Safari 就會加返呢個選項,HTML 冇任何屬性可以保證控制到。功能上冇壞,已確認係無法用 code 解決嘅平台限制,唔再追。
 - **呢個開發環境嘅 browser session 會不定時無啦啦登出**(`localStorage` 清晒),原因未查(唔係 code bug,單純環境/瀏覽器層面),遇到就要用戶自己重新登入先可以再肉眼驗證。
