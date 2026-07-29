@@ -5277,7 +5277,12 @@ function ConfirmDialog({ message, confirmLabel, t, onConfirm, onCancel, tone = "
 // the single-input fields.
 function Field({ label, children, style }) {
   return (
-    <div style={{ display: "block", ...style }}>
+    // minWidth: 0 overrides the flex-item default of min-width: auto — without
+    // it, a Field placed directly in a column flex container (e.g. the
+    // inventory add-item card) can't shrink below its content's intrinsic
+    // width, and a native <input type="date"> is wide enough on iOS to blow
+    // past the card edge even though the input itself is width: 100%.
+    <div style={{ display: "block", minWidth: 0, ...style }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{label}</div>
       {children}
     </div>
