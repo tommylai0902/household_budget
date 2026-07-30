@@ -5464,9 +5464,15 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     try { await db.deleteGroceryItem(id); load(); } catch (e) { setError(e.message || String(e)); }
   };
   const [editingId, setEditingId] = useState(null);
-  const saveEdit = async (id, fields) => {
-    try { await db.updateGroceryItem(id, fields); setEditingId(null); load(); }
-    catch (e) { setError(e.message || String(e)); }
+  const saveEdit = async (id, fields, previousName) => {
+    try {
+      // A new name means whatever deal was matched (cutout, price, flyer
+      // link) was matched against the old product — it shouldn't survive
+      // pointing at something that's no longer what this row is.
+      const clearDeal = previousName != null && fields.itemName.trim().toLowerCase() !== previousName.trim().toLowerCase();
+      await db.updateGroceryItem(id, { ...fields, clearDeal });
+      setEditingId(null); load();
+    } catch (e) { setError(e.message || String(e)); }
   };
   // Opens the match list rather than silently stamping the cheapest hit on the
   // row: the flyer cutout is the whole point at the till, and only a person
@@ -5494,7 +5500,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   const renderRow = (it) =>
     editingId === it.id ? (
       <GroceryItemForm key={it.id} item={it} t={t}
-        onSave={(fields) => saveEdit(it.id, fields)} onCancel={() => setEditingId(null)} />
+        onSave={(fields) => saveEdit(it.id, fields, it.itemName)} onCancel={() => setEditingId(null)} />
     ) : (
       <GroceryRow key={it.id} it={it} t={t} lang={lang} checkingId={checkingId}
         onToggle={toggle} onCheckDeals={checkDeals}

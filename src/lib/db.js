@@ -950,9 +950,19 @@ export async function toggleGroceryItem(id, isCompleted) {
   const { error } = await supabase.from("grocery_list").update({ is_completed: isCompleted }).eq("id", id);
   if (error) throw error;
 }
-export async function updateGroceryItem(id, { itemName, quantityNeeded, brand }) {
-  const { error } = await supabase.from("grocery_list")
-    .update({ item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null }).eq("id", id);
+// `clearDeal`: a saved match (cutout, price, flyer link) was matched against
+// the OLD name — renaming to a different product shouldn't leave last week's
+// coconut milk deal looking like it's for the new item. Caller decides
+// whether the name actually changed (it already has the old value in hand).
+export async function updateGroceryItem(id, { itemName, quantityNeeded, brand, clearDeal }) {
+  const patch = { item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null };
+  if (clearDeal) {
+    Object.assign(patch, {
+      target_supermarket: null, deal_price: null, deal_image_url: null, deal_item_name: null,
+      deal_valid_to: null, deal_merchant_logo: null, deal_flyer_id: null, deal_postal_code: null,
+    });
+  }
+  const { error } = await supabase.from("grocery_list").update(patch).eq("id", id);
   if (error) throw error;
 }
 export async function deleteGroceryItem(id) {
