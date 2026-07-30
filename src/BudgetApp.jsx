@@ -122,6 +122,7 @@ const STRINGS = {
     splitBetween: "Split", splitWays: "{n} ways · {amount} each", splitWaysShort: "Split {n} ways",
     selectAll: "Everyone",
     items: "Receipt items", itemSplit: "Split", itemPersonal: "Personal", itemDrop: "Not mine",
+    itemAddToInventory: "Add to Inventory", itemAddToGrocery: "Add to Grocery List",
     itemsHint: "Tax is shared out across whatever you keep, in proportion to price.",
     itemsPersonalNote: "{n} personal · {amount} — saved as a second, unsplit expense",
     itemsDropped: "{n} removed",
@@ -153,7 +154,7 @@ const STRINGS = {
     viewFullFlyer: "View the whole flyer", completedCount: "Completed ({n})",
     scanBarcode: "Scan a product", scanNoProduct: "Couldn't tell what that is. Try the barcode or the front of the pack.",
     invCategory: "Category", invLocation: "Stored in", manageLabels: "Manage",
-    uncategorised: "No category", noLocation: "No location", allLocations: "Everywhere",
+    noInvCategory: "No category", noLocation: "No location", allLocations: "Everywhere",
     invCategories: "Inventory categories", invLocations: "Storage locations",
     noInvCategories: "No categories yet.", noInvLocations: "No locations yet.",
     newInvCategoryPh: "New category, e.g. Dairy", newInvLocationPh: "New location, e.g. Freezer",
@@ -300,6 +301,7 @@ const STRINGS = {
     splitBetween: "分帳", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
     selectAll: "全部人",
     items: "收據明細", itemSplit: "分帳", itemPersonal: "私人", itemDrop: "唔計",
+    itemAddToInventory: "加入存貨", itemAddToGrocery: "加入買餸清單",
     itemsHint: "稅款會按價錢比例攤分落你保留嘅項目。",
     itemsPersonalNote: "{n} 件私人 · {amount} — 會另存一張唔分帳嘅支出",
     itemsDropped: "已剔走 {n} 件",
@@ -331,7 +333,7 @@ const STRINGS = {
     viewFullFlyer: "睇成份海報", completedCount: "已買（{n}）",
     scanBarcode: "掃描貨品", scanNoProduct: "認唔出係咩嚟。試吓影條碼或者包裝正面。",
     invCategory: "分類", invLocation: "擺喺邊", manageLabels: "管理",
-    uncategorised: "冇分類", noLocation: "冇指定位置", allLocations: "全部位置",
+    noInvCategory: "冇分類", noLocation: "冇指定位置", allLocations: "全部位置",
     invCategories: "存貨分類", invLocations: "存放位置",
     noInvCategories: "仲未有分類。", noInvLocations: "仲未有位置。",
     newInvCategoryPh: "新分類，例如：奶類", newInvLocationPh: "新位置，例如：冰格",
@@ -478,6 +480,7 @@ const STRINGS = {
     splitBetween: "分账", splitWays: "{n} 人分 · 每人 {amount}", splitWaysShort: "{n} 人分",
     selectAll: "所有人",
     items: "收据明细", itemSplit: "分账", itemPersonal: "个人", itemDrop: "不算",
+    itemAddToInventory: "加入库存", itemAddToGrocery: "加入购物清单",
     itemsHint: "税款会按价格比例分摊到你保留的项目上。",
     itemsPersonalNote: "{n} 件个人 · {amount} — 会另存为一笔不分账的支出",
     itemsDropped: "已移除 {n} 件",
@@ -509,7 +512,7 @@ const STRINGS = {
     viewFullFlyer: "查看整份传单", completedCount: "已完成（{n}）",
     scanBarcode: "扫描商品", scanNoProduct: "认不出这是什么。试试拍条形码或包装正面。",
     invCategory: "分类", invLocation: "存放位置", manageLabels: "管理",
-    uncategorised: "无分类", noLocation: "未指定位置", allLocations: "全部位置",
+    noInvCategory: "无分类", noLocation: "未指定位置", allLocations: "全部位置",
     invCategories: "库存分类", invLocations: "存放位置",
     noInvCategories: "还没有分类。", noInvLocations: "还没有位置。",
     newInvCategoryPh: "新分类，例如：乳制品", newInvLocationPh: "新位置，例如：冷冻室",
@@ -654,6 +657,7 @@ const STRINGS = {
     splitBetween: "Partager", splitWays: "en {n} · {amount} chacun", splitWaysShort: "Partagé en {n}",
     selectAll: "Tout le monde",
     items: "Articles du reçu", itemSplit: "Partagé", itemPersonal: "Personnel", itemDrop: "Pas à moi",
+    itemAddToInventory: "Ajouter à l'inventaire", itemAddToGrocery: "Ajouter à la liste de courses",
     itemsHint: "La taxe est répartie sur ce que vous gardez, au prorata du prix.",
     itemsPersonalNote: "{n} personnel · {amount} — enregistré comme une seconde dépense non partagée",
     itemsDropped: "{n} retiré",
@@ -685,7 +689,7 @@ const STRINGS = {
     viewFullFlyer: "Voir la circulaire complète", completedCount: "Terminés ({n})",
     scanBarcode: "Scanner un produit", scanNoProduct: "Impossible d'identifier ce produit. Essayez le code-barres ou le devant de l'emballage.",
     invCategory: "Catégorie", invLocation: "Rangé dans", manageLabels: "Gérer",
-    uncategorised: "Sans catégorie", noLocation: "Aucun emplacement", allLocations: "Partout",
+    noInvCategory: "Sans catégorie", noLocation: "Aucun emplacement", allLocations: "Partout",
     invCategories: "Catégories d'inventaire", invLocations: "Emplacements de rangement",
     noInvCategories: "Aucune catégorie pour l'instant.", noInvLocations: "Aucun emplacement pour l'instant.",
     newInvCategoryPh: "Nouvelle catégorie, p. ex. Produits laitiers", newInvLocationPh: "Nouvel emplacement, p. ex. Congélateur",
@@ -831,6 +835,7 @@ const STRINGS = {
     splitBetween: "Dividir", splitWays: "entre {n} · {amount} cada uno", splitWaysShort: "Entre {n}",
     selectAll: "Todos",
     items: "Artículos del recibo", itemSplit: "Compartido", itemPersonal: "Personal", itemDrop: "No es mío",
+    itemAddToInventory: "Añadir al inventario", itemAddToGrocery: "Añadir a la lista de la compra",
     itemsHint: "El impuesto se reparte entre lo que conserves, en proporción al precio.",
     itemsPersonalNote: "{n} personal · {amount} — se guarda como un segundo gasto sin dividir",
     itemsDropped: "{n} quitado",
@@ -862,7 +867,7 @@ const STRINGS = {
     viewFullFlyer: "Ver el folleto completo", completedCount: "Completados ({n})",
     scanBarcode: "Escanear un producto", scanNoProduct: "No se pudo identificar. Prueba con el código de barras o el frente del envase.",
     invCategory: "Categoría", invLocation: "Guardado en", manageLabels: "Gestionar",
-    uncategorised: "Sin categoría", noLocation: "Sin ubicación", allLocations: "En todas partes",
+    noInvCategory: "Sin categoría", noLocation: "Sin ubicación", allLocations: "En todas partes",
     invCategories: "Categorías de inventario", invLocations: "Ubicaciones de almacenamiento",
     noInvCategories: "Aún no hay categorías.", noInvLocations: "Aún no hay ubicaciones.",
     newInvCategoryPh: "Nueva categoría, p. ej. Lácteos", newInvLocationPh: "Nueva ubicación, p. ej. Congelador",
@@ -2196,6 +2201,18 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
           expiryDate: draft.invExpiryDate, category: catName(catById(draft.categoryId), lang),
         });
       }
+      // Per-line-item adds from a scanned receipt — separate from the
+      // whole-receipt toggle above, one row per item rather than one lump
+      // entry named after the merchant. Sequential, not Promise.all, same as
+      // every other batch write in this file (importExpensesBatch etc.) —
+      // household-scale volume, and upsertInventoryItem's own read-then-write
+      // isn't safe to run concurrently against itself.
+      for (const name of draft.inventoryItemNames || []) {
+        await db.upsertInventoryItem(ledger.id, { name, quantity: 1, unit: "", expiryDate: null, category: catName(catById(draft.categoryId), lang) });
+      }
+      for (const name of draft.groceryItemNames || []) {
+        await db.addGroceryItem(ledger.id, name, 1);
+      }
       setEditing(null);
       refresh();
     } catch (e) { setError(e.message); }
@@ -3314,7 +3331,11 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   // { name, price, mode: split|personal|drop }. Reopening a saved expense brings
   // its stored lines back; those prices already include their share of the tax,
   // which is why scanTotal stays null and the ratio below comes out as 1.
-  const [items, setItems] = useState(() => (initial?.items || []).map((i) => ({ name: i.name, price: i.amount, mode: "split" })));
+  const [items, setItems] = useState(() => (initial?.items || []).map((i) => ({ name: i.name, price: i.amount, mode: "split", addToInventory: false, addToGrocery: false })));
+  // Which rows have their Inventory/Grocery toggles revealed — name+price+the
+  // three split-mode buttons already fill a phone-width row, so these two are
+  // an opt-in second line rather than two more permanent icons.
+  const [expandedItemIdx, setExpandedItemIdx] = useState(() => new Set());
   const [scanTotal, setScanTotal] = useState(null); // receipt total, tax included
   const [personalLedgerId, setPersonalLedgerId] = useState(ledgers[0]?.id || null);
 
@@ -3356,7 +3377,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
       }));
       setAddHst(false); // a receipt total already includes tax
       setScanTotal(out.amount ?? null);
-      setItems((out.items || []).map((i) => ({ name: i.name, price: Number(i.price) || 0, mode: "split" })));
+      setItems((out.items || []).map((i) => ({ name: i.name, price: Number(i.price) || 0, mode: "split", addToInventory: false, addToGrocery: false })));
       // Informational only — never touches the amount or the ledger's currency.
       const scannedCcy = (out.currency || "").toUpperCase();
       setCurrencyMismatch(/^[A-Z]{3}$/.test(scannedCcy) && scannedCcy !== activeCurrency ? scannedCcy : null);
@@ -3420,6 +3441,15 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   }, [items, taxRatio]);
 
   const setItemMode = (idx, mode) => setItems(items.map((it, i) => (i === idx ? { ...it, mode } : it)));
+  // Independent of mode on purpose — a coupon line should never reach
+  // inventory regardless of split state, but an item paid by points (and so
+  // marked "drop") might still be worth tracking, so these aren't gated by it.
+  const toggleItemFlag = (idx, key) => setItems(items.map((it, i) => (i === idx ? { ...it, [key]: !it[key] } : it)));
+  const toggleItemExpanded = (idx) => setExpandedItemIdx((prev) => {
+    const next = new Set(prev);
+    next.has(idx) ? next.delete(idx) : next.add(idx);
+    return next;
+  });
 
   const base = Number(d.amount) || 0;
   const finalAmount = addHst ? Math.round(base * 1.13 * 100) / 100 : base;
@@ -3472,7 +3502,13 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
         }
       : null;
     await onSave(
-      { ...d, description: typed, amount: finalAmount, items: asItems(splitItems) },
+      {
+        ...d, description: typed, amount: finalAmount, items: asItems(splitItems),
+        // Every flagged item regardless of split/personal/drop — see
+        // toggleItemFlag above for why these aren't filtered by mode.
+        inventoryItemNames: items.filter((i) => i.addToInventory).map((i) => i.name),
+        groceryItemNames: items.filter((i) => i.addToGrocery).map((i) => i.name),
+      },
       remember && canRemember ? typed : null,
       personal,
     );
@@ -3567,13 +3603,36 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 <span style={{ flex: 1, minWidth: 110, fontSize: 13, fontWeight: 600, textDecoration: it.mode === "drop" ? "line-through" : "none" }}>{it.name}</span>
                 <span style={{ fontSize: 13, color: SUB, fontVariantNumeric: "tabular-nums" }}>{money(round2(it.price * taxRatio))}</span>
                 <div style={{ display: "flex", gap: 4 }}>
-                  {[["split", t("itemSplit"), Users], ["personal", t("itemPersonal"), User], ["drop", t("itemDrop"), Trash2]].map(([mode, label, Icon]) => (
+                  {/* Split/Personal are the two everyday choices — Drop moved
+                      into the reveal below along with Inventory/Grocery, since
+                      four permanent buttons plus name+price was too tight on
+                      a phone (Split/Personal/Drop/⋯ was already the full
+                      width; Drop is also the least-used of the three). */}
+                  {[["split", t("itemSplit"), Users], ["personal", t("itemPersonal"), User]].map(([mode, label, Icon]) => (
                     <button key={mode} onClick={() => setItemMode(idx, mode)} aria-label={label} title={label}
                       style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === mode ? TEAL : LINE, background: it.mode === mode ? TEAL : CARD, color: it.mode === mode ? ACCENT_INK : SUB, boxShadow: it.mode === mode ? ACCENT_GLOW : "none" }}>
                       <Icon size={13} />
                     </button>
                   ))}
+                  <button onClick={() => toggleItemExpanded(idx)} aria-label={t("moreActions")} title={t("moreActions")}
+                    style={{ ...iconBtn, width: 30, height: 28, background: expandedItemIdx.has(idx) ? MUTED_BG : CARD, color: SUB }}>
+                    <MoreHorizontal size={13} />
+                  </button>
                 </div>
+                {expandedItemIdx.has(idx) && (
+                  <div style={{ display: "flex", gap: 4, width: "100%", justifyContent: "flex-end" }}>
+                    <button onClick={() => setItemMode(idx, "drop")} aria-label={t("itemDrop")} title={t("itemDrop")}
+                      style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === "drop" ? TEAL : LINE, background: it.mode === "drop" ? TEAL : CARD, color: it.mode === "drop" ? ACCENT_INK : SUB, boxShadow: it.mode === "drop" ? ACCENT_GLOW : "none" }}>
+                      <Trash2 size={13} />
+                    </button>
+                    {[["addToInventory", t("itemAddToInventory"), Package], ["addToGrocery", t("itemAddToGrocery"), ShoppingCart]].map(([key, label, Icon]) => (
+                      <button key={key} onClick={() => toggleItemFlag(idx, key)} aria-label={label} title={label}
+                        style={{ ...iconBtn, width: 30, height: 28, borderColor: it[key] ? TEAL : LINE, background: it[key] ? TEAL : CARD, color: it[key] ? ACCENT_INK : SUB, boxShadow: it[key] ? ACCENT_GLOW : "none" }}>
+                        <Icon size={13} />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -5164,7 +5223,7 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
           </Field>
           <LabelSelect label={t("invCategory")} value={draft.categoryId} labels={categories}
-            placeholder={t("uncategorised")} manageLabel={t("manageLabels")}
+            placeholder={t("noInvCategory")} manageLabel={t("manageLabels")}
             onChange={(v) => setDraft({ ...draft, categoryId: v })} onManage={() => setManageKind("category")} />
           <LabelSelect label={t("invLocation")} value={draft.locationId} labels={locations}
             placeholder={t("noLocation")} manageLabel={t("manageLabels")}
