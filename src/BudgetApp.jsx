@@ -146,6 +146,7 @@ const STRINGS = {
     addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
+    postalCodeRequired: "Enter your postal code first — flyer prices are local.",
     dealCheckErr: "Couldn't check prices: {msg}",
     dealsPending: "No flyer prices for this yet — the weekly update runs Thursday.",
     dealsNoneFound: "No flyer deals found for this item.",
@@ -325,6 +326,7 @@ const STRINGS = {
     addGroceryItemPh: "加樣嘢…", noGroceryItems: "買餸清單係空嘅。",
     priceMatchCheck: "🔍 格價", checkingDeals: "格緊價…",
     postalCodePh: "郵政編碼（用嚟格價）", priceMatchBadge: "最平：{merchant} {price}",
+    postalCodeRequired: "請先填郵政編碼——海報優惠係分地區嘅。",
     dealCheckErr: "格價失敗：{msg}",
     dealsPending: "呢樣嘢仲未有海報價，星期四先更新。",
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
@@ -504,6 +506,7 @@ const STRINGS = {
     addGroceryItemPh: "添加物品…", noGroceryItems: "购物清单是空的。",
     priceMatchCheck: "🔍 比价", checkingDeals: "比价中…",
     postalCodePh: "邮政编码（用于比价）", priceMatchBadge: "最低：{merchant} {price}",
+    postalCodeRequired: "请先填邮政编码——传单优惠是分地区的。",
     dealCheckErr: "比价失败：{msg}",
     dealsPending: "这件商品还没有传单价格，每周四更新。",
     dealsNoneFound: "没有找到这件商品的传单优惠。",
@@ -681,6 +684,7 @@ const STRINGS = {
     addGroceryItemPh: "Ajouter un article…", noGroceryItems: "La liste de courses est vide.",
     priceMatchCheck: "🔍 Comparer les prix", checkingDeals: "Vérification…",
     postalCodePh: "Code postal pour comparer les prix", priceMatchBadge: "Meilleur : {price} chez {merchant}",
+    postalCodeRequired: "Entrez d'abord votre code postal — les circulaires sont régionales.",
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
     dealsPending: "Pas encore de prix de circulaire — la mise à jour hebdomadaire a lieu le jeudi.",
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
@@ -859,6 +863,7 @@ const STRINGS = {
     addGroceryItemPh: "Añadir un artículo…", noGroceryItems: "La lista de la compra está vacía.",
     priceMatchCheck: "🔍 Comparar precios", checkingDeals: "Comprobando…",
     postalCodePh: "Código postal para comparar precios", priceMatchBadge: "Mejor: {price} en {merchant}",
+    postalCodeRequired: "Introduce primero tu código postal — las ofertas son regionales.",
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
     dealsPending: "Aún no hay precios de folleto — la actualización semanal es el jueves.",
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
@@ -5438,6 +5443,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   // localStorage value from another device would query a region nothing was
   // ever cached for and every lookup would come back "pending" forever.
   const [postalCode, setPostalCode] = useState(() => ledgerPostalCode || getPostalCode());
+  const postalRef = useRef(null); // focused when a search is attempted without one
   const [toast, setToast] = useState(null);
   const [checkingId, setCheckingId] = useState(null);
   const load = useCallback(() => {
@@ -5479,6 +5485,15 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   // can tell whether "Milk 2L" is actually the thing in their basket.
   const [dealsFor, setDealsFor] = useState(null); // { item, deals }
   const checkDeals = async (item) => {
+    // Flyer prices are regional — without a postal code there is nothing to
+    // search: the weekly mirror never fetched this region, so the lookup can
+    // only ever come back empty. Say so and put the cursor in the field
+    // rather than letting it look like the search found nothing.
+    if (!postalCode.trim()) {
+      setToast({ id: Date.now(), text: t("postalCodeRequired") });
+      postalRef.current?.focus();
+      return;
+    }
     setCheckingId(item.id);
     setError("");
     try {
@@ -5493,6 +5508,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     }
     setCheckingId(null);
   };
+  const hasPostal = !!postalCode.trim();
   const [showDone, setShowDone] = useState(false);
   const pending = (items || []).filter((it) => !it.isCompleted);
   const done = (items || []).filter((it) => it.isCompleted);
@@ -5502,7 +5518,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       <GroceryItemForm key={it.id} item={it} t={t}
         onSave={(fields) => saveEdit(it.id, fields, it.itemName)} onCancel={() => setEditingId(null)} />
     ) : (
-      <GroceryRow key={it.id} it={it} t={t} lang={lang} checkingId={checkingId}
+      <GroceryRow key={it.id} it={it} t={t} lang={lang} checkingId={checkingId} hasPostal={hasPostal}
         onToggle={toggle} onCheckDeals={checkDeals}
         onEdit={() => setEditingId(it.id)} onDelete={() => remove(it.id)} />
     );
@@ -5531,9 +5547,12 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       {error && <div style={errorBox}>{error}</div>}
       {/* Saved to the ledger on blur, not per keystroke — the cron reads it
           from there to know which region's flyers to pull. */}
-      <input value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
+      <input ref={postalRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
         onBlur={() => db.updateLedger(ledgerId, { postal_code: postalCode.trim() || null }).catch((e) => setError(e.message || String(e)))}
-        placeholder={t("postalCodePh")} style={input} />
+        placeholder={t("postalCodePh")} style={{ ...input, borderColor: hasPostal ? undefined : WARN }} />
+      {/* Stated up front rather than only on a failed tap — price matching is
+          the point of this screen and it can't work without a region. */}
+      {!hasPostal && <div style={{ fontSize: 12, color: WARN, marginTop: -4 }}>{t("postalCodeRequired")}</div>}
       {/* Stays open after each add — the toast comment below spells out why
           adding several in a row is the normal case here. */}
       {showAddForm && (
@@ -5633,7 +5652,7 @@ function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
 // be reachable in one tap while standing at the counter — and the circle is
 // now a large, obvious target in its own right, which is what the earlier
 // "the checklist isn't obvious" pass was actually fixing.
-function GroceryRow({ it, t, lang, checkingId, onToggle, onCheckDeals, onEdit, onDelete }) {
+function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onCheckDeals, onEdit, onDelete }) {
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(INVENTORY_ROW_ACTIONS_WIDTH);
   const [open, setOpen] = useState(false);
   const done = it.isCompleted;
@@ -5679,9 +5698,12 @@ function GroceryRow({ it, t, lang, checkingId, onToggle, onCheckDeals, onEdit, o
               </div>
             )}
           </div>
+          {/* Dimmed without a postal code, but still tappable — the tap is
+              what explains why and focuses the field, which a disabled button
+              couldn't do. */}
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onCheckDeals(it); }} disabled={checking}
-            aria-label={t("priceMatchCheck")} title={t("priceMatchCheck")}
-            style={{ ...iconBtn, flexShrink: 0, opacity: checking ? 0.6 : 1 }}>
+            aria-label={t("priceMatchCheck")} title={hasPostal ? t("priceMatchCheck") : t("postalCodeRequired")}
+            style={{ ...iconBtn, flexShrink: 0, opacity: checking || !hasPostal ? 0.6 : 1 }}>
             {checking ? <Loader2 size={15} className="spin" /> : <Search size={15} />}
           </button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
