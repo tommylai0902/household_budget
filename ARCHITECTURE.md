@@ -247,16 +247,44 @@ Gemini's free tier is a shared, small quota (`generate_content_free_tier_request
 seen erroring at `limit: 20`) — one request counts the same whether it's an
 image or a sentence, so nothing short of not calling Gemini at all helps.
 `scan-receipt.js` tries Cloud Vision's OCR (`api/vision.js`, `DOCUMENT_TEXT_DETECTION`)
-first and parses the raw text with regex (`src/lib/receiptOcr.js`: last
-`TOTAL`-ish line wins over `SUBTOTAL`/tax lines, first date-shaped substring,
-first non-blank line as merchant, category via the same keyword table
-`csv.js` exports as `CATEGORY_KEYWORDS`). A well-formatted receipt resolves
-here and never touches Gemini. `parseReceiptText` returns `null` — no
-confident total or merchant line — whenever it isn't sure, and *that's* the
+first and parses the raw text with regex (`src/lib/receiptOcr.js`), which
+resolves a well-formatted receipt without touching Gemini at all.
+`parseReceiptText` returns `null` whenever it isn't sure, and *that's* the
 fallback signal: the handler then runs the original Gemini image path
 unchanged. `GOOGLE_VISION_CREDENTIALS_JSON` unset (or Vision itself failing)
 is treated the same as "not confident" — `ocrText()` swallows the error and
 returns `null` rather than throwing, so this is safe to leave unconfigured.
+
+**The parser's shape is dictated by one fact: Vision does not preserve the
+receipt's visual columns.** `TOTAL          $31.64` comes back as `TOTAL` then
+`$31.64` on separate lines — and sometimes as a whole stacked column of labels
+followed by the whole column of amounts, with a dozen unrelated lines wedged
+between them. So the total is found by locating the label's index among the
+money labels it's stacked with, then taking the amount at that index from the
+next run of amounts at least as long as the label column. The picked figure
+must be the largest in its run (a total is never below its own subtotal);
+failing that check returns `null` rather than a wrong number.
+
+`receiptOcr.test.js` is built from **six real Vision outputs**, not synthetic
+receipts — the first synthetic version passed its own tests and then failed on
+the first real photo. Each fixture pins a distinct trap: T&T (loyalty ad above
+the store name, so the merchant is anchored on the address block instead),
+Tahini's (stacked columns, stray ingredient text between them), No Frills (ink
+bleeding through from the back read as gibberish; a year-first `26/04/15` card
+timestamp that reads as month 26 if taken as MM/DD/YY), Gateway (`Apr 17,2026`
+— a month name, which silently fell back to *today* before it was handled),
+Shoppers (no `TOTAL` at all, the terminal labels it `Amount`, value column
+keeps its `:` separator), LCBO (branch number line `0658 AURORA STORE` sitting
+between the store name and the address).
+
+**Line items are always empty on the Vision path** (`findItems` returns `[]`
+by design). Three grocery receipts scramble name↔price order three different
+ways, and LCBO prints the *same item*'s price in two different positions
+within one receipt — so pairing by position is a guess, and a price attached
+to the wrong item is worse than none. Instead, `ExpenseForm` offers "read the
+individual items with AI" after a scan comes back without items: it re-posts
+the same held photo with `wantItems: true`, which skips Vision server-side.
+One metered call, explicitly chosen, once per photo.
 
 Auth is a downloaded **service-account key**, not a plain API key — this
 household's GCP org enforces `iam.disableServiceAccountKeyCreation`-adjacent
@@ -328,6 +356,14 @@ end-to-end** (see below).
 
 **Migrations 001–037 are all applied** as of 2026-07-31.
 
+**Cloud Vision receipt reading is confirmed working in production
+(2026-07-31)**, verified by scanning real receipts on a phone and watching
+`POST /api/scan-receipt` return 200 with no fallback logged. Six different
+receipts were read this way; two of them (Metro, Shoppers) fell back to Gemini
+on purpose rather than guess. Note the Cloud project needed **billing enabled**
+before the API would answer at all — it 403s with `BILLING_DISABLED` until
+then, even though usage under ~1,000 calls/month is free.
+
 **Web push is now confirmed working on a real device (2026-07-31).** The
 Vercel deploy was initially missing `VITE_VAPID_PUBLIC_KEY` — `PushToggle`'s
 `pushSupported()` check fails silently (renders nothing, no error) when that's
@@ -350,12 +386,15 @@ deleting the test row.
   "Ledger & Transactions" calls `onExit()` and lands on the ledger *picker*,
   not the transactions view (`BudgetApp.jsx`, the `onSwitchView` props). Looks
   unintended given the label.
-- **Vision+regex receipt path (2026-07-31) is unverified against a real
-  receipt.** `receiptOcr.test.js` covers the regex parsing against a synthetic
-  block of text; nobody has set `GOOGLE_VISION_API_KEY` yet, so the actual
-  Vision call, and how often real (crumpled, faded, non-English) receipts
-  parse confidently vs. fall back to Gemini, is untested. Needs a Cloud Vision
-  API key (Google Cloud Console → enable **Cloud Vision API** → create an API
-  key — this is a Cloud project, not AI Studio, so it wants a billing account
-  attached even though usage under ~1,000/month is free) in both `.env.local`
-  and Vercel, then a real photographed receipt through the app.
+- **The "read the individual items with AI" button is untested end to end.**
+  The route accepts `wantItems` and the button renders, but nobody has watched
+  it come back with actual line items — Gemini's quota was exhausted for the
+  whole session it was built in.
+- **`SCAN_DEBUG_OCR` is local-only on purpose.** Set in `.env.local`, it logs
+  the raw OCR of *successful* parses too, which is the only way to collect new
+  fixtures once a receipt stops falling back. Never set it in Vercel: it writes
+  whole receipts to the log verbatim.
+- A receipt whose totals block is itself mangled by OCR (Metro came back with
+  `56. 15` — a space inside the number — and a stray bare `15`) falls back to
+  Gemini and stays that way. Loosening the amount pattern to catch it would
+  mean guessing at money, so it wasn't done; re-shooting the receipt is the fix.

@@ -27,7 +27,10 @@ export default async function handler(req, res) {
   if (!GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
 
   try {
-    const { image, mediaType, categories, token, lang } = await readBody(req);
+    // wantItems: the Vision path never returns line items (see receiptOcr.js's
+    // findItems), so this is how the user asks for the one thing it can't do —
+    // a deliberate, per-receipt opt-in to spending a Gemini call.
+    const { image, mediaType, categories, token, lang, wantItems } = await readBody(req);
 
     // ---- validate input (public endpoint: bad input must not reach the model) ----
     if (typeof image !== "string" || !image) return res.status(400).json({ error: "image required" });
@@ -54,8 +57,13 @@ export default async function handler(req, res) {
     // ---- try Vision OCR + regex first: free/generous quota, and covers the
     // common well-formatted receipt without spending a Gemini call at all.
     // PDFs skip this path — Vision's image OCR doesn't read them; Gemini does.
-    if (mediaType !== "application/pdf") {
+    if (mediaType !== "application/pdf" && !wantItems) {
       const text = await ocrText(image, mediaType, GOOGLE_VISION_CREDENTIALS_JSON);
+      // ponytail: SCAN_DEBUG_OCR dumps the raw OCR of a *successful* parse too,
+      // which is the only way to collect real fixtures once parsing stops
+      // falling back. Local-only opt-in — never set it in Vercel, receipts are
+      // personal data and this writes them to the log verbatim.
+      if (text && process.env.SCAN_DEBUG_OCR) console.log(`scan-receipt: OCR text was:\n${text}\n--- end ---`);
       const parsed = text && parseReceiptText(text, { today, categoryNames: names });
       if (parsed) return res.status(200).json(parsed);
       console.log(

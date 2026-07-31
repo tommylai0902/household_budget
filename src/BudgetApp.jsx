@@ -209,6 +209,7 @@ const STRINGS = {
     scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
     scanRetryIn: "Scanner busy — retrying in {secs}s…",
     scanRateLimited: "too many scans just now. Wait a minute and try again.",
+    scanItemsWithAi: "Read the individual items with AI",
     currencyMismatch: "This receipt looks like it's in {scanned}, but this ledger is set to {ledger}. Amount was kept as printed — no conversion applied.",
     editCategories: "Edit categories", menu: "Menu",
     settings: "Settings", appearance: "Appearance", light: "Light", dark: "Dark", accentColor: "Accent colour",
@@ -416,6 +417,7 @@ const STRINGS = {
     scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
     scanRetryIn: "掃描器繁忙——{secs} 秒後再試…",
     scanRateLimited: "一時間掃得太密。等一分鐘再試。",
+    scanItemsWithAi: "用 AI 讀逐件商品",
     currencyMismatch: "呢張收據睇落係 {scanned},但呢本帳簿設定咗 {ledger}。金額已按原數保留，冇做轉換。",
     editCategories: "編輯類別", menu: "選單",
     settings: "設定", appearance: "外觀", light: "淺色", dark: "深色", accentColor: "主題色",
@@ -620,6 +622,7 @@ const STRINGS = {
     scanHint: "或自己填写", scanFailed: "读取不了这张收据：{msg}",
     scanRetryIn: "扫描器繁忙——{secs} 秒后重试…",
     scanRateLimited: "短时间内扫描太多次。等一分钟再试。",
+    scanItemsWithAi: "用 AI 读逐件商品",
     currencyMismatch: "这张收据看起来是 {scanned}，但本账本设置为 {ledger}。金额按原数保留，未做换算。",
     editCategories: "编辑类别", menu: "菜单",
     settings: "设置", appearance: "外观", light: "浅色", dark: "深色", accentColor: "主题色",
@@ -823,6 +826,7 @@ const STRINGS = {
     scanHint: "ou remplissez vous-même", scanFailed: "Impossible de lire ce reçu : {msg}",
     scanRetryIn: "Lecteur occupé — nouvelle tentative dans {secs} s…",
     scanRateLimited: "trop de lectures d'un coup. Attendez une minute et réessayez.",
+    scanItemsWithAi: "Lire les articles avec l'IA",
     currencyMismatch: "Ce reçu semble être en {scanned}, mais ce registre est en {ledger}. Le montant a été gardé tel quel — aucune conversion.",
     editCategories: "Modifier les catégories", menu: "Menu",
     settings: "Paramètres", appearance: "Apparence", light: "Clair", dark: "Sombre", accentColor: "Couleur d'accent",
@@ -1026,6 +1030,7 @@ const STRINGS = {
     scanHint: "o rellénalo tú", scanFailed: "No se pudo leer ese recibo: {msg}",
     scanRetryIn: "Escáner ocupado — reintentando en {secs} s…",
     scanRateLimited: "demasiados escaneos seguidos. Espera un minuto e inténtalo de nuevo.",
+    scanItemsWithAi: "Leer los artículos con IA",
     currencyMismatch: "Este recibo parece estar en {scanned}, pero este libro usa {ledger}. El importe se mantuvo tal cual, sin conversión.",
     editCategories: "Editar categorías", menu: "Menú",
     settings: "Ajustes", appearance: "Apariencia", light: "Claro", dark: "Oscuro", accentColor: "Color de acento",
@@ -3471,14 +3476,22 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   const [personalLedgerId, setPersonalLedgerId] = useState(ledgers[0]?.id || null);
 
   // Scanning only prefills the form — you still review and save it yourself.
-  const scanReceipt = async (file) => {
+  //
+  // The server reads most receipts with OCR + regex, which is free but never
+  // returns line items (see src/lib/receiptOcr.js). So the scanned photo is
+  // kept here: if the result comes back with no items, the form offers to ask
+  // the AI for them, re-sending this same image rather than making you shoot
+  // the receipt again. wantItems skips the OCR path server-side.
+  const [scannedPhoto, setScannedPhoto] = useState(null); // { image, mediaType } of the last scan
+  const [itemsFromAi, setItemsFromAi] = useState(false); // true once the AI pass has run for this photo
+
+  const runScan = async ({ image, mediaType, wantItems }) => {
     setScanErr(""); setCurrencyMismatch(null); setScanning(true); setRetryIn(0);
     try {
-      const { image, mediaType } = await fileToUpload(file);
       const { data } = await supabase.auth.getSession();
       const body = JSON.stringify({
         image, mediaType, categories: categories.map((c) => c.name),
-        token: data.session?.access_token, lang,
+        token: data.session?.access_token, lang, wantItems,
       });
       const post = async () => {
         const res = await fetch("/api/scan-receipt", { method: "POST", headers: { "content-type": "application/json" }, body });
@@ -3509,6 +3522,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
       setAddHst(false); // a receipt total already includes tax
       setScanTotal(out.amount ?? null);
       setItems((out.items || []).map((i) => ({ name: i.name, price: Number(i.price) || 0, mode: "split", addToInventory: false, addToGrocery: false })));
+      if (wantItems) setItemsFromAi(true);
       // Informational only — never touches the amount or the ledger's currency.
       const scannedCcy = (out.currency || "").toUpperCase();
       setCurrencyMismatch(/^[A-Z]{3}$/.test(scannedCcy) && scannedCcy !== activeCurrency ? scannedCcy : null);
@@ -3517,6 +3531,19 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
     } finally {
       setScanning(false); setRetryIn(0);
     }
+  };
+
+  const scanReceipt = async (file) => {
+    let photo;
+    try {
+      photo = await fileToUpload(file); // decoding a HEIC/corrupt image throws here, before any request
+    } catch (e) {
+      setScanErr(e.message || String(e));
+      return;
+    }
+    setScannedPhoto(photo);
+    setItemsFromAi(false);
+    await runScan(photo);
   };
 
   // Upload always means "many at once": a real CSV, or a screenshot/PDF of a
@@ -3670,6 +3697,15 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importBatchFile(f); }} />
           </label>
         </div>
+      )}
+      {/* Only when the free OCR pass read the receipt but found no line items,
+          and only once per photo — asking the AI costs a metered request, so
+          it stays an explicit choice rather than an automatic second attempt. */}
+      {!scanning && scannedPhoto && !itemsFromAi && !items.length && (
+        <button type="button" className="press-fx" style={{ ...ghostBtn, width: "100%", justifyContent: "center", fontSize: 12 }}
+          onClick={() => runScan({ ...scannedPhoto, wantItems: true })}>
+          <Sparkles size={14} /> {t("scanItemsWithAi")}
+        </button>
       )}
       {scanErr && <div style={{ color: DANGER, fontSize: 12 }}>{t("scanFailed", { msg: scanErr })}</div>}
       {currencyMismatch && <div style={{ color: WARN, fontSize: 12 }}>{t("currencyMismatch", { scanned: currencyMismatch, ledger: activeCurrency })}</div>}

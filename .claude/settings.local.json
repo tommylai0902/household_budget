@@ -140,7 +140,10 @@
       "Bash(node \"C:/Users/user/AppData/Local/Temp/claude/D--Wing-project/a341db6f-3a9a-487a-95e3-e98e89cdc84e/scratchpad/check-vision-key.mjs\")",
       "Bash(node _check-vision-key.mjs)",
       "Bash(node _check-vision.mjs)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(vercel env *)",
+      "Bash(vercel ls *)",
+      "Bash(vercel redeploy *)"
     ]
   }
 }
