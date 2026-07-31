@@ -2368,6 +2368,23 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
 
   const label = monthName(month, lang);
 
+  // Bell + overflow menu, the same in every view — only which menu entries are
+  // offered changes. Hoisted so the branded header (home/inventory/grocery) and
+  // the ledger's back-button header share one definition instead of two copies.
+  const headerControls = (
+    <>
+      <NotificationBell t={t} lang={lang} />
+      <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
+        onHome={viewState === "home" ? undefined : () => setViewState("home")}
+        onBudget={viewState === "ledger" ? () => setShowBudget(true) : undefined}
+        onReport={viewState === "ledger" ? () => setShowReport(true) : undefined}
+        onStores={viewState === "ledger" ? () => setManagingStores(true) : undefined}
+        onManageMembers={viewState === "ledger" && features.showSplit ? () => setShowManageMembers(true) : undefined}
+        onRecurring={viewState === "ledger" && features.hasRecurring ? () => setShowRecurring(true) : undefined}
+        currency={viewState === "ledger" && features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
+    </>
+  );
+
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       {/* Home draws its own glow scoped to its own content — this one is for
@@ -2393,51 +2410,36 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
       <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
         {/* Header */}
-        {/* minWidth keeps the title from shrinking to a stub, so on a narrow screen
-            the controls wrap to their own line; marginLeft:auto then holds them
-            against the right edge instead of falling back to the left.
-            Home shows the brand centered via BrandHeader's grid; every other
-            view swaps that for a "Back to Dashboard" button — but only on
-            "ledger", where it goes all the way out to the picker (onExit),
-            a different destination than the overflow menu's Home entry.
-            "inventory"/"grocery" drop the button entirely: their only way
-            back is Home, which already goes to the exact same place
-            (setViewState("home")), so the button was a dead duplicate there.
+        {/* Home, Inventory and Grocery all wear the brand: they're the screens
+            you land on and hand around, and the wordmark is what says which app
+            this is. Only "ledger" swaps it for a "Back to Dashboard" button —
+            that goes all the way out to the picker (onExit), a different
+            destination than the overflow menu's Home entry, so it can't be
+            folded into the branded header. Inventory/Grocery never had that
+            button: their only way back is Home, which the menu already does.
             Month-select is ledger-only. So are the overflow menu's
             ledger-management entries (Budget/Reports/Recurring/members/
             stores/currency) — gated to viewState==="ledger" specifically,
             not "every non-home view": Inventory/Grocery are part of the
             same ledger, but those entries operate on transactions/
             categories/splits, which don't mean anything from either. */}
-        {viewState === "home" ? (
-          <BrandHeader right={<>
-            <NotificationBell t={t} lang={lang} />
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />
-          </>} />
-        ) : (
+        {viewState === "ledger" ? (
           <div className="ledger-header" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-            {viewState === "ledger" && (
-              <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
-            )}
+            <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+            {/* minWidth keeps the title from shrinking to a stub, so on a narrow
+                screen the controls wrap to their own line; marginLeft:auto then
+                holds them against the right edge instead of falling back left. */}
             <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
-              {viewState === "ledger" && (
-                <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
-                  {monthsAvailable.map((m) => (
-                    <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
-                  ))}
-                </select>
-              )}
-              <NotificationBell t={t} lang={lang} />
-              <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-                onHome={() => setViewState("home")}
-                onBudget={viewState === "ledger" ? () => setShowBudget(true) : undefined}
-                onReport={viewState === "ledger" ? () => setShowReport(true) : undefined}
-                onStores={viewState === "ledger" ? () => setManagingStores(true) : undefined}
-                onManageMembers={viewState === "ledger" && features.showSplit ? () => setShowManageMembers(true) : undefined}
-                onRecurring={viewState === "ledger" && features.hasRecurring ? () => setShowRecurring(true) : undefined}
-                currency={viewState === "ledger" && features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
+              <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
+                {monthsAvailable.map((m) => (
+                  <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
+                ))}
+              </select>
+              {headerControls}
             </div>
           </div>
+        ) : (
+          <BrandHeader right={headerControls} />
         )}
 
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
