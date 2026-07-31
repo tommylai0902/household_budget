@@ -130,7 +130,7 @@ half-applied database.
 | Route | Auth | Notes |
 |---|---|---|
 | `rbac.js` | caller's token | Invites/roles, routed by `?action=`. Runs **as the caller** so RLS is the authority; service role only to read an invite by token. |
-| `scan-receipt.js` | caller's token + `members` | Gemini → expense + line items |
+| `scan-receipt.js` | caller's token + `members` | Cloud Vision OCR + regex first, Gemini only if that isn't confident — see below |
 | `scan-product.js` | caller's token + `members` | Gemini → product name/brand/unit. Reads the **label, not the barcode** (Safari has no `BarcodeDetector`) |
 | `scan-statement.js` | caller's token + `members` | Gemini → many transactions, for batch import |
 | `scan-deals.js` | none (public read) | Searches the `flyer_items` mirror **only** — never calls Flipp live |
@@ -241,6 +241,38 @@ subscribed member's language; there is no single right answer there.
 iOS only allows push for a PWA **installed to the home screen**, never a Safari
 tab.
 
+### 3. Receipt scanning: Vision+regex before Gemini
+
+Gemini's free tier is a shared, small quota (`generate_content_free_tier_requests`,
+seen erroring at `limit: 20`) — one request counts the same whether it's an
+image or a sentence, so nothing short of not calling Gemini at all helps.
+`scan-receipt.js` tries Cloud Vision's OCR (`api/vision.js`, `DOCUMENT_TEXT_DETECTION`)
+first and parses the raw text with regex (`src/lib/receiptOcr.js`: last
+`TOTAL`-ish line wins over `SUBTOTAL`/tax lines, first date-shaped substring,
+first non-blank line as merchant, category via the same keyword table
+`csv.js` exports as `CATEGORY_KEYWORDS`). A well-formatted receipt resolves
+here and never touches Gemini. `parseReceiptText` returns `null` — no
+confident total or merchant line — whenever it isn't sure, and *that's* the
+fallback signal: the handler then runs the original Gemini image path
+unchanged. `GOOGLE_VISION_CREDENTIALS_JSON` unset (or Vision itself failing)
+is treated the same as "not confident" — `ocrText()` swallows the error and
+returns `null` rather than throwing, so this is safe to leave unconfigured.
+
+Auth is a downloaded **service-account key**, not a plain API key — this
+household's GCP org enforces `iam.disableServiceAccountKeyCreation`-adjacent
+policies that block bare API keys outright (the error is literally titled
+"服務帳戶金鑰建立功能已停用" when tried on the org-managed project); a
+*separate*, non-org Google account's project was used instead, where key
+creation is unrestricted. `GOOGLE_VISION_CREDENTIALS_JSON` holds that key
+file's JSON as a single line; `api/vision.js` feeds it to `google-auth-library`
+(`GoogleAuth` → `getClient()` → `getAccessToken()`) for a bearer token, cached
+at module scope so a warm function instance doesn't re-sign a JWT per request.
+PDFs skip
+Vision entirely (its `images:annotate` doesn't read them) and go straight to
+Gemini. `scan-product.js` and `scan-statement.js` are untouched — a photographed
+product has no fixed-layout text to key regex off, and it wasn't worth
+building for statements yet.
+
 ---
 
 ## Environment
@@ -252,6 +284,7 @@ tab.
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | client + server |
 | `SUPABASE_SERVICE_ROLE` | **server only** — never `VITE_`-prefixed |
 | `GEMINI_API_KEY` | server only |
+| `GOOGLE_VISION_CREDENTIALS_JSON` | server only; optional — unset just means every receipt scan goes straight to Gemini |
 | `VITE_VAPID_PUBLIC_KEY` | client (safe to ship) |
 | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | server only |
 | `CRON_SECRET` | Vercel only; gates both crons |
@@ -317,3 +350,12 @@ deleting the test row.
   "Ledger & Transactions" calls `onExit()` and lands on the ledger *picker*,
   not the transactions view (`BudgetApp.jsx`, the `onSwitchView` props). Looks
   unintended given the label.
+- **Vision+regex receipt path (2026-07-31) is unverified against a real
+  receipt.** `receiptOcr.test.js` covers the regex parsing against a synthetic
+  block of text; nobody has set `GOOGLE_VISION_API_KEY` yet, so the actual
+  Vision call, and how often real (crumpled, faded, non-English) receipts
+  parse confidently vs. fall back to Gemini, is untested. Needs a Cloud Vision
+  API key (Google Cloud Console → enable **Cloud Vision API** → create an API
+  key — this is a Cloud project, not AI Studio, so it wants a billing account
+  attached even though usage under ~1,000/month is free) in both `.env.local`
+  and Vercel, then a real photographed receipt through the app.

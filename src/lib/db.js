@@ -1076,12 +1076,19 @@ export function subscribeGroceryList(ledgerId, onChange) {
 // so callers can tell "nothing recognisable in the photo" and "rate limited"
 // apart from a genuine failure.
 export async function scanProduct({ image, mediaType, token, lang }) {
-  const res = await fetch("/api/scan-product", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ image, mediaType, token, lang }),
-  });
-  const out = await res.json().catch(() => ({}));
+  const body = JSON.stringify({ image, mediaType, token, lang });
+  const post = async () => {
+    const res = await fetch("/api/scan-product", { method: "POST", headers: { "content-type": "application/json" }, body });
+    return { res, out: await res.json().catch(() => ({})) };
+  };
+  let { res, out } = await post();
+  // Same wait-it-out-once behaviour as scan-receipt: the photo's already
+  // taken, so sit out Google's free-tier retry window once rather than
+  // making the caller re-shoot over a limit that clears itself.
+  if (res.status === 429 && out.retryAfter) {
+    await new Promise((r) => setTimeout(r, out.retryAfter * 1000));
+    ({ res, out } = await post());
+  }
   if (!res.ok) throw Object.assign(new Error(out.error || res.statusText), { code: out.code, retryAfter: out.retryAfter });
   return out;
 }

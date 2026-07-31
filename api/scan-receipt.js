@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
 import { SCAN_REQUEST_OPTS, scanErrorResponse } from "./gemini.js";
+import { ocrText } from "./vision.js";
+import { parseReceiptText } from "../src/lib/receiptOcr.js";
 
 // Runs server-side only — GEMINI_API_KEY never reaches the browser.
 // (A VITE_ prefixed key would be bundled into the client JS and readable by anyone.)
@@ -21,7 +23,7 @@ async function readBody(req) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  const { GEMINI_API_KEY, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY } = process.env;
+  const { GEMINI_API_KEY, GOOGLE_VISION_CREDENTIALS_JSON, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY } = process.env;
   if (!GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
 
   try {
@@ -47,9 +49,24 @@ export default async function handler(req, res) {
     const { data: member } = await supabase.from("members").select("user_id").maybeSingle();
     if (!member) return res.status(403).json({ error: "not a household member" });
 
-    // ---- extract ----
-    const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     const today = new Date().toISOString().slice(0, 10);
+
+    // ---- try Vision OCR + regex first: free/generous quota, and covers the
+    // common well-formatted receipt without spending a Gemini call at all.
+    // PDFs skip this path — Vision's image OCR doesn't read them; Gemini does.
+    if (mediaType !== "application/pdf") {
+      const text = await ocrText(image, mediaType, GOOGLE_VISION_CREDENTIALS_JSON);
+      const parsed = text && parseReceiptText(text, { today, categoryNames: names });
+      if (parsed) return res.status(200).json(parsed);
+      console.log(
+        !text ? "scan-receipt: Vision returned no text, falling back to Gemini"
+          : `scan-receipt: regex not confident, falling back to Gemini. OCR text was:\n${text}`,
+      );
+    }
+
+    // ---- fall back to Gemini: Vision either isn't configured, or the regex
+    // parse wasn't confident (no recognisable total/merchant line) ----
+    const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
     const interaction = await client.interactions.create({
       model: "gemini-3.5-flash",

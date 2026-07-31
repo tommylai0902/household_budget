@@ -121,7 +121,26 @@
       "Bash(perl -0pi -e 's/    navigator\\\\.serviceWorker\\\\.ready\\\\n      \\\\.then\\\\\\(\\\\\\(reg\\\\\\) => reg\\\\.pushManager\\\\.getSubscription\\\\\\(\\\\\\)\\\\\\)/    swReady\\(\\)\\\\n      .then\\(\\(reg\\) => reg.pushManager.getSubscription\\(\\)\\)/' src/BudgetApp.jsx)",
       "Bash(perl -0pi -e 's/      const reg = await navigator\\\\.serviceWorker\\\\.ready;/      const reg = await swReady\\(\\);/' src/BudgetApp.jsx)",
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" http://localhost:5173/api/send-reminders)",
-      "Bash(curl -s http://localhost:5173/api/send-reminders)"
+      "Bash(curl -s http://localhost:5173/api/send-reminders)",
+      "Bash(git -C \"D:/Wing project\" diff --stat ARCHITECTURE.md)",
+      "Bash(git -C \"D:/Wing project\" diff ARCHITECTURE.md)",
+      "Bash(git -C \"D:/Wing project\" log -5 --oneline -- ARCHITECTURE.md)",
+      "Bash(git -C \"D:/Wing project\" add ARCHITECTURE.md)",
+      "Bash(git -C 'D:/Wing project' commit -m ' *)",
+      "Bash(vercel link *)",
+      "Bash(vercel project *)",
+      "Bash(timeout 20 vercel logs https://household-budget-nine-zeta.vercel.app)",
+      "Bash(vercel logs *)",
+      "Bash(node src/lib/receiptOcr.test.js)",
+      "Bash(node --check api/scan-receipt.js)",
+      "Bash(node --check api/vision.js)",
+      "Bash(node --check src/lib/receiptOcr.js)",
+      "WebSearch",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\\\\Downloads\" -Force | Sort-Object LastWriteTime -Descending | Select-Object -First 20 Name, LastWriteTime, Length)",
+      "Bash(node \"C:/Users/user/AppData/Local/Temp/claude/D--Wing-project/a341db6f-3a9a-487a-95e3-e98e89cdc84e/scratchpad/check-vision-key.mjs\")",
+      "Bash(node _check-vision-key.mjs)",
+      "Bash(node _check-vision.mjs)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

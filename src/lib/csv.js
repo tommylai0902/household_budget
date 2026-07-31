@@ -65,7 +65,7 @@ export function parseCsvText(text, today = new Date().toISOString().slice(0, 10)
 // see db.js's toRowCategory). First pattern that matches wins; first candidate
 // name actually present in the ledger's own categories wins. No hit => left
 // uncategorised, same as it would show for a manual entry.
-const CATEGORY_KEYWORDS = [
+export const CATEGORY_KEYWORDS = [
   [/uber|lyft|taxi|transit|parking|\bgas\b|petro|shell|esso/i, ["Transport"]],
   [/doordash|uber\s?eats|skipthedishes|grubhub/i, ["Food Delivery"]],
   [/starbucks|mcdonald|tim hortons|restaurant|cafe|coffee/i, ["Dine in", "Food"]],
