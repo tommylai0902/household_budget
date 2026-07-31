@@ -1,6 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
-import { scanErrorResponse } from "./gemini.js";
+import { GoogleGenAI } from "@google/genai";
+import { SCAN_REQUEST_OPTS, scanErrorResponse } from "./gemini.js";
 
 // Reads a photo of a product — its barcode, or just the packaging — and
 // returns what to put in an inventory item. Sibling of scan-receipt.js: same
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
           required: ["name", "brand", "unit", "barcode"],
         },
       },
-    });
+    }, SCAN_REQUEST_OPTS);
 
     const text = interaction.output_text;
     if (!text) return res.status(422).json({ error: "could not read that image" });

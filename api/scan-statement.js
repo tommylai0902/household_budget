@@ -1,6 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
-import { scanErrorResponse } from "./gemini.js";
+import { GoogleGenAI } from "@google/genai";
+import { SCAN_REQUEST_OPTS, scanErrorResponse } from "./gemini.js";
 
 // Sibling of scan-receipt.js: same security/validation shape, different job —
 // this reads a screenshot or PDF of a card/bank statement and pulls out every
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
           required: ["transactions"],
         },
       },
-    });
+    }, SCAN_REQUEST_OPTS);
 
     const text = interaction.output_text;
     if (!text) return res.status(422).json({ error: "could not read that file" });

@@ -1,6 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
-import { scanErrorResponse } from "./gemini.js";
+import { GoogleGenAI } from "@google/genai";
+import { SCAN_REQUEST_OPTS, scanErrorResponse } from "./gemini.js";
 
 // Runs server-side only — GEMINI_API_KEY never reaches the browser.
 // (A VITE_ prefixed key would be bundled into the client JS and readable by anyone.)
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
           required: ["description", "amount", "currency", "date", "category", "items"],
         },
       },
-    });
+    }, SCAN_REQUEST_OPTS);
 
     const text = interaction.output_text;
     if (!text) return res.status(422).json({ error: "could not read that image" });
