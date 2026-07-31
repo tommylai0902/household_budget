@@ -28,6 +28,14 @@ Sheet. Dual-language UI (English / 繁體中文), split-bill settlement, live sy
 - `split` is `'personal'` | `'shared'` in the app; stored as `'personal'` | `'shared_50'`.
 - Only the **anon** key goes in client code. Never the `service_role` key.
 
-## Roadmap
-- Step 3: monthly budgets + remaining-balance dashboard (`budgets` table already exists).
-- Step 4: receipt scanning into the detail panel (Supabase Storage + a vision model).
+## Where things stand
+Both of the old roadmap steps (budgets dashboard, receipt scanning) shipped, as
+did inventory, the grocery list, flyer price matching and reminders. **See
+[ARCHITECTURE.md](ARCHITECTURE.md)** for how it all fits, the schema, the API
+routes, and the current open items.
+
+Two things that file will save you from:
+- `migrations/*.sql` are applied **by hand** in the Supabase SQL editor, and
+  nothing records which have run — probe the live schema before assuming.
+- Adding a user-visible string means adding it to **all five** language
+  dictionaries in `BudgetApp.jsx`.
