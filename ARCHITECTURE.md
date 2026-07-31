@@ -262,20 +262,54 @@ followed by the whole column of amounts, with a dozen unrelated lines wedged
 between them. So the total is found by locating the label's index among the
 money labels it's stacked with, then taking the amount at that index from the
 next run of amounts at least as long as the label column. The picked figure
-must be the largest in its run (a total is never below its own subtotal);
-failing that check returns `null` rather than a wrong number.
+must be the largest in its run (a total is never below its own subtotal, and
+this is what stops a bare column-header "Amount" from matching its own tiny
+neighbour); failing either check returns `null` rather than a wrong number.
+`TOTAL_LINE` also matches `Amount`/`Amounts`, because a card-terminal slip
+often has no literal "TOTAL" at all.
 
-`receiptOcr.test.js` is built from **six real Vision outputs**, not synthetic
+Dates get the same treatment, in two passes (`findCertainDate` then
+`findAmbiguousDate` in `receiptOcr.js`). The first pass only accepts shapes
+with one legal reading: ISO, year-first, month names, and MM/DD slashes (the
+North American assumption `csv.js` also makes) — and rejects month/day 0 or
+>12/31, since garbled OCR yields zeroes as readily as overflow. The second
+pass runs *only* when nothing certain was found anywhere on the receipt, for
+the genuinely ambiguous shape `DD/MM/YY` vs `YY/MM/DD` (`29/11/09` and
+`26/04/15` are the same shape and mean opposite things): it tries day-first,
+then year-first, and takes whichever lands in the past — a receipt dated in
+the future is the wrong reading. Both readings in the future means no usable
+date, and `today` stands rather than a guess. This still has one honest gap:
+a receipt whose *only* date is a past-dated year-first stamp with no
+corroborating unambiguous date anywhere reads as day-first instead — outside
+North America's actual convention. Hasn't shown up in a real receipt yet.
+
+Merchant-name matching (`findMerchant`) anchors on whichever comes first, a
+street address or a phone number, and searches the few lines above it for one
+matching a known brand keyword (from `csv.js`'s `CATEGORY_KEYWORDS`) before
+falling back to the closest line — so a branch label two lines down
+("Fairview Mall Store" under "T&T Supermarket") or one line down with the
+brand further up ("0658 AURORA STORE" under "LCBO", "ONTN" — a garbled
+province code — under "PETRO") doesn't win just for being closer. A receipt
+with neither anchor (no address, no phone — a small counter terminal) falls
+back to the first non-junk line outright. A line opening with 3+ digits is
+treated as a branch/store number and skipped either way.
+
+`receiptOcr.test.js` is built from **ten real Vision outputs**, not synthetic
 receipts — the first synthetic version passed its own tests and then failed on
 the first real photo. Each fixture pins a distinct trap: T&T (loyalty ad above
-the store name, so the merchant is anchored on the address block instead),
-Tahini's (stacked columns, stray ingredient text between them), No Frills (ink
-bleeding through from the back read as gibberish; a year-first `26/04/15` card
-timestamp that reads as month 26 if taken as MM/DD/YY), Gateway (`Apr 17,2026`
-— a month name, which silently fell back to *today* before it was handled),
-Shoppers (no `TOTAL` at all, the terminal labels it `Amount`, value column
-keeps its `:` separator), LCBO (branch number line `0658 AURORA STORE` sitting
-between the store name and the address).
+the store name), Tahini's (stacked label/amount columns with stray text
+between them), No Frills (ink bleeding through from the back read as
+gibberish; a dozen card-transaction lines between the columns; year-first
+`26/04/15`), Gateway (`Apr 17,2026` — silently fell back to *today* before
+month names were handled), Shoppers (`Amount` label, `:`-prefixed value),
+LCBO (branch-number line between store name and address; the *same item*
+priced in two different positions — why `findItems` always returns `[]`), Le
+Viet (an "Amount" *column header* immediately followed by unrelated small
+figures — the largest-in-run guard earns its keep here), Goldstone
+(day-first `29/11/09`, resolved by ruling out the future year-first reading),
+Grand Crystal (no address or phone at all; a zero month, `16/00/7`), Petro-
+Canada (phone-anchored, CJK noise in the merchant window from the phone's own
+camera-app UI getting into frame).
 
 **Line items are always empty on the Vision path** (`findItems` returns `[]`
 by design). Three grocery receipts scramble name↔price order three different
@@ -358,11 +392,13 @@ end-to-end** (see below).
 
 **Cloud Vision receipt reading is confirmed working in production
 (2026-07-31)**, verified by scanning real receipts on a phone and watching
-`POST /api/scan-receipt` return 200 with no fallback logged. Six different
-receipts were read this way; two of them (Metro, Shoppers) fell back to Gemini
-on purpose rather than guess. Note the Cloud project needed **billing enabled**
-before the API would answer at all — it 403s with `BILLING_DISABLED` until
-then, even though usage under ~1,000 calls/month is free.
+`POST /api/scan-receipt` return 200 with no fallback logged. Ten different
+receipts across restaurants, a bakery, a fuel station and retail were read
+this way; two receipts along the way (Metro, and an early Shoppers attempt)
+fell back to Gemini on purpose rather than guess. Note the Cloud project
+needed **billing enabled** before the API would answer at all — it 403s with
+`BILLING_DISABLED` until then, even though usage under ~1,000 calls/month is
+free.
 
 **Web push is now confirmed working on a real device (2026-07-31).** The
 Vercel deploy was initially missing `VITE_VAPID_PUBLIC_KEY` — `PushToggle`'s

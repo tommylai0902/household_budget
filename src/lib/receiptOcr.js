@@ -25,7 +25,11 @@ const EXCLUDE_LINE = /sub[\s-]?total|\btax\b|\bhst\b|\bgst\b|\bpst\b|change due|
 // trailing tax-code letters ("W $7.50 G F" is how T&T prints an item price),
 // or a leading colon where the value column keeps its separator (": $100.00").
 const BARE_AMOUNT = /^[:\s]*[A-Z]?\s*-?\$?\s*(\d{1,5}\.\d{2})\s*[A-Z\s]*$/;
-const MONEY_ANYWHERE = /-?\$?\s*(\d{1,5}\.\d{2})(?!\d)/;
+// (?!\s*%): a tax LINE often prints its RATE inline ("TAX (13.00%)"), and
+// that number must not be mistaken for the tax amount — it stops amountFor's
+// backward label-scan early, breaking alignment with a stacked amount column
+// that comes later (FuelMax: SUBTOTAL/TAX/TOTAL never groups into one run).
+const MONEY_ANYWHERE = /-?\$?\s*(\d{1,5}\.\d{2})(?!\d)(?!\s*%)/;
 // Anchors the merchant search: a street address or a phone number always sits
 // just below the store name on a printed receipt.
 const ADDRESS_ANCHOR = /\(\d{3}\)\s*\d{3}[-\s]?\d{4}|\b\d{2,6}\s+[\w'.-]+(?:\s+[\w'.-]+)*\s+(?:ave|avenue|st|street|rd|road|blvd|dr|drive|way|hwy)\b/i;
@@ -73,8 +77,16 @@ function amountFor(lines, i) {
   return picked === Math.max(...run) ? picked : null;
 }
 
+// A voided/corrected transaction (Canadian Tire Gas: "VOID OF TRANSACTION
+// 143546" ... "PURCHASE CORRECTION $5.40") prints a "TOTAL" that's really a
+// column header over the voided line item, not the amount actually charged —
+// the real figure is whatever the correction line says, in a shape no other
+// receipt uses. Rather than guess, bail out and let Gemini read it.
+const VOID_OR_CORRECTION = /\bvoid\b|\bcorrection\b/i;
+
 // Last matching "TOTAL"-ish line wins — subtotal and tax print above it.
 export function findTotal(lines) {
+  if (lines.some((l) => VOID_OR_CORRECTION.test(l))) return null;
   let total = null;
   for (let i = 0; i < lines.length; i++) {
     if (EXCLUDE_LINE.test(lines[i]) || !TOTAL_LINE.test(lines[i])) continue;
@@ -95,16 +107,12 @@ const MONTH_FIRST = new RegExp(`\\b(${MONTH_NAME})[a-z]*\\.?\\s+(\\d{1,2})\\s*,?
 const DAY_FIRST = new RegExp(`\\b(\\d{1,2})\\s+(${MONTH_NAME})[a-z]*\\.?\\s*,?\\s*(\\d{4})\\b`, "i");
 const monthIndex = (name) => MONTHS.indexOf(name.slice(0, 3).toLowerCase()) + 1;
 
-// North-American slash order (MM/DD/YY or MM/DD/YYYY), same assumption csv.js
-// makes, plus year-first forms. A 2-digit year is this century — receipts
-// aren't from 1926.
-//
-// A month over 12 means the guess was wrong, not that the date is exotic: No
-// Frills prints its card timestamp as "26/04/15" (year first), which read as
-// MM/DD/YY yields month 26. Those are skipped rather than coerced, and the
-// scan continues — that same receipt prints an unambiguous "2026/04/15"
-// further down.
-export function findDate(lines, today) {
+const SLASHED = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/;
+
+// Unambiguous forms only: ISO, year-first, month names, and slashes whose
+// first field is a legal month (North-American MM/DD, the same assumption
+// csv.js makes). A first field over 12 is left for the second pass.
+function findCertainDate(lines) {
   for (const line of lines) {
     const dashed = /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/.exec(line);
     if (dashed) return iso(dashed[1], dashed[2], dashed[3]);
@@ -114,13 +122,48 @@ export function findDate(lines, today) {
     if (named) return iso(named[3], monthIndex(named[1]), named[2]);
     const dayNamed = DAY_FIRST.exec(line);
     if (dayNamed) return iso(dayNamed[3], monthIndex(dayNamed[2]), dayNamed[1]);
-    const slash = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/.exec(line);
+    const slash = SLASHED.exec(line);
     if (!slash) continue;
     const [, mo, da, yr] = slash;
-    if (+mo > 12 || +da > 31) continue;
+    // Garbled OCR yields zeroes as readily as overflow — Grand Crystal's date
+    // came back as "16/00/7". Both ends have to be checked or month 00 sails
+    // through into a date nothing rejects later.
+    if (+mo < 1 || +mo > 12 || +da < 1 || +da > 31) continue;
     return iso(yr.length === 2 ? `20${yr}` : yr, mo, da);
   }
-  return today;
+  return null;
+}
+
+// `29/11/09` and `26/04/15` are the same shape and mean opposite things —
+// day-first (29 Nov 2009) and year-first (15 Apr 2026). Nothing in the string
+// separates them, so this runs only when the receipt printed no unambiguous
+// date anywhere: No Frills carries "2026/04/15" further down and never gets
+// here, while Goldstone's "Date: 29/11/09" is all there is.
+//
+// Between the two readings, a receipt dated in the future is the wrong one.
+// That settles Goldstone (day-first 2009, year-first would be 2029) and is the
+// only signal available. Where both readings are in the past it takes
+// day-first, which is the convention outside North America — and North
+// American receipts are already handled by the pass above, since their first
+// field is a month.
+function findAmbiguousDate(lines, today) {
+  for (const line of lines) {
+    const slash = SLASHED.exec(line);
+    if (!slash) continue;
+    const [, a, b, c] = slash;
+    if (+a <= 12 || +b < 1 || +b > 12) continue; // handled above, or not a date at all
+    if (+a > 31) continue; // can't be a day under either reading
+    const dayFirst = iso(c.length === 2 ? `20${c}` : c, b, a);
+    if (dayFirst <= today) return dayFirst;
+    if (c.length !== 2 || +c > 31) continue; // year-first needs a 2-digit year and a real day
+    const yearFirst = iso(`20${a}`, b, c);
+    if (yearFirst <= today) return yearFirst;
+  }
+  return null;
+}
+
+export function findDate(lines, today) {
+  return findCertainDate(lines) || findAmbiguousDate(lines, today) || today;
 }
 
 // The store name is the line just above the address/phone block — NOT the first
@@ -160,8 +203,23 @@ export function findItems() {
   return [];
 }
 
+// Bare single-character symbols (£/€/¥) are too easy to mistake for a stray
+// OCR misread — Real Canadian Superstore's "36.98 @ 5.000%" GST line came
+// back with the "@" read as "€", elsewhere in the same receipt right next to
+// two lines that really do print "@". Alphabetic codes (CAD, USD, C$, US$,
+// HK$) don't have that ambiguity and can still span the line break Vision
+// puts between a card label and its figure (Petro Canada: "CAD" / "30.00"),
+// so only the bare symbols are held to "must be glued to its own figure,
+// same line".
+const TIGHT_SYMBOLS = new Set(["£", "€", "¥"]);
 export function findCurrency(text) {
-  for (const [sym, code] of Object.entries(CURRENCY_SYMBOLS)) if (text.includes(sym)) return code;
+  for (const [sym, code] of Object.entries(CURRENCY_SYMBOLS)) {
+    const escaped = sym.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = TIGHT_SYMBOLS.has(sym)
+      ? new RegExp(`${escaped}[ \\t]*\\d`)
+      : new RegExp(`${escaped}\\s*\\$?\\s*\\d`);
+    if (pattern.test(text)) return code;
+  }
   return "";
 }
 

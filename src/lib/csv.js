@@ -66,7 +66,8 @@ export function parseCsvText(text, today = new Date().toISOString().slice(0, 10)
 // name actually present in the ledger's own categories wins. No hit => left
 // uncategorised, same as it would show for a manual entry.
 export const CATEGORY_KEYWORDS = [
-  [/uber|lyft|taxi|transit|parking|\bgas\b|petro|shell|esso/i, ["Transport"]],
+  // \bfuel, not \bfuel\b: station brands compound it ("FUELMAX", "PIONEER FUEL").
+  [/uber|lyft|taxi|transit|parking|\bgas\b|\bfuel|petro|shell|esso/i, ["Transport"]],
   [/doordash|uber\s?eats|skipthedishes|grubhub/i, ["Food Delivery"]],
   [/starbucks|mcdonald|tim hortons|restaurant|cafe|coffee/i, ["Dine in", "Food"]],
   [/walmart|costco|superstore|no frills|loblaws|sobeys|t&t|grocery|supermarket/i, ["Grocery"]],
