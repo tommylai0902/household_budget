@@ -1141,6 +1141,17 @@ export async function setStorePolicy(ledgerId, merchant, fields) {
   if (error) throw error;
 }
 
+// Exactly one store can be "the" local store per ledger (migration 036) — the
+// one you actually stand in when Price Match Mode runs. Clear every other
+// row first so that stays true even if an older row from before the
+// single-store model was never touched.
+export async function setLocalStore(ledgerId, merchant) {
+  const { error } = await supabase.from("store_policies")
+    .update({ is_local: false }).eq("ledger_id", ledgerId).eq("is_local", true).neq("merchant", merchant);
+  if (error) throw error;
+  await setStorePolicy(ledgerId, merchant, { isLocal: true });
+}
+
 export function subscribeStorePolicies(ledgerId, onChange) {
   const ch = supabase
     .channel(`store-policies-${ledgerId}-${Math.random().toString(36).slice(2)}`)

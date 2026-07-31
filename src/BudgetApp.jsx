@@ -149,12 +149,14 @@ const STRINGS = {
     priceMatchBadgeExpired: "Expired: {price} at {merchant}",
     dealExpiredHint: "This flyer price has expired — tap 🔍 to check again.",
     postalCodeRequired: "Enter your postal code first — flyer prices are local.",
-    storeSetup: "My stores", storeSetupHint: "Shops with flyers near you. Mark the ones you actually visit, then say whether each honours a price match.",
+    storeSetup: "My stores", storeSetupHint: "Shops with flyers near you. Set the one you actually shop at, then add others to its price-match list.",
     searchStoresPh: "Search stores…", myStoresCount: "My stores ({n})",
     myStore: "My store", markMyStore: "Mark as mine",
     storeItemCount: "{n} items on sale", noStoresForRegion: "No flyers for this postal code yet — the weekly update runs Thursday.",
     noStoresMatch: "No stores match that.",
-    priceMatchesQ: "Does this store price match?", yes: "Yes", no: "No", notSure: "Not sure",
+    priceMatchesQ: "Would {store} price match this store's flyer?", yes: "Yes", no: "No", notSure: "Not sure",
+    shoppingAt: "Shopping at {store}", pmListCount: "{n} stores in the price-match list",
+    noMatchListStores: "No stores in the price-match list yet — add some in My stores.",
     lastConfirmed: "Last confirmed {date}",
     storeNotePh: "Conditions, e.g. identical size, local competitors only",
     includeNonGrocery: "All shop types",
@@ -353,12 +355,14 @@ const STRINGS = {
     priceMatchBadgeExpired: "已過期：{merchant} {price}",
     dealExpiredHint: "呢個海報價已經過期——撳 🔍 再check過。",
     postalCodeRequired: "請先填郵政編碼——海報優惠係分地區嘅。",
-    storeSetup: "我嘅超市", storeSetupHint: "你附近有出海報嘅舖頭。剔返你真係會去嗰啲，再話我知邊間肯 match 價。",
+    storeSetup: "我嘅超市", storeSetupHint: "你附近有出海報嘅舖頭。揀返你真係會去嗰間做「我嘅舖」，再揀邊幾間肯畀佢 match 價，加入清單。",
     searchStoresPh: "搵超市…", myStoresCount: "我嘅超市（{n}）",
     myStore: "我嘅超市", markMyStore: "設為我嘅",
     storeItemCount: "{n} 件特價貨", noStoresForRegion: "呢個郵政編碼仲未有海報——星期四先更新。",
     noStoresMatch: "搵唔到相符嘅超市。",
-    priceMatchesQ: "呢間肯 match 價嗎？", yes: "肯", no: "唔肯", notSure: "唔清楚",
+    priceMatchesQ: "{store} 會唔會 match 呢間嘅價？", yes: "肯", no: "唔肯", notSure: "唔清楚",
+    shoppingAt: "而家喺 {store} 買緊嘢", pmListCount: "價目清單有 {n} 間舖",
+    noMatchListStores: "價目清單重未有舖——去「我嘅超市」加返幾間。",
     lastConfirmed: "上次確認：{date}",
     storeNotePh: "條件，例如：同款同容量、只限本地對手",
     includeNonGrocery: "所有類型",
@@ -555,12 +559,14 @@ const STRINGS = {
     priceMatchBadgeExpired: "已过期：{merchant} {price}",
     dealExpiredHint: "这个海报价已经过期——点击 🔍 重新查看。",
     postalCodeRequired: "请先填邮政编码——传单优惠是分地区的。",
-    storeSetup: "我的超市", storeSetupHint: "你附近有发传单的商店。勾选你实际会去的，再标明哪家愿意比价。",
+    storeSetup: "我的超市", storeSetupHint: "你附近有发传单的商店。选出你实际会去的那一家作为「我的店」，再把愿意帮它比价的其他店加入清单。",
     searchStoresPh: "搜索超市…", myStoresCount: "我的超市（{n}）",
     myStore: "我的超市", markMyStore: "设为我的",
     storeItemCount: "{n} 件特价商品", noStoresForRegion: "这个邮政编码还没有传单——每周四更新。",
     noStoresMatch: "没有找到相符的超市。",
-    priceMatchesQ: "这家愿意比价吗？", yes: "愿意", no: "不愿意", notSure: "不确定",
+    priceMatchesQ: "{store} 会不会跟这家比价？", yes: "愿意", no: "不愿意", notSure: "不确定",
+    shoppingAt: "正在 {store} 购物", pmListCount: "比价清单有 {n} 家店",
+    noMatchListStores: "比价清单还没有店——去「我的超市」添加几家。",
     lastConfirmed: "上次确认：{date}",
     storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
     includeNonGrocery: "所有类型",
@@ -755,12 +761,14 @@ const STRINGS = {
     priceMatchBadgeExpired: "Expiré : {price} chez {merchant}",
     dealExpiredHint: "Ce prix de circulaire a expiré — appuyez sur 🔍 pour vérifier à nouveau.",
     postalCodeRequired: "Entrez d'abord votre code postal — les circulaires sont régionales.",
-    storeSetup: "Mes magasins", storeSetupHint: "Magasins avec circulaires près de chez vous. Cochez ceux que vous fréquentez, puis indiquez lesquels acceptent l'ajustement de prix.",
+    storeSetup: "Mes magasins", storeSetupHint: "Magasins avec circulaires près de chez vous. Choisissez celui où vous faites vos courses, puis ajoutez d'autres magasins à sa liste d'ajustement de prix.",
     searchStoresPh: "Rechercher un magasin…", myStoresCount: "Mes magasins ({n})",
     myStore: "Mon magasin", markMyStore: "Marquer comme mien",
     storeItemCount: "{n} articles en solde", noStoresForRegion: "Aucune circulaire pour ce code postal — la mise à jour hebdomadaire a lieu le jeudi.",
     noStoresMatch: "Aucun magasin correspondant.",
-    priceMatchesQ: "Ce magasin ajuste-t-il les prix ?", yes: "Oui", no: "Non", notSure: "Pas sûr",
+    priceMatchesQ: "{store} ajusterait-il le prix de ce magasin ?", yes: "Oui", no: "Non", notSure: "Pas sûr",
+    shoppingAt: "Achats chez {store}", pmListCount: "{n} magasins dans la liste d'ajustement de prix",
+    noMatchListStores: "Aucun magasin dans la liste d'ajustement de prix — ajoutez-en dans Mes magasins.",
     lastConfirmed: "Confirmé le {date}",
     storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
     includeNonGrocery: "Tous les types",
@@ -956,12 +964,14 @@ const STRINGS = {
     priceMatchBadgeExpired: "Caducado: {price} en {merchant}",
     dealExpiredHint: "Este precio del folleto ha caducado — toca 🔍 para volver a comprobarlo.",
     postalCodeRequired: "Introduce primero tu código postal — las ofertas son regionales.",
-    storeSetup: "Mis tiendas", storeSetupHint: "Tiendas con folletos cerca de ti. Marca las que visitas de verdad y luego indica cuáles igualan precios.",
+    storeSetup: "Mis tiendas", storeSetupHint: "Tiendas con folletos cerca de ti. Elige la tienda donde realmente compras, luego añade otras a su lista de igualación de precios.",
     searchStoresPh: "Buscar tiendas…", myStoresCount: "Mis tiendas ({n})",
     myStore: "Mi tienda", markMyStore: "Marcar como mía",
     storeItemCount: "{n} artículos en oferta", noStoresForRegion: "Aún no hay folletos para este código postal — la actualización semanal es el jueves.",
     noStoresMatch: "Ninguna tienda coincide.",
-    priceMatchesQ: "¿Esta tienda iguala precios?", yes: "Sí", no: "No", notSure: "No estoy seguro",
+    priceMatchesQ: "¿{store} igualaría el precio de esta tienda?", yes: "Sí", no: "No", notSure: "No estoy seguro",
+    shoppingAt: "Comprando en {store}", pmListCount: "{n} tiendas en la lista de igualación de precios",
+    noMatchListStores: "Aún no hay tiendas en la lista de igualación de precios — añade algunas en Mis tiendas.",
     lastConfirmed: "Confirmado el {date}",
     storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
     includeNonGrocery: "Todos los tipos",
@@ -6099,52 +6109,51 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
 // would have to be invented for those, and an invented number on a screen you
 // take to a cashier is worse than no number.
 function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onClose, onSetUpStores }) {
-  const [store, setStore] = useState(null); // the shop you're in
+  // Exactly one store is local (migration 036) — the one you actually stand
+  // in. Nothing left to pick, so the report just runs.
+  const localStore = stores.find((s) => s.isLocal);
+  // Stores confirmed onto that store's price-match list — the whole
+  // comparison universe. A cheaper flyer anywhere else isn't actionable:
+  // your local store won't honour a flyer from a shop it doesn't recognise.
+  const matchStores = localStore ? stores.filter((s) => s.priceMatches === true && s.merchant !== localStore.merchant) : [];
+  const matchNames = matchStores.map((s) => s.merchant).sort().join(",");
+  const itemKey = items.map((it) => `${it.id}:${it.itemName}:${it.brand || ""}`).join("|");
+
   const [report, setReport] = useState(null); // null = not run, [] = ran, empty
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
-  // Only shops you've marked as yours are worth offering — and a shop that
-  // doesn't price match is still offerable, it just changes the advice from
-  // "show this at the till" to "it's cheaper over there".
-  const myStores = stores.filter((s) => s.isLocal);
-  const myStoreNames = new Set(myStores.map((s) => s.merchant));
-
-  const run = async (chosen) => {
-    setStore(chosen); setRunning(true); setError(""); setReport(null);
-    try {
-      // Read-only lookups, so these can go in parallel — unlike the batch
-      // writes elsewhere in this file, there's no read-then-write to serialise.
-      const rows = await Promise.all(items.map(async (it) => {
-        const out = await db.fetchDeals(it.itemName, postalCode, { brand: it.brand });
-        const deals = out.deals || [];
-        // A cheaper flyer only matters if it's at a store you've actually
-        // marked as yours — Real Canadian Superstore won't match Walmart's
-        // flyer just because both happen to sell the same product, so
-        // pulling in every merchant in the region was just noise. Restrict
-        // the whole comparison to "my stores"; you can't price match a shop
-        // against itself either, so drop the chosen one from its own field.
-        const relevant = deals.filter((d) => myStoreNames.has(d.merchant));
-        const elsewhere = relevant.filter((d) => d.merchant !== chosen.merchant);
-        const here = relevant.find((d) => d.merchant === chosen.merchant);
-        const best = elsewhere[0];
-        // `here` beating everything else means there's nothing to ask for —
-        // it's already the cheapest advertised price in the region.
-        if (here && (!best || here.price <= best.price)) {
-          return { productName: it.itemName, status: "already_here", lowestPrice: here.price, matchedName: here.name };
-        }
-        if (!best) return { productName: it.itemName, status: "no_deals" };
-        return {
-          productName: it.itemName, status: "can_match",
-          cheaperStore: best.merchant, lowestPrice: best.price, matchedName: best.name,
-          imageUrl: best.imageUrl, merchantLogo: best.merchantLogo, validTo: best.validTo,
-          flyerUrl: db.flyerUrl(best.flyerId, best.postalCode),
-        };
-      }));
-      setReport(rows);
-    } catch (e) { setError(e.message || String(e)); }
-    setRunning(false);
-  };
+  useEffect(() => {
+    if (!localStore || matchStores.length === 0) { setReport(null); return; }
+    let live = true;
+    setRunning(true); setError(""); setReport(null);
+    const names = new Set(matchStores.map((s) => s.merchant));
+    // Read-only lookups, so these can go in parallel — unlike the batch
+    // writes elsewhere in this file, there's no read-then-write to serialise.
+    Promise.all(items.map(async (it) => {
+      const out = await db.fetchDeals(it.itemName, postalCode, { brand: it.brand });
+      const deals = (out.deals || []).filter((d) => names.has(d.merchant) || d.merchant === localStore.merchant);
+      const elsewhere = deals.filter((d) => d.merchant !== localStore.merchant);
+      const here = deals.find((d) => d.merchant === localStore.merchant);
+      const best = elsewhere[0];
+      // `here` beating everything else means there's nothing to ask for —
+      // it's already the cheapest advertised price on the list.
+      if (here && (!best || here.price <= best.price)) {
+        return { productName: it.itemName, status: "already_here", lowestPrice: here.price, matchedName: here.name };
+      }
+      if (!best) return { productName: it.itemName, status: "no_deals" };
+      return {
+        productName: it.itemName, status: "can_match",
+        cheaperStore: best.merchant, lowestPrice: best.price, matchedName: best.name,
+        imageUrl: best.imageUrl, merchantLogo: best.merchantLogo, validTo: best.validTo,
+        flyerUrl: db.flyerUrl(best.flyerId, best.postalCode),
+      };
+    })).then((rows) => { if (live) setReport(rows); })
+      .catch((e) => { if (live) setError(e.message || String(e)); })
+      .finally(() => { if (live) setRunning(false); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localStore?.merchant, matchNames, itemKey, postalCode]);
 
   const matchable = (report || []).filter((r) => r.status === "can_match");
   const others = (report || []).filter((r) => r.status !== "can_match");
@@ -6153,51 +6162,32 @@ function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onC
     <Overlay title={t("priceMatchMode")} onClose={onClose} t={t}>
       {error && <div style={errorBox}>{error}</div>}
 
-      {myStores.length === 0 ? (
+      {!localStore ? (
         <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "22px 16px", textAlign: "center", color: SUB, fontSize: 13 }}>
           <Store size={20} style={{ opacity: 0.4 }} />
           <div style={{ marginTop: 8 }}>{t("noMatchStores")}</div>
           <button onClick={onSetUpStores} style={{ ...ghostBtn, marginTop: 10 }}>{t("storeSetup")}</button>
         </div>
-      ) : !store ? (
-        <>
-          <div style={{ fontSize: 12.5, color: SUB }}>{t("pickShoppingStore")}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {myStores.map((s) => (
-              <button key={s.merchant} onClick={() => run(s)} className="press-fx"
-                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-                  background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, cursor: "pointer", fontFamily: "inherit", color: INK }}>
-                <Store size={16} style={{ color: TEAL, flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{s.merchant}</span>
-                {/* A shop that won't match is still usable — the report just
-                    reads as "cheaper elsewhere" instead of "ask them to match". */}
-                {s.priceMatches === true
-                  ? <StatusPill color={OK_INK} bg={OK_BG} border={OK_LINE} label={t("yes")} />
-                  : s.priceMatches === false
-                    ? <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("no")} />
-                    : <span style={{ fontSize: 11.5, color: SUB }}>{t("notSure")}</span>}
-                <ChevronRight size={16} style={{ color: SUB, flexShrink: 0 }} />
-              </button>
-            ))}
-          </div>
-        </>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 800 }}>{store.merchant}</span>
-            <button onClick={() => { setStore(null); setReport(null); }} style={{ ...categoryLink, color: TEAL, fontSize: 12 }}>{t("changeStore")}</button>
+            <Store size={16} style={{ color: TEAL, flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 800 }}>{t("shoppingAt", { store: localStore.merchant })}</span>
           </div>
-          {/* The store's own policy changes what the report means, so it's
-              stated once at the top rather than repeated on every row. */}
-          <div style={{ fontSize: 12, color: store.priceMatches === true ? SUB : WARN }}>
-            {store.priceMatches === true ? t("pmWillMatch") : store.priceMatches === false ? t("pmWontMatch") : t("pmMatchUnknown")}
-            {store.note && store.priceMatches === true && <> · {store.note}</>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, color: SUB }}>{t("pmListCount", { n: matchStores.length })}</span>
+            <button onClick={onSetUpStores} style={{ ...categoryLink, color: TEAL, fontSize: 12 }}>{t("storeSetup")}</button>
           </div>
 
-          {running ? (
+          {matchStores.length === 0 ? (
+            <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "22px 16px", textAlign: "center", color: SUB, fontSize: 13 }}>
+              {t("noMatchListStores")}
+            </div>
+          ) : running ? (
             <Centered>{t("pmChecking")}</Centered>
           ) : report && (
             <>
+              <div style={{ fontSize: 12.5, color: SUB }}>{t("pmWillMatch")}</div>
               <div style={{ fontSize: 13, fontWeight: 700 }}>{t("pmSummary", { n: matchable.length, total: report.length })}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {matchable.map((r, i) => (
@@ -6281,6 +6271,16 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
     try { await db.setStorePolicy(ledgerId, merchant, fields); loadPolicies(); }
     catch (e) { setError(e.message || String(e)); }
   };
+  const setLocal = async (merchant) => {
+    try { await db.setLocalStore(ledgerId, merchant); loadPolicies(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+
+  // Exactly one store is "local" (migration 036) — the one you actually stand
+  // in. Every other row's price_matches answers a different question now:
+  // whether that store belongs on the local store's price-match list.
+  const localStore = policies.find((p) => p.isLocal);
+  const isConfigured = (p) => p.isLocal || p.priceMatches === true;
 
   // The region returns ~109 merchants, most of them hardware, electronics and
   // furniture shops. Leading with the ones Flipp files under Groceries is what
@@ -6289,11 +6289,11 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   const anyGrocery = (merchants || []).some((m) => m.isGrocery);
   const visible = (merchants || [])
     .filter((m) => m.merchant.toLowerCase().includes(query.toLowerCase()))
-    .filter((m) => !onlyMine || policyFor(m.merchant).isLocal)
+    .filter((m) => !onlyMine || isConfigured(policyFor(m.merchant)))
     // A search is an explicit request for that shop, so it overrides the
     // grocery filter — otherwise searching "canadian tire" would find nothing.
     .filter((m) => showAllTypes || query.trim() || !anyGrocery || m.isGrocery);
-  const mineCount = policies.filter((p) => p.isLocal).length;
+  const mineCount = policies.filter(isConfigured).length;
 
   return (
     <Overlay title={t("storeSetup")} onClose={onClose} t={t}>
@@ -6319,22 +6319,27 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visible.map((m) => {
             const p = policyFor(m.merchant);
+            const isLocal = !!p.isLocal;
             return (
-              <div key={m.merchant} style={{ background: CARD, border: `1px solid ${p.isLocal ? OK_LINE : LINE}`, borderRadius: 12, padding: 12 }}>
+              <div key={m.merchant} style={{ background: CARD, border: `1px solid ${isLocal ? OK_LINE : LINE}`, borderRadius: 12, padding: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {m.merchantLogo && <img src={m.merchantLogo} alt="" loading="lazy" style={{ height: 18, maxWidth: 64, objectFit: "contain", flexShrink: 0 }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.merchant}</div>
                     <div style={{ fontSize: 11.5, color: SUB }}>{t("storeItemCount", { n: m.itemCount })}</div>
                   </div>
-                  <button onClick={() => patch(m.merchant, { isLocal: !p.isLocal })} style={chip(!!p.isLocal)}>
-                    {p.isLocal ? <><Check size={13} /> {t("myStore")}</> : t("markMyStore")}
+                  {/* Only one store can be local — picking a new one silently
+                      replaces the old (setLocalStore clears it server-side). */}
+                  <button onClick={() => isLocal ? patch(m.merchant, { isLocal: false }) : setLocal(m.merchant)} style={chip(isLocal)}>
+                    {isLocal ? <><Check size={13} /> {t("myStore")}</> : t("markMyStore")}
                   </button>
                 </div>
-                {/* Only worth asking about shops you actually visit. */}
-                {p.isLocal && (
+                {/* The price-match question is now about every OTHER store —
+                    "would my local store honour this one's flyer" — so it
+                    only makes sense once a local store exists to ask it about. */}
+                {!isLocal && localStore && (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${LINE}` }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("priceMatchesQ")}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("priceMatchesQ", { store: localStore.merchant })}</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {[[true, t("yes")], [false, t("no")], [null, t("notSure")]].map(([val, label]) => (
                         <button key={String(val)} onClick={() => patch(m.merchant, { priceMatches: val })}
