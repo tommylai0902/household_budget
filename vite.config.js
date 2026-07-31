@@ -26,6 +26,9 @@ const apiDevServer = (env) => ({
     // Vercel runs this one on a Thursday cron; mounted here so you can trigger
     // a refresh by hand (?force=1 skips the "already ran this week" guard).
     mountApi(server, '/api/refresh-flyers', '/api/refresh-flyers.js')
+    // Also cron-scheduled on Vercel (daily); mounted here so a run can be
+    // triggered by hand while developing.
+    mountApi(server, '/api/send-reminders', '/api/send-reminders.js')
   },
 })
 
@@ -37,8 +40,18 @@ export default defineConfig(({ mode }) => {
       react(),
       apiDevServer(env),
       VitePWA({
+        // injectManifest, not generateSW: the service worker has to handle
+        // `push` events (src/sw.js), which a generated one can't be taught.
+        // skipWaiting/clientsClaim moved into that file — the `workbox` option
+        // is ignored in this mode.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.js',
         registerType: 'autoUpdate',
-        workbox: { skipWaiting: true, clientsClaim: true },
+        // Without this no service worker is registered by `vite dev`, so
+        // navigator.serviceWorker.ready never resolves and the push toggle
+        // hangs — in dev only, which is exactly where it gets tested.
+        devOptions: { enabled: true, type: 'module' },
         includeAssets: ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
         manifest: {
           name: 'Monira',

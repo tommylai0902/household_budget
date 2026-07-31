@@ -260,6 +260,8 @@ const STRINGS = {
     // Dated rather than "expires soon": the row outlives the day it appears,
     // and a stale "soon" on something a week gone reads as a broken app.
     expiryReminderTitle: "{name} expires {date}",
+    pushEnable: "Notify me on this device", pushDisable: "Stop notifying this device",
+    pushBlocked: "Notifications are blocked in your browser settings.",
     upcomingChargeReminder: "Upcoming Charge Reminder", remindMeUpcoming: "Remind me before each charge",
     daysBeforeLabel: "days before",
     notifications: "Notifications", noNotifications: "You're all caught up!",
@@ -454,6 +456,8 @@ const STRINGS = {
     cancellationReminderTitle: "續約前記得取消{name}",
     upcomingChargeTitle: "{name} {days} 日後扣款",
     expiryReminderTitle: "{name} {date} 到期",
+    pushEnable: "喺呢部機通知我", pushDisable: "唔好再喺呢部機通知",
+    pushBlocked: "通知俾瀏覽器設定封鎖咗。",
     upcomingChargeReminder: "扣款提醒", remindMeUpcoming: "每次扣款前提醒我",
     daysBeforeLabel: "日前",
     notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
@@ -651,6 +655,8 @@ const STRINGS = {
     cancellationReminderTitle: "续约前记得取消{name}",
     upcomingChargeTitle: "{name} 将在 {days} 天后扣款",
     expiryReminderTitle: "{name} {date} 到期",
+    pushEnable: "在这台设备上通知我", pushDisable: "停止在这台设备上通知",
+    pushBlocked: "通知已被浏览器设置阻止。",
     upcomingChargeReminder: "扣款提醒", remindMeUpcoming: "每次扣款前提醒我",
     daysBeforeLabel: "天前",
     notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
@@ -847,6 +853,8 @@ const STRINGS = {
     cancellationReminderTitle: "Annuler {name} avant le renouvellement",
     upcomingChargeTitle: "Prélèvement de {name} dans {days} jours",
     expiryReminderTitle: "{name} périme le {date}",
+    pushEnable: "M'avertir sur cet appareil", pushDisable: "Ne plus avertir cet appareil",
+    pushBlocked: "Les notifications sont bloquées dans les réglages de votre navigateur.",
     upcomingChargeReminder: "Rappel de prélèvement", remindMeUpcoming: "Me rappeler avant chaque prélèvement",
     daysBeforeLabel: "jours avant",
     notifications: "Notifications", noNotifications: "Tout est à jour !",
@@ -1043,6 +1051,8 @@ const STRINGS = {
     cancellationReminderTitle: "Cancela {name} antes de que se renueve",
     upcomingChargeTitle: "Cargo próximo de {name} en {days} días",
     expiryReminderTitle: "{name} caduca el {date}",
+    pushEnable: "Avisarme en este dispositivo", pushDisable: "Dejar de avisar en este dispositivo",
+    pushBlocked: "Las notificaciones están bloqueadas en los ajustes de tu navegador.",
     upcomingChargeReminder: "Recordatorio de cargo", remindMeUpcoming: "Recuérdame antes de cada cargo",
     daysBeforeLabel: "días antes",
     notifications: "Notificaciones", noNotifications: "¡Estás al día!",
@@ -4715,6 +4725,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
       <button onClick={() => setShowReminders(true)} style={ghostBtn}>
         <Bell size={15} /> {t("manageReminders")}
       </button>
+      <PushToggle t={t} lang={lang} />
       {showReminders && <ManageRemindersPanel t={t} lang={lang} onClose={() => setShowReminders(false)} />}
       {/* Absent on the picker (no ledger, nothing to remember shops for) — same
           optional-prop gate every other ledger-scoped menu entry already uses. */}
@@ -4724,6 +4735,86 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         </button>
       )}
     </Overlay>
+  );
+}
+
+// Per-device opt-in for push reminders. Per-device on purpose: a push
+// subscription belongs to one browser on one phone, so signing in elsewhere
+// doesn't silently start buzzing a device that never agreed to it.
+//
+// The service worker that receives these lives in src/sw.js.
+const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+const pushSupported = () =>
+  typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && !!VAPID_PUBLIC;
+
+// applicationServerKey wants raw bytes, and the key ships as base64url.
+const vapidKeyBytes = (base64url) => {
+  const padded = (base64url + "=".repeat((4 - (base64url.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+};
+
+// serviceWorker.ready never rejects — if registration failed it simply waits
+// forever, which left the toggle spinning with no error to show. Racing it
+// turns that into a normal failure.
+const swReady = () => Promise.race([
+  navigator.serviceWorker.ready,
+  new Promise((_, reject) => setTimeout(() => reject(new Error("service worker unavailable")), 10_000)),
+]);
+
+function PushToggle({ t, lang }) {
+  const [sub, setSub] = useState(null);      // the live PushSubscription, or null
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const supported = pushSupported();
+
+  useEffect(() => {
+    if (!supported) return;
+    swReady()
+      .then((reg) => reg.pushManager.getSubscription())
+      .then(setSub)
+      .catch(() => {});
+  }, [supported]);
+
+  const enable = async () => {
+    setBusy(true); setErr("");
+    try {
+      // Must be asked from a user gesture, and Safari refuses outright if the
+      // PWA isn't installed to the home screen — hence the explicit denied case.
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") { setErr(t("pushBlocked")); setBusy(false); return; }
+      const reg = await swReady();
+      const next = await reg.pushManager.subscribe({
+        userVisibleOnly: true, // required; a silent push gets the subscription revoked
+        applicationServerKey: vapidKeyBytes(VAPID_PUBLIC),
+      });
+      const { keys } = next.toJSON();
+      await db.savePushSubscription({ endpoint: next.endpoint, p256dh: keys.p256dh, auth: keys.auth, lang });
+      setSub(next);
+    } catch (e) { setErr(e.message || String(e)); }
+    setBusy(false);
+  };
+
+  const disable = async () => {
+    setBusy(true); setErr("");
+    try {
+      // Row first: if unsubscribe succeeds and the delete then fails, the cron
+      // keeps pushing to a dead endpoint until it 410s.
+      await db.deletePushSubscription(sub.endpoint);
+      await sub.unsubscribe();
+      setSub(null);
+    } catch (e) { setErr(e.message || String(e)); }
+    setBusy(false);
+  };
+
+  if (!supported) return null; // nothing actionable to offer — don't show a dead control
+  return (
+    <>
+      <button onClick={sub ? disable : enable} disabled={busy} style={{ ...ghostBtn, opacity: busy ? 0.6 : 1 }}>
+        {busy ? <Loader2 size={15} className="spin" /> : <Bell size={15} />}
+        {sub ? t("pushDisable") : t("pushEnable")}
+      </button>
+      {err && <div style={{ color: DANGER, fontSize: 12 }}>{err}</div>}
+    </>
   );
 }
 

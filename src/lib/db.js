@@ -716,6 +716,27 @@ export async function saveWishlistGoal(ledgerId, { name, targetAmount }) {
   if (error) throw error;
 }
 
+/* ---- web push subscriptions (migration 034) ---- */
+
+// Upsert on endpoint, not insert: the browser hands back the same endpoint when
+// a device re-subscribes, and a duplicate row would mean the same phone buzzing
+// twice for one reminder. Also refreshes `lang`, so switching the app's
+// language switches the language its pushes arrive in.
+export async function savePushSubscription({ endpoint, p256dh, auth, lang }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("not signed in");
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    { user_id: user.id, endpoint, p256dh, auth, lang: lang || "en" },
+    { onConflict: "endpoint" },
+  );
+  if (error) throw error;
+}
+
+export async function deletePushSubscription(endpoint) {
+  const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  if (error) throw error;
+}
+
 /* ---- notifications ---- */
 // One reminder per expense (unique expense_id, migration 017) — re-saving the
 // expense form overwrites it rather than piling up duplicates.
