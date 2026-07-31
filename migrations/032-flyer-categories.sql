@@ -25,7 +25,14 @@ alter table flyer_items add column if not exists categories text;
 
 -- Adds is_grocery so the picker can lead with supermarkets. Replaces the 031
 -- definition; ordering puts grocers first, then alphabetical within each group.
-create or replace function nearby_merchants(p_postal_code text)
+--
+-- Dropped first, not just "create or replace": adding a column to the returned
+-- row changes the function's return type, which replace refuses
+-- ("cannot change return type of existing function"). Safe to drop — nothing
+-- in the database depends on it, only the app calls it by name.
+drop function if exists nearby_merchants(text);
+
+create function nearby_merchants(p_postal_code text)
 returns table (merchant text, merchant_logo text, item_count bigint, is_grocery boolean)
 language sql
 stable
