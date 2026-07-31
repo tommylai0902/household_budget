@@ -1025,8 +1025,17 @@ export async function addGroceryItem(ledgerId, itemName, quantityNeeded = 1, bra
   if (error) throw error;
   return data.id; // lets a scan-then-price-match attach the deal to the new row
 }
+const CLEARED_DEAL = {
+  target_supermarket: null, deal_price: null, deal_image_url: null, deal_item_name: null,
+  deal_valid_to: null, deal_merchant_logo: null, deal_flyer_id: null, deal_postal_code: null,
+};
+// Completed items are done being shopped for — the cutout, price and flyer
+// link only mattered in the aisle, and keeping them attached after just
+// accumulates rows of stale deal data nobody will look at again.
 export async function toggleGroceryItem(id, isCompleted) {
-  const { error } = await supabase.from("grocery_list").update({ is_completed: isCompleted }).eq("id", id);
+  const patch = { is_completed: isCompleted };
+  if (isCompleted) Object.assign(patch, CLEARED_DEAL);
+  const { error } = await supabase.from("grocery_list").update(patch).eq("id", id);
   if (error) throw error;
 }
 // `clearDeal`: a saved match (cutout, price, flyer link) was matched against
@@ -1035,12 +1044,7 @@ export async function toggleGroceryItem(id, isCompleted) {
 // whether the name actually changed (it already has the old value in hand).
 export async function updateGroceryItem(id, { itemName, quantityNeeded, brand, clearDeal }) {
   const patch = { item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null };
-  if (clearDeal) {
-    Object.assign(patch, {
-      target_supermarket: null, deal_price: null, deal_image_url: null, deal_item_name: null,
-      deal_valid_to: null, deal_merchant_logo: null, deal_flyer_id: null, deal_postal_code: null,
-    });
-  }
+  if (clearDeal) Object.assign(patch, CLEARED_DEAL);
   const { error } = await supabase.from("grocery_list").update(patch).eq("id", id);
   if (error) throw error;
 }

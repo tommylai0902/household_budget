@@ -6272,6 +6272,17 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   // two different questions too, instead of one row that looked like it had
   // a redundant "show everything" option twice.
   const [typeFilter, setTypeFilter] = useState("grocery"); // "grocery" | "homeGarden" | "all"
+  // The type-filter row is a dropdown anchored to "Browse", not a permanent
+  // second row — it opens on tap and folds away on an outside tap, so it
+  // doesn't sit there taking up space once you've already picked one.
+  const [typeFilterOpen, setTypeFilterOpen] = useState(false);
+  const filterRowRef = useRef(null);
+  useEffect(() => {
+    if (!typeFilterOpen) return;
+    const onOutside = (e) => { if (filterRowRef.current && !filterRowRef.current.contains(e.target)) setTypeFilterOpen(false); };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [typeFilterOpen]);
 
   const loadPolicies = useCallback(() => {
     db.fetchStorePolicies(ledgerId).then(setPolicies).catch((e) => setError(e.message || String(e)));
@@ -6318,23 +6329,27 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
       <div style={{ fontSize: 12.5, color: SUB }}>{t("storeSetupHint")}</div>
       {error && <div style={errorBox}>{error}</div>}
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchStoresPh")} style={input} />
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button onClick={() => setOnlyMine(false)} style={chip(!onlyMine)}>{t("browseStores")}</button>
-        <button onClick={() => setOnlyMine(true)} style={chip(onlyMine)}>{t("myStoresCount", { n: mineCount })}</button>
-      </div>
-      {/* Hidden once you're looking at "My stores" — that list is already
-          short and hand-picked, so a type filter on top of it is just noise;
-          it only earns its keep cutting through the full ~109-merchant
-          region list in Browse mode. Also only offered once the mirror
-          actually carries categories — before that every shop looks
-          non-grocery and the filter would be a lie. */}
-      {!onlyMine && anyGrocery && (
+      <div ref={filterRowRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button onClick={() => setTypeFilter("grocery")} style={chip(typeFilter === "grocery")}>{t("typeSupermarkets")}</button>
-          <button onClick={() => setTypeFilter("homeGarden")} style={chip(typeFilter === "homeGarden")}>{t("typeHardware")}</button>
-          <button onClick={() => setTypeFilter("all")} style={chip(typeFilter === "all")}>{t("includeNonGrocery")}</button>
+          <button onClick={() => { if (onlyMine) { setOnlyMine(false); setTypeFilterOpen(true); } else setTypeFilterOpen((o) => !o); }}
+            style={chip(!onlyMine)}>{t("browseStores")}</button>
+          <button onClick={() => { setOnlyMine(true); setTypeFilterOpen(false); }} style={chip(onlyMine)}>{t("myStoresCount", { n: mineCount })}</button>
         </div>
-      )}
+        {/* A dropdown off "Browse", not a permanent row — that list is
+            ~109 merchants and the type filter earns its keep there, but
+            once you've picked one it's just taking up space; "My stores"
+            is already short and hand-picked and never needs it at all.
+            Also only offered once the mirror actually carries categories —
+            before that every shop looks non-grocery and the filter would
+            be a lie. */}
+        {!onlyMine && typeFilterOpen && anyGrocery && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button onClick={() => setTypeFilter("grocery")} style={chip(typeFilter === "grocery")}>{t("typeSupermarkets")}</button>
+            <button onClick={() => setTypeFilter("homeGarden")} style={chip(typeFilter === "homeGarden")}>{t("typeHardware")}</button>
+            <button onClick={() => setTypeFilter("all")} style={chip(typeFilter === "all")}>{t("includeNonGrocery")}</button>
+          </div>
+        )}
+      </div>
       {merchants === null ? (
         <Centered>{t("connecting")}</Centered>
       ) : visible.length === 0 ? (
