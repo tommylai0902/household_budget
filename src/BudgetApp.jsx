@@ -1289,23 +1289,22 @@ export default function App() {
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} hasInvite={!!inviteToken} />;
   if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
-  // Picker's Home menu entry — jumps back to the last-used ledger's Bento
-  // dashboard, same target the auto-load effect above would have landed on.
-  // Only offered when there's actually one cached; a brand-new account with
-  // no ledger opened yet has nowhere for "Home" to go.
+  // Picker's Home menu entry / header nav — jumps into a ledger's Bento
+  // dashboard. Prefers the last-used ledger, but the cache is per-device: on a
+  // browser that's never opened one it falls back to the first ledger, so Home
+  // is there wherever you have at least one. (LedgerPicker hides these entries
+  // for a genuinely empty account, where there's nowhere to go.)
   const goToView = async (view) => {
-    const cached = getLastLedgerId();
-    if (!cached) return;
     try {
       const all = await db.fetchLedgers();
-      const match = all.find((l) => l.id === cached);
+      const match = all.find((l) => l.id === getLastLedgerId()) || all[0];
       if (match) openLedger(match, view);
     } catch {}
   };
 
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-    onOpen={(l) => openLedger(l, "ledger")} onHome={getLastLedgerId() ? () => goToView("home") : undefined}
-    onNavigate={getLastLedgerId() ? goToView : undefined}
+    onOpen={(l) => openLedger(l, "ledger")} onHome={() => goToView("home")}
+    onNavigate={goToView}
     currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
   return <Ledger ledger={ledger} startView={entryView} currentUserId={session.user.id} onExit={() => setLedger(null)}
     onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
@@ -1582,13 +1581,13 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             on the right — same string in every language, like the eyebrow on
             the sign-in screen. */}
         <BrandHeader
-          left={onNavigate ? <ViewSwitcher current="ledger" label={t("navDropdownLabel")} hideIcon onSwitch={onNavigate} t={t} /> : undefined}
+          left={onNavigate && ledgers?.length ? <ViewSwitcher current="ledger" label={t("navDropdownLabel")} hideIcon onSwitch={onNavigate} t={t} /> : undefined}
           right={<>
           <NotificationBell t={t} lang={lang} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
-              — plus Home, which jumps back to wherever the Bento dashboard leads
-              (only offered once there's actually a last-used ledger to land on). */}
-          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onHome={onHome} />
+              — plus Home, which jumps into a ledger's Bento dashboard (shown
+              whenever there's at least one ledger to land on). */}
+          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onHome={ledgers?.length ? onHome : undefined} />
         </>} />
 
         {inviteMsg && (
