@@ -257,6 +257,9 @@ const STRINGS = {
     cancellationReminder: "Cancellation Reminder", remindMeToCancel: "Remind me to cancel",
     cancellationReminderTitle: "Cancel {name} before it renews",
     upcomingChargeTitle: "Upcoming charge for {name} in {days} days",
+    // Dated rather than "expires soon": the row outlives the day it appears,
+    // and a stale "soon" on something a week gone reads as a broken app.
+    expiryReminderTitle: "{name} expires {date}",
     upcomingChargeReminder: "Upcoming Charge Reminder", remindMeUpcoming: "Remind me before each charge",
     daysBeforeLabel: "days before",
     notifications: "Notifications", noNotifications: "You're all caught up!",
@@ -450,6 +453,7 @@ const STRINGS = {
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "續約前記得取消{name}",
     upcomingChargeTitle: "{name} {days} 日後扣款",
+    expiryReminderTitle: "{name} {date} 到期",
     upcomingChargeReminder: "扣款提醒", remindMeUpcoming: "每次扣款前提醒我",
     daysBeforeLabel: "日前",
     notifications: "通知", noNotifications: "冧晒，冇嘢要跟。",
@@ -646,6 +650,7 @@ const STRINGS = {
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "续约前记得取消{name}",
     upcomingChargeTitle: "{name} 将在 {days} 天后扣款",
+    expiryReminderTitle: "{name} {date} 到期",
     upcomingChargeReminder: "扣款提醒", remindMeUpcoming: "每次扣款前提醒我",
     daysBeforeLabel: "天前",
     notifications: "通知", noNotifications: "全部搞定，没有待办通知。",
@@ -841,6 +846,7 @@ const STRINGS = {
     cancellationReminder: "Rappel d'annulation", remindMeToCancel: "Me rappeler d'annuler",
     cancellationReminderTitle: "Annuler {name} avant le renouvellement",
     upcomingChargeTitle: "Prélèvement de {name} dans {days} jours",
+    expiryReminderTitle: "{name} périme le {date}",
     upcomingChargeReminder: "Rappel de prélèvement", remindMeUpcoming: "Me rappeler avant chaque prélèvement",
     daysBeforeLabel: "jours avant",
     notifications: "Notifications", noNotifications: "Tout est à jour !",
@@ -1036,6 +1042,7 @@ const STRINGS = {
     cancellationReminder: "Recordatorio de cancelación", remindMeToCancel: "Recuérdame cancelar",
     cancellationReminderTitle: "Cancela {name} antes de que se renueve",
     upcomingChargeTitle: "Cargo próximo de {name} en {days} días",
+    expiryReminderTitle: "{name} caduca el {date}",
     upcomingChargeReminder: "Recordatorio de cargo", remindMeUpcoming: "Recuérdame antes de cada cargo",
     daysBeforeLabel: "días antes",
     notifications: "Notificaciones", noNotifications: "¡Estás al día!",
@@ -2190,6 +2197,9 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
       // Auto-managed upcoming-charge reminders for recurring Subscriptions
       // rules — no toggle, just kept current alongside the generation above.
       await db.syncUpcomingChargeReminders(ledger.id, (name, days) => t("upcomingChargeTitle", { name, days })).catch(() => {});
+      // Same deal for food about to go off — expiry_date has existed since
+      // migration 021 but never reached the bell (migration 033).
+      await db.syncExpiryReminders(ledger.id, (name, date) => t("expiryReminderTitle", { name, date: shortDate(date, lang) })).catch(() => {});
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
       // Wishlist goal is Kid-Ledger-only — every other template skips the query
@@ -4752,7 +4762,11 @@ function ManageRemindersPanel({ t, lang, onClose }) {
             // would immediately re-run syncUpcomingChargeReminders and
             // recreate the row the moment it's deleted — pause/delete the
             // recurring rule itself to actually stop it.
-            const auto = !!n.recurringRuleId;
+            // Expiry reminders (migration 033) are auto-managed the same way —
+            // syncExpiryReminders recreates a deleted one on the next ledger
+            // load, so they get the hint and no delete button too. Clear the
+            // item's expiry date to actually stop it.
+            const auto = !!n.recurringRuleId || !!n.inventoryItemId;
             return (
               <div key={n.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>

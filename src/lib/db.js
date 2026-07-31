@@ -500,6 +500,46 @@ export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
   }
 }
 
+// Inventory items with an expiry date get a "use it up" reminder EXPIRY_LEAD_DAYS
+// before they go off. Sibling of syncUpcomingChargeReminders above and run
+// alongside it: same upsert-on-a-unique-FK shape, same cycle_date trick to tell
+// "this is the date I already built a reminder for" from a user-edited
+// remind_at. An item with no expiry date (or one that lost it) drops its
+// reminder rather than keeping a stale one.
+//
+// remind_at is allowed to land in the past — fetchNotifications filters on
+// `remind_at <= today`, so an item that expired before this ever ran still
+// surfaces immediately instead of being silently skipped.
+export const EXPIRY_LEAD_DAYS = 3; // matches the Inventory panel's own "Expiring soon" window
+
+export async function syncExpiryReminders(ledgerId, buildTitle) {
+  const [{ data: items, error: ierr }, { data: existing, error: eerr }] = await Promise.all([
+    supabase.from("inventory_items").select("id, name, expiry_date").eq("ledger_id", ledgerId),
+    supabase.from("notifications").select("inventory_item_id, cycle_date").eq("ledger_id", ledgerId).not("inventory_item_id", "is", null),
+  ]);
+  if (ierr) throw ierr;
+  if (eerr) throw eerr;
+  const tracked = new Map((existing || []).map((r) => [r.inventory_item_id, r.cycle_date]));
+
+  for (const item of items || []) {
+    if (!item.expiry_date) {
+      if (tracked.has(item.id)) await supabase.from("notifications").delete().eq("inventory_item_id", item.id);
+      continue;
+    }
+    if (tracked.get(item.id) === item.expiry_date) continue; // already built for this date — leave any manual edit alone
+    const { error } = await supabase.from("notifications").upsert(
+      {
+        ledger_id: ledgerId, inventory_item_id: item.id,
+        title: buildTitle(item.name, item.expiry_date),
+        remind_at: addDays(item.expiry_date, -EXPIRY_LEAD_DAYS),
+        cycle_date: item.expiry_date, read: false,
+      },
+      { onConflict: "inventory_item_id" },
+    );
+    if (error) throw error;
+  }
+}
+
 /* ---- category templates ----
    Starting categories for a new ledger. Labels for the picker live in the UI's
    STRINGS table; these are the category names themselves, which are
@@ -725,16 +765,17 @@ export async function dismissNotification(id) {
   if (error) throw error;
 }
 // Settings → Manage reminders: every reminder that exists — manual
-// cancellation ones (expense_id) and automatic upcoming-charge ones
-// (recurring_rule_id) alike — due or not, across every ledger this account
+// cancellation ones (expense_id), automatic upcoming-charge ones
+// (recurring_rule_id) and inventory expiry ones (inventory_item_id) alike —
+// due or not, across every ledger this account
 // can see. Distinct from fetchNotifications()'s due-only inbox; chronological,
 // since this is a schedule you're managing rather than an unread pile.
 export async function fetchAllReminders() {
   const { data, error } = await supabase
-    .from("notifications").select("id, ledger_id, expense_id, recurring_rule_id, title, remind_at, read")
-    .or("expense_id.not.is.null,recurring_rule_id.not.is.null").order("remind_at", { ascending: true });
+    .from("notifications").select("id, ledger_id, expense_id, recurring_rule_id, inventory_item_id, title, remind_at, read")
+    .or("expense_id.not.is.null,recurring_rule_id.not.is.null,inventory_item_id.not.is.null").order("remind_at", { ascending: true });
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, recurringRuleId: r.recurring_rule_id, title: r.title, remindAt: r.remind_at, read: r.read }));
+  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, recurringRuleId: r.recurring_rule_id, inventoryItemId: r.inventory_item_id, title: r.title, remindAt: r.remind_at, read: r.read }));
 }
 export async function updateNotificationDate(id, remindAt) {
   const { error } = await supabase.from("notifications").update({ remind_at: remindAt }).eq("id", id);
