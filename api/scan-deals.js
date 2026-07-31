@@ -23,11 +23,24 @@ export default async function handler(req, res) {
 
   const supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY);
 
-  let query = supabase
-    .from("flyer_items")
-    .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id")
-    .eq("postal_code", postalCode)
-    .ilike("name", `%${escapeLike(q)}%`);
+  // Rebuilt per attempt rather than reused — postgrest-js filter methods mutate
+  // and return `this`, so a shared builder can't be branched on brand below.
+  const baseQuery = () => {
+    let qb = supabase
+      .from("flyer_items")
+      .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id")
+      .eq("postal_code", postalCode)
+      .ilike("name", `%${escapeLike(q)}%`);
+    // Expired deals are worse than no deal — a cashier checks the date and turns
+    // it down, having wasted the trip. Weekly flyers overlap, so the mirror
+    // always holds some already-past items. Rows with no end date are kept: an
+    // unknown expiry is not the same as a known-expired one.
+    if (searchParams.get("includeExpired") !== "1") {
+      const today = new Date().toISOString().slice(0, 10);
+      qb = qb.or(`valid_to.gte.${today},valid_to.is.null`);
+    }
+    return qb;
+  };
 
   // Flipp writes the brand into the item name itself ("NEILSON CHOCOLATE MILK
   // 750mL"), so narrowing is just a further substring match on the same column
@@ -37,19 +50,21 @@ export default async function handler(req, res) {
   // matched as a substring it made results worse, "750" pulling in
   // "MILK BONE DOG BISCUITS ... 750-900 G" on a search for milk.
   const brand = (searchParams.get("brand") || "").trim();
-  if (brand) query = query.ilike("name", `%${escapeLike(brand)}%`);
 
-  // Expired deals are worse than no deal — a cashier checks the date and turns
-  // it down, having wasted the trip. Weekly flyers overlap, so the mirror
-  // always holds some already-past items. Rows with no end date are kept: an
-  // unknown expiry is not the same as a known-expired one.
-  if (searchParams.get("includeExpired") !== "1") {
-    const today = new Date().toISOString().slice(0, 10);
-    query = query.or(`valid_to.gte.${today},valid_to.is.null`);
-  }
-
-  const { data, error } = await query.order("price", { ascending: true }).limit(MAX_RESULTS);
+  let { data, error } = await (brand ? baseQuery().ilike("name", `%${escapeLike(brand)}%`) : baseQuery())
+    .order("price", { ascending: true }).limit(MAX_RESULTS);
   if (error) return res.status(500).json({ error: error.message });
+
+  // Flipp often folds several products into one "OR" flyer line ("REAL DAIRY
+  // OR DRUMSTICK ICE CREAM") without spelling out the manufacturer, so a
+  // brand-filtered search can find nothing even though the product's own
+  // name is right there. A brand match failing isn't proof the deal is
+  // missing, so fall back to the unfiltered name search rather than
+  // reporting a false "no deals".
+  if (brand && !data.length) {
+    ({ data, error } = await baseQuery().order("price", { ascending: true }).limit(MAX_RESULTS));
+    if (error) return res.status(500).json({ error: error.message });
+  }
 
   const deals = (data || []).map((d) => ({
     name: d.name, price: Number(d.price), merchant: d.merchant,
