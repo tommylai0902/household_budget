@@ -47,18 +47,18 @@ Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`. The UI and
 ```
 src/
   main.jsx          31    entry
-  BudgetApp.jsx   6501    App (auth gate) + Login + Ledger + EVERY panel & i18n
+  BudgetApp.jsx   6581    App (auth gate) + Login + Ledger + EVERY panel & i18n
   sw.js             55    service worker: precache + push handlers
   index.css              reset + a few keyframes/media queries
   lib/
     supabase.js     16    client (VITE_ env vars)
-    db.js         1135    ALL data access: row⇄app mappers, CRUD, realtime, syncs
+    db.js         1166    ALL data access: row⇄app mappers, CRUD, realtime, syncs
     settle.js       60    split-bill netting        (+ .test.js)
     csv.js         107    statement/CSV parsing     (+ .test.js)
     categorize.js   16    keyword category guesser  (+ .test.js)
     recurring.js    28    recurrence date math      (+ .test.js)
 api/                     7 Vercel functions (below)
-migrations/              001–034, applied BY HAND (below)
+migrations/              001–037, applied BY HAND (below)
 ```
 
 `BudgetApp.jsx` is one 6,500-line file on purpose — every component, every
@@ -92,7 +92,7 @@ Ledger-scoped tables all follow the same RLS shape from migration 009:
 | Recurring | `recurring_rules` |
 | Reminders | `notifications` |
 | Inventory/grocery | `inventory_items`, `grocery_list`, `inventory_labels` |
-| Flyers | `flyer_items` (regional mirror), `deals_cache`, `store_policies` |
+| Flyers | `flyer_items` (regional mirror), `store_policies` |
 | Push | `push_subscriptions` |
 
 Two easily-confused things:
@@ -153,9 +153,51 @@ that table. So no amount of tapping "Price Match Check" can rate-limit the IP,
 and a product nobody ever searched still answers instantly.
 
 Consequence: a region with no mirror run yet returns `pending`, not "no
-results" — the UI says so explicitly. `is_grocery` on `nearby_merchants()`
-comes from Flipp's own flyer categories (032) so store setup can lead with
-supermarkets rather than hardware shops.
+results" — the UI says so explicitly. `nearby_merchants()` returns two
+booleans derived from Flipp's own flyer categories, `is_grocery` (032) and
+`is_home_garden` (037 — Flipp has no dedicated "hardware" category, so this is
+the closest bucket: Home Hardware/RONA/Home Depot/Canadian Tire, alongside
+furniture shops sharing it), so Store Setup can filter Supermarkets / Hardware
+& home / All Stores instead of always showing the ~109-merchant region list.
+
+`api/scan-deals.js` matches `q` and an optional `brand` as two `ilike`
+substrings against `flyer_items.name`, AND'd together. Flipp often folds
+several products into one combo "OR" flyer line ("REAL DAIRY OR DRUMSTICK ICE
+CREAM") without spelling out the manufacturer, so a brand-filtered search can
+come back empty even though the product is right there — the route retries
+once without the brand filter whenever that happens, rather than reporting a
+false "no deals".
+
+**Store setup (`store_policies`, migration 036) is one local store plus that
+store's price-match list, not a flat "my stores" set.** Exactly one row per
+ledger has `is_local = true` (a partial unique index enforces this — see
+`setLocalStore` in `db.js`, which clears any other local row before setting a
+new one). Every *other* row's tri-state `price_matches` column is repurposed:
+it no longer means "does this store price match" in general, it means "is
+this store on my local store's price-match list" — true/false/null, and null
+("not asked") must stay distinct from false, same rationale as always. This
+matters because match policies aren't symmetric or universal: Real Canadian
+Superstore won't match Walmart's flyer just because both sell milk.
+
+**Price Match Mode has nothing left to pick.** With one local store, it skips
+the old "which store are you in" step and runs on open: for every pending
+grocery item, it fetches deals filtered to `{price-match-list stores} ∪
+{local store}`, so the local store's own current flyer is always in the
+comparison too — if it already beats every price-match-list store, the item
+shows as "already here" rather than suggesting a match that isn't actually
+cheaper. Nothing outside that set (a merchant you never added to the list) can
+surface, even if it's objectively cheaper — an unreachable "cheaper elsewhere"
+isn't actionable at the till.
+
+A saved deal on a `grocery_list` row (`target_supermarket`, `deal_price`,
+`deal_valid_to`, …) is a point-in-time snapshot, never re-validated against
+the flyer mirror after it's picked. `GroceryRow` compares `dealValidTo` to
+today client-side and swaps the pill from green to amber past that date (a
+missing `dealValidTo` is treated as still fresh, not expired). Completing an
+item clears all eight deal fields (`toggleGroceryItem`, sharing the same
+`CLEARED_DEAL` object `updateGroceryItem` uses on a rename) — a finished trip
+has no more use for the cutout, and leaving it attached just accumulates
+stale rows.
 
 ### 2. Reminders → the bell → your phone
 
@@ -234,7 +276,7 @@ Only the **anon** key belongs there.
   after editing something like `api/gemini.js`, or you'll test stale code.
 - `dev-dist/` is generated by the PWA plugin in dev and is gitignored.
 
-`grep -rn "ponytail:"` finds 7 deliberate shortcuts, each naming its own ceiling
+`grep -rn "ponytail:"` finds 6 deliberate shortcuts, each naming its own ceiling
 and upgrade path (PDF size caps, a read-then-write race, recurrence iteration
 limit, etc.). They are decisions, not TODOs.
 
@@ -243,22 +285,35 @@ limit, etc.). They are decisions, not TODOs.
 ## State
 
 **Working and verified:** ledger/expenses/budgets/splits/recurring, invites &
-RBAC, inventory + labels, grocery list, flyer mirror + price match, store setup,
-Price Match Mode, receipt/statement/product scanning, scan-to-price-match from
-the grocery page, expiry reminders in the bell, cron-side reminder generation.
+RBAC, inventory + labels, grocery list, flyer mirror + price match, store setup
+(single local store + price-match list), Price Match Mode (auto-runs, no store
+picker), receipt/statement/product scanning, scan-to-price-match from the
+grocery page, expired-deal handling on grocery rows, deal fields cleared on
+completion, expiry reminders in the bell, cron-side reminder generation,
+notification dismiss (`dismissed` flag, not a hard delete — 035), **web push
+end-to-end** (see below).
 
-**Migrations 001–034 are all applied** as of 2026-07-31.
+**Migrations 001–037 are all applied** as of 2026-07-31.
 
-**Unfinished / needs a real device:**
-- **Web push last hop is untested.** Everything server-side is verified against
-  the live database (generates rows unattended, idempotent, prunes dead
-  endpoints, doesn't burn reminders on failure), but no notification has ever
-  reached a real handset — the dev browser reports `Notification.permission:
-  "denied"`. Requires: VAPID vars + `CRON_SECRET` added in **Vercel**, then
-  home-screen install → Settings → "Notify me on this device".
+**Web push is now confirmed working on a real device (2026-07-31).** The
+Vercel deploy was initially missing `VITE_VAPID_PUBLIC_KEY` — `PushToggle`'s
+`pushSupported()` check fails silently (renders nothing, no error) when that's
+unset, which is why the toggle didn't appear in Settings at all rather than
+erroring. Fixed by adding `VITE_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+`VAPID_SUBJECT` and `CRON_SECRET` in Vercel's project settings and redeploying
+— `VITE_`-prefixed vars are baked in at build time, so adding the env var
+alone doesn't do anything until the next build. `CRON_SECRET` has no
+canonical source; it's just a shared random string Vercel echoes back as the
+`Authorization` header on its own scheduled invocations, generated fresh and
+saved to both Vercel and `.env.local` so local and production match. Verified
+by inserting a throwaway `notifications` row, POSTing `/api/send-reminders`
+locally with that secret, confirming `sent: 1` and a real notification landing
+on a home-screen-installed iPhone (`push_subscriptions.endpoint` is
+`web.push.apple.com/…`, confirming Apple's push service specifically), then
+deleting the test row.
+
+**Unfinished:**
 - **Known quirk, unfixed:** from Inventory or Grocery, the view switcher's
   "Ledger & Transactions" calls `onExit()` and lands on the ledger *picker*,
   not the transactions view (`BudgetApp.jsx`, the `onSwitchView` props). Looks
   unintended given the label.
-- `CLAUDE.md`'s Roadmap section is **stale** — it lists budgets and receipt
-  scanning as upcoming; both shipped long ago.
