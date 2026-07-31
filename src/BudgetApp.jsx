@@ -146,6 +146,8 @@ const STRINGS = {
     addGroceryItemPh: "Add an item…", noGroceryItems: "Grocery list is empty.",
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
+    priceMatchBadgeExpired: "Expired: {price} at {merchant}",
+    dealExpiredHint: "This flyer price has expired — tap 🔍 to check again.",
     postalCodeRequired: "Enter your postal code first — flyer prices are local.",
     storeSetup: "My stores", storeSetupHint: "Shops with flyers near you. Mark the ones you actually visit, then say whether each honours a price match.",
     searchStoresPh: "Search stores…", myStoresCount: "My stores ({n})",
@@ -348,6 +350,8 @@ const STRINGS = {
     addGroceryItemPh: "加樣嘢…", noGroceryItems: "買餸清單係空嘅。",
     priceMatchCheck: "🔍 格價", checkingDeals: "格緊價…",
     postalCodePh: "郵政編碼（用嚟格價）", priceMatchBadge: "最平：{merchant} {price}",
+    priceMatchBadgeExpired: "已過期：{merchant} {price}",
+    dealExpiredHint: "呢個海報價已經過期——撳 🔍 再check過。",
     postalCodeRequired: "請先填郵政編碼——海報優惠係分地區嘅。",
     storeSetup: "我嘅超市", storeSetupHint: "你附近有出海報嘅舖頭。剔返你真係會去嗰啲，再話我知邊間肯 match 價。",
     searchStoresPh: "搵超市…", myStoresCount: "我嘅超市（{n}）",
@@ -548,6 +552,8 @@ const STRINGS = {
     addGroceryItemPh: "添加物品…", noGroceryItems: "购物清单是空的。",
     priceMatchCheck: "🔍 比价", checkingDeals: "比价中…",
     postalCodePh: "邮政编码（用于比价）", priceMatchBadge: "最低：{merchant} {price}",
+    priceMatchBadgeExpired: "已过期：{merchant} {price}",
+    dealExpiredHint: "这个海报价已经过期——点击 🔍 重新查看。",
     postalCodeRequired: "请先填邮政编码——传单优惠是分地区的。",
     storeSetup: "我的超市", storeSetupHint: "你附近有发传单的商店。勾选你实际会去的，再标明哪家愿意比价。",
     searchStoresPh: "搜索超市…", myStoresCount: "我的超市（{n}）",
@@ -746,6 +752,8 @@ const STRINGS = {
     addGroceryItemPh: "Ajouter un article…", noGroceryItems: "La liste de courses est vide.",
     priceMatchCheck: "🔍 Comparer les prix", checkingDeals: "Vérification…",
     postalCodePh: "Code postal pour comparer les prix", priceMatchBadge: "Meilleur : {price} chez {merchant}",
+    priceMatchBadgeExpired: "Expiré : {price} chez {merchant}",
+    dealExpiredHint: "Ce prix de circulaire a expiré — appuyez sur 🔍 pour vérifier à nouveau.",
     postalCodeRequired: "Entrez d'abord votre code postal — les circulaires sont régionales.",
     storeSetup: "Mes magasins", storeSetupHint: "Magasins avec circulaires près de chez vous. Cochez ceux que vous fréquentez, puis indiquez lesquels acceptent l'ajustement de prix.",
     searchStoresPh: "Rechercher un magasin…", myStoresCount: "Mes magasins ({n})",
@@ -945,6 +953,8 @@ const STRINGS = {
     addGroceryItemPh: "Añadir un artículo…", noGroceryItems: "La lista de la compra está vacía.",
     priceMatchCheck: "🔍 Comparar precios", checkingDeals: "Comprobando…",
     postalCodePh: "Código postal para comparar precios", priceMatchBadge: "Mejor: {price} en {merchant}",
+    priceMatchBadgeExpired: "Caducado: {price} en {merchant}",
+    dealExpiredHint: "Este precio del folleto ha caducado — toca 🔍 para volver a comprobarlo.",
     postalCodeRequired: "Introduce primero tu código postal — las ofertas son regionales.",
     storeSetup: "Mis tiendas", storeSetupHint: "Tiendas con folletos cerca de ti. Marca las que visitas de verdad y luego indica cuáles igualan precios.",
     searchStoresPh: "Buscar tiendas…", myStoresCount: "Mis tiendas ({n})",
@@ -4998,7 +5008,12 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
     db.fetchGroceryList(ledgerId).then((items) => {
       if (!live) return;
       setPendingGrocery(items.filter((it) => !it.isCompleted).length);
-      setDealsActive(items.some((it) => it.targetSupermarket));
+      // A deal past its own valid-to date isn't "active" — the flyer mirror
+      // sweeps it away on the next Thursday run regardless, but the saved
+      // row on the item survives until re-checked (nothing re-validates it),
+      // so this badge shouldn't claim a stale price is still on.
+      const today = todayISO();
+      setDealsActive(items.some((it) => it.targetSupermarket && (!it.dealValidTo || it.dealValidTo >= today)));
     }).catch(() => {});
     return () => { live = false; };
   }, [ledgerId]);
@@ -5919,6 +5934,11 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
   const done = it.isCompleted;
   const checking = checkingId === it.id;
   const hasDeal = !!it.targetSupermarket;
+  // Saved deals are never re-validated once picked — nothing re-checks a row
+  // against the flyer mirror's Thursday sweep, so a price can sit there
+  // advertising a competitor's flyer that's already gone. No valid-to date
+  // is treated as still fresh: unknown expiry isn't the same as known-expired.
+  const dealExpired = hasDeal && it.dealValidTo && it.dealValidTo < todayISO();
   return (
     <div style={{ position: "relative", borderRadius: 12 }}>
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
@@ -5953,9 +5973,11 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
               {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
             </div>
             {hasDeal && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: OK_INK, marginTop: 3, overflow: "hidden", whiteSpace: "nowrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: dealExpired ? WARN : OK_INK, marginTop: 3, overflow: "hidden", whiteSpace: "nowrap" }}>
                 <ChevronDown size={12} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t("priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {t(dealExpired ? "priceMatchBadgeExpired" : "priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
+                </span>
               </div>
             )}
           </div>
@@ -5976,6 +5998,14 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
             thumbnail — this is meant to be turned around and shown to someone. */}
         {open && hasDeal && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--glass-border)" }}>
+            {/* Right above the cutout, not just in the collapsed badge — this
+                is the moment someone's about to turn the phone around at the
+                till, and the warning needs to land before that, not after. */}
+            {dealExpired && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: WARN, marginBottom: 8 }}>
+                <Info size={13} style={{ flexShrink: 0 }} /> {t("dealExpiredHint")}
+              </div>
+            )}
             {it.dealImageUrl ? (
               <img src={it.dealImageUrl} alt={it.dealItemName || it.itemName}
                 style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 8, background: "#fff" }} />
