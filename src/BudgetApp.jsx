@@ -155,6 +155,13 @@ const STRINGS = {
     priceMatchesQ: "Does this store price match?", yes: "Yes", no: "No", notSure: "Not sure",
     lastConfirmed: "Last confirmed {date}",
     storeNotePh: "Conditions, e.g. identical size, local competitors only",
+    priceMatchMode: "Price Match Mode", pickShoppingStore: "Which store are you shopping at?",
+    noMatchStores: "No stores marked as yours yet.", changeStore: "Change store",
+    pmWillMatch: "Show a competitor's flyer at the till and they'll match it.",
+    pmWontMatch: "This store doesn't price match — these are cheaper elsewhere.",
+    pmMatchUnknown: "Not sure if this store price matches — worth asking.",
+    pmChecking: "Checking your list…", pmSummary: "{n} of {total} items are cheaper elsewhere",
+    pmAlreadyHere: "cheapest here, {price}", pmNoDeals: "no flyer deal",
     dealCheckErr: "Couldn't check prices: {msg}",
     dealsPending: "No flyer prices for this yet — the weekly update runs Thursday.",
     dealsNoneFound: "No flyer deals found for this item.",
@@ -343,6 +350,13 @@ const STRINGS = {
     priceMatchesQ: "呢間肯 match 價嗎？", yes: "肯", no: "唔肯", notSure: "唔清楚",
     lastConfirmed: "上次確認：{date}",
     storeNotePh: "條件，例如：同款同容量、只限本地對手",
+    priceMatchMode: "格價模式", pickShoppingStore: "你而家喺邊間買嘢？",
+    noMatchStores: "仲未設定過自己嘅超市。", changeStore: "換間舖",
+    pmWillMatch: "喺收銀處攞對手嘅海報出嚟，佢哋就會 match 個價。",
+    pmWontMatch: "呢間唔 match 價——以下係其他舖平啲嘅價。",
+    pmMatchUnknown: "唔肯定呢間 match 唔 match 價——不妨問吓。",
+    pmChecking: "檢查緊你張清單…", pmSummary: "{total} 樣入面有 {n} 樣其他舖更平",
+    pmAlreadyHere: "呢度最平，{price}", pmNoDeals: "冇海報優惠",
     dealCheckErr: "格價失敗：{msg}",
     dealsPending: "呢樣嘢仲未有海報價，星期四先更新。",
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
@@ -531,6 +545,13 @@ const STRINGS = {
     priceMatchesQ: "这家愿意比价吗？", yes: "愿意", no: "不愿意", notSure: "不确定",
     lastConfirmed: "上次确认：{date}",
     storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
+    priceMatchMode: "比价模式", pickShoppingStore: "你现在在哪家店购物？",
+    noMatchStores: "还没有设定自己的超市。", changeStore: "更换商店",
+    pmWillMatch: "在收银台出示对手的传单，他们就会比价。",
+    pmWontMatch: "这家不比价——以下是其他店更便宜的价格。",
+    pmMatchUnknown: "不确定这家是否比价——可以问一下。",
+    pmChecking: "正在检查你的清单…", pmSummary: "{total} 项中有 {n} 项在其他店更便宜",
+    pmAlreadyHere: "这里最便宜，{price}", pmNoDeals: "没有传单优惠",
     dealCheckErr: "比价失败：{msg}",
     dealsPending: "这件商品还没有传单价格，每周四更新。",
     dealsNoneFound: "没有找到这件商品的传单优惠。",
@@ -717,6 +738,13 @@ const STRINGS = {
     priceMatchesQ: "Ce magasin ajuste-t-il les prix ?", yes: "Oui", no: "Non", notSure: "Pas sûr",
     lastConfirmed: "Confirmé le {date}",
     storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
+    priceMatchMode: "Mode ajustement de prix", pickShoppingStore: "Dans quel magasin êtes-vous ?",
+    noMatchStores: "Aucun magasin marqué comme le vôtre.", changeStore: "Changer de magasin",
+    pmWillMatch: "Montrez la circulaire d'un concurrent à la caisse et ils ajusteront le prix.",
+    pmWontMatch: "Ce magasin n'ajuste pas les prix — voici où c'est moins cher.",
+    pmMatchUnknown: "Incertain que ce magasin ajuste les prix — ça vaut la peine de demander.",
+    pmChecking: "Vérification de votre liste…", pmSummary: "{n} article(s) sur {total} moins chers ailleurs",
+    pmAlreadyHere: "le moins cher ici, {price}", pmNoDeals: "aucune aubaine",
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
     dealsPending: "Pas encore de prix de circulaire — la mise à jour hebdomadaire a lieu le jeudi.",
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
@@ -904,6 +932,13 @@ const STRINGS = {
     priceMatchesQ: "¿Esta tienda iguala precios?", yes: "Sí", no: "No", notSure: "No estoy seguro",
     lastConfirmed: "Confirmado el {date}",
     storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
+    priceMatchMode: "Modo igualar precios", pickShoppingStore: "¿En qué tienda estás comprando?",
+    noMatchStores: "Aún no has marcado ninguna tienda como tuya.", changeStore: "Cambiar de tienda",
+    pmWillMatch: "Muestra el folleto de un competidor en caja y te igualarán el precio.",
+    pmWontMatch: "Esta tienda no iguala precios — aquí está dónde sale más barato.",
+    pmMatchUnknown: "No se sabe si esta tienda iguala precios — vale la pena preguntar.",
+    pmChecking: "Revisando tu lista…", pmSummary: "{n} de {total} artículos más baratos en otra tienda",
+    pmAlreadyHere: "más barato aquí, {price}", pmNoDeals: "sin oferta de folleto",
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
     dealsPending: "Aún no hay precios de folleto — la actualización semanal es el jueves.",
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
@@ -5550,7 +5585,16 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   };
   const hasPostal = !!postalCode.trim();
   const [showStores, setShowStores] = useState(false);
+  const [showPriceMatch, setShowPriceMatch] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  // Loaded here rather than inside the two panels so both share one fetch and
+  // stay in step — marking a store in one is reflected in the other.
+  const [storePolicies, setStorePolicies] = useState([]);
+  const loadStorePolicies = useCallback(() => {
+    db.fetchStorePolicies(ledgerId).then(setStorePolicies).catch(() => {});
+  }, [ledgerId]);
+  useEffect(() => { loadStorePolicies(); }, [loadStorePolicies]);
+  useEffect(() => db.subscribeStorePolicies(ledgerId, loadStorePolicies), [ledgerId, loadStorePolicies]);
   const pending = (items || []).filter((it) => !it.isCompleted);
   const done = (items || []).filter((it) => it.isCompleted);
   // Both lists render the same thing; only which bucket they sit in differs.
@@ -5597,9 +5641,18 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       {/* Sits with the postal code because that's what scopes it — the store
           list is derived from the region's flyers. Hidden until there is one. */}
       {hasPostal && (
-        <button onClick={() => setShowStores(true)} style={{ ...ghostBtn, alignSelf: "flex-start", marginTop: -4 }}>
-          <Store size={14} /> {t("storeSetup")}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: -4 }}>
+          <button onClick={() => setShowStores(true)} style={ghostBtn}>
+            <Store size={14} /> {t("storeSetup")}
+          </button>
+          {/* Only offered once there's a list to check and a shop to check it
+              against — an empty report helps nobody. */}
+          {pending.length > 0 && storePolicies.some((s) => s.isLocal) && (
+            <button onClick={() => setShowPriceMatch(true)} style={ghostBtn}>
+              <Sparkles size={14} /> {t("priceMatchMode")}
+            </button>
+          )}
+        </div>
       )}
       {/* Stays open after each add — the toast comment below spells out why
           adding several in a row is the normal case here. */}
@@ -5638,6 +5691,11 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       )}
       {showStores && (
         <StoreSetupPanel ledgerId={ledgerId} postalCode={postalCode} t={t} lang={lang} onClose={() => setShowStores(false)} />
+      )}
+      {showPriceMatch && (
+        <PriceMatchModePanel ledgerId={ledgerId} postalCode={postalCode} items={pending} stores={storePolicies}
+          t={t} lang={lang} onClose={() => setShowPriceMatch(false)}
+          onSetUpStores={() => { setShowPriceMatch(false); setShowStores(true); }} />
       )}
       {toast && <Toast key={toast.id} message={toast.text} onDone={() => setToast(null)} />}
     </div>
@@ -5843,6 +5901,162 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
         </button>
       </div>
     </div>
+  );
+}
+
+// Price Match Mode — you're standing in a shop, and this says which items on
+// the list are cheaper elsewhere and hands you the flyer to prove it.
+//
+// Reuses /api/scan-deals (db.fetchDeals) for the lookup rather than
+// reimplementing flyer matching — it already sorts by price, filters expired
+// deals and returns the cutout and flyer link.
+//
+// Deliberately no "current price" or "savings" figure: Flipp carries flyer
+// prices only, never shelf prices, so what you'd otherwise pay here is
+// unknowable for anything not in this store's own flyer. A savings number
+// would have to be invented for those, and an invented number on a screen you
+// take to a cashier is worse than no number.
+function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onClose, onSetUpStores }) {
+  const [store, setStore] = useState(null); // the shop you're in
+  const [report, setReport] = useState(null); // null = not run, [] = ran, empty
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+
+  // Only shops you've marked as yours are worth offering — and a shop that
+  // doesn't price match is still offerable, it just changes the advice from
+  // "show this at the till" to "it's cheaper over there".
+  const myStores = stores.filter((s) => s.isLocal);
+
+  const run = async (chosen) => {
+    setStore(chosen); setRunning(true); setError(""); setReport(null);
+    try {
+      // Read-only lookups, so these can go in parallel — unlike the batch
+      // writes elsewhere in this file, there's no read-then-write to serialise.
+      const rows = await Promise.all(items.map(async (it) => {
+        const out = await db.fetchDeals(it.itemName, postalCode, { brand: it.brand });
+        const deals = out.deals || [];
+        // You can't price match a shop against itself: the proof has to come
+        // from a competitor's flyer.
+        const elsewhere = deals.filter((d) => d.merchant !== chosen.merchant);
+        const here = deals.find((d) => d.merchant === chosen.merchant);
+        const best = elsewhere[0];
+        // `here` beating everything else means there's nothing to ask for —
+        // it's already the cheapest advertised price in the region.
+        if (here && (!best || here.price <= best.price)) {
+          return { productName: it.itemName, status: "already_here", lowestPrice: here.price, matchedName: here.name };
+        }
+        if (!best) return { productName: it.itemName, status: "no_deals" };
+        return {
+          productName: it.itemName, status: "can_match",
+          cheaperStore: best.merchant, lowestPrice: best.price, matchedName: best.name,
+          imageUrl: best.imageUrl, merchantLogo: best.merchantLogo, validTo: best.validTo,
+          flyerUrl: db.flyerUrl(best.flyerId, best.postalCode),
+        };
+      }));
+      setReport(rows);
+    } catch (e) { setError(e.message || String(e)); }
+    setRunning(false);
+  };
+
+  const matchable = (report || []).filter((r) => r.status === "can_match");
+  const others = (report || []).filter((r) => r.status !== "can_match");
+
+  return (
+    <Overlay title={t("priceMatchMode")} onClose={onClose} t={t}>
+      {error && <div style={errorBox}>{error}</div>}
+
+      {myStores.length === 0 ? (
+        <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "22px 16px", textAlign: "center", color: SUB, fontSize: 13 }}>
+          <Store size={20} style={{ opacity: 0.4 }} />
+          <div style={{ marginTop: 8 }}>{t("noMatchStores")}</div>
+          <button onClick={onSetUpStores} style={{ ...ghostBtn, marginTop: 10 }}>{t("storeSetup")}</button>
+        </div>
+      ) : !store ? (
+        <>
+          <div style={{ fontSize: 12.5, color: SUB }}>{t("pickShoppingStore")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {myStores.map((s) => (
+              <button key={s.merchant} onClick={() => run(s)} className="press-fx"
+                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                  background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, cursor: "pointer", fontFamily: "inherit", color: INK }}>
+                <Store size={16} style={{ color: TEAL, flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{s.merchant}</span>
+                {/* A shop that won't match is still usable — the report just
+                    reads as "cheaper elsewhere" instead of "ask them to match". */}
+                {s.priceMatches === true
+                  ? <StatusPill color={OK_INK} bg={OK_BG} border={OK_LINE} label={t("yes")} />
+                  : s.priceMatches === false
+                    ? <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("no")} />
+                    : <span style={{ fontSize: 11.5, color: SUB }}>{t("notSure")}</span>}
+                <ChevronRight size={16} style={{ color: SUB, flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 800 }}>{store.merchant}</span>
+            <button onClick={() => { setStore(null); setReport(null); }} style={{ ...categoryLink, color: TEAL, fontSize: 12 }}>{t("changeStore")}</button>
+          </div>
+          {/* The store's own policy changes what the report means, so it's
+              stated once at the top rather than repeated on every row. */}
+          <div style={{ fontSize: 12, color: store.priceMatches === true ? SUB : WARN }}>
+            {store.priceMatches === true ? t("pmWillMatch") : store.priceMatches === false ? t("pmWontMatch") : t("pmMatchUnknown")}
+            {store.note && store.priceMatches === true && <> · {store.note}</>}
+          </div>
+
+          {running ? (
+            <Centered>{t("pmChecking")}</Centered>
+          ) : report && (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("pmSummary", { n: matchable.length, total: report.length })}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {matchable.map((r, i) => (
+                  <div key={i} style={{ background: "var(--glass-bg)", border: `1px solid ${OK_LINE}`, borderRadius: 12, padding: 10, display: "flex", gap: 12, alignItems: "center" }}>
+                    <div style={{ width: 66, height: 66, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: MUTED_BG, display: "grid", placeItems: "center" }}>
+                      {r.imageUrl ? <img src={r.imageUrl} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <Tag size={18} style={{ color: SUB }} />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.productName}</div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: OK_INK }}>{money(r.lowestPrice)}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, marginTop: 1 }}>
+                        {r.merchantLogo && <img src={r.merchantLogo} alt="" loading="lazy" style={{ height: 13, maxWidth: 54, objectFit: "contain" }} />}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.cheaperStore}</span>
+                      </div>
+                      {/* What we actually matched — lets you catch a coconut
+                          milk standing in for the milk you meant. */}
+                      <div style={{ fontSize: 11, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.matchedName}</div>
+                      {r.validTo && <div style={{ fontSize: 11, color: SUB }}>{t("dealValidUntil", { date: shortDate(r.validTo, lang) })}</div>}
+                      {r.flyerUrl && (
+                        <a href={r.flyerUrl} target="_blank" rel="noopener noreferrer"
+                          style={{ ...ghostBtn, marginTop: 6, width: "100%", justifyContent: "center", textDecoration: "none", boxSizing: "border-box" }}>
+                          <ExternalLink size={13} /> {t("viewFullFlyer")}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Kept, not hidden: "already cheapest here" is a useful answer,
+                  and "no flyer deal" tells you not to go looking. */}
+              {others.length > 0 && (
+                <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {others.map((r, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: SUB, padding: "6px 2px" }}>
+                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.productName}</span>
+                      <span style={{ flexShrink: 0 }}>
+                        {r.status === "already_here" ? t("pmAlreadyHere", { price: money(r.lowestPrice) }) : t("pmNoDeals")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </Overlay>
   );
 }
 
