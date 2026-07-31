@@ -1107,6 +1107,7 @@ export async function fetchNearbyMerchants(postalCode) {
   return (data || []).map((r) => ({
     merchant: r.merchant, merchantLogo: r.merchant_logo || "",
     itemCount: Number(r.item_count), isGrocery: r.is_grocery === true,
+    isHomeGarden: r.is_home_garden === true,
   }));
 }
 

@@ -159,7 +159,7 @@ const STRINGS = {
     noMatchListStores: "No stores in the price-match list yet — add some in My stores.",
     lastConfirmed: "Last confirmed {date}",
     storeNotePh: "Conditions, e.g. identical size, local competitors only",
-    includeNonGrocery: "All shop types",
+    includeNonGrocery: "All shop types", typeSupermarkets: "Supermarkets", typeHardware: "Hardware & home",
     priceMatchMode: "Price Match Mode", pickShoppingStore: "Which store are you shopping at?",
     noMatchStores: "No stores marked as yours yet.", changeStore: "Change store",
     pmWillMatch: "Show a competitor's flyer at the till and they'll match it.",
@@ -365,7 +365,7 @@ const STRINGS = {
     noMatchListStores: "價目清單重未有舖——去「我嘅超市」加返幾間。",
     lastConfirmed: "上次確認：{date}",
     storeNotePh: "條件，例如：同款同容量、只限本地對手",
-    includeNonGrocery: "所有類型",
+    includeNonGrocery: "所有類型", typeSupermarkets: "超市", typeHardware: "五金/傢俬",
     priceMatchMode: "格價模式", pickShoppingStore: "你而家喺邊間買嘢？",
     noMatchStores: "仲未設定過自己嘅超市。", changeStore: "換間舖",
     pmWillMatch: "喺收銀處攞對手嘅海報出嚟，佢哋就會 match 個價。",
@@ -569,7 +569,7 @@ const STRINGS = {
     noMatchListStores: "比价清单还没有店——去「我的超市」添加几家。",
     lastConfirmed: "上次确认：{date}",
     storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
-    includeNonGrocery: "所有类型",
+    includeNonGrocery: "所有类型", typeSupermarkets: "超市", typeHardware: "五金/家具",
     priceMatchMode: "比价模式", pickShoppingStore: "你现在在哪家店购物？",
     noMatchStores: "还没有设定自己的超市。", changeStore: "更换商店",
     pmWillMatch: "在收银台出示对手的传单，他们就会比价。",
@@ -771,7 +771,7 @@ const STRINGS = {
     noMatchListStores: "Aucun magasin dans la liste d'ajustement de prix — ajoutez-en dans Mes magasins.",
     lastConfirmed: "Confirmé le {date}",
     storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
-    includeNonGrocery: "Tous les types",
+    includeNonGrocery: "Tous les types", typeSupermarkets: "Supermarchés", typeHardware: "Quincaillerie & maison",
     priceMatchMode: "Mode ajustement de prix", pickShoppingStore: "Dans quel magasin êtes-vous ?",
     noMatchStores: "Aucun magasin marqué comme le vôtre.", changeStore: "Changer de magasin",
     pmWillMatch: "Montrez la circulaire d'un concurrent à la caisse et ils ajusteront le prix.",
@@ -974,7 +974,7 @@ const STRINGS = {
     noMatchListStores: "Aún no hay tiendas en la lista de igualación de precios — añade algunas en Mis tiendas.",
     lastConfirmed: "Confirmado el {date}",
     storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
-    includeNonGrocery: "Todos los tipos",
+    includeNonGrocery: "Todos los tipos", typeSupermarkets: "Supermercados", typeHardware: "Ferretería y hogar",
     priceMatchMode: "Modo igualar precios", pickShoppingStore: "¿En qué tienda estás comprando?",
     noMatchStores: "Aún no has marcado ninguna tienda como tuya.", changeStore: "Cambiar de tienda",
     pmWillMatch: "Muestra el folleto de un competidor en caja y te igualarán el precio.",
@@ -5982,12 +5982,24 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
             <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: done ? "line-through" : "none", color: done ? SUB : INK }}>
               {it.itemName}{it.quantityNeeded > 1 ? ` ×${it.quantityNeeded}` : ""}
             </div>
+            {/* A pill, not a second line of colored body text — on a list
+                where most rows have a deal, full-width coloured sentences
+                competed with the item names for attention and the "what do I
+                still need to buy" read got lost. Contained as a tag instead,
+                it's scannable as an aside rather than a second row of content. */}
             {hasDeal && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 700, color: dealExpired ? WARN : OK_INK, marginTop: 3, overflow: "hidden", whiteSpace: "nowrap" }}>
-                <ChevronDown size={12} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {t(dealExpired ? "priceMatchBadgeExpired" : "priceMatchBadge", { price: money(it.dealPrice), merchant: it.targetSupermarket })}
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, maxWidth: "100%",
+                padding: "2px 7px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                color: dealExpired ? WARN : OK_INK,
+                background: dealExpired ? `color-mix(in srgb, ${WARN} 14%, transparent)` : OK_BG,
+                border: `1px solid ${dealExpired ? `color-mix(in srgb, ${WARN} 45%, transparent)` : OK_LINE}`,
+              }}>
+                <ChevronDown size={11} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s ease" }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {money(it.dealPrice)} · {it.targetSupermarket}
                 </span>
+                {dealExpired && <Info size={11} style={{ flexShrink: 0 }} />}
               </div>
             )}
           </div>
@@ -6255,7 +6267,11 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
-  const [showAllTypes, setShowAllTypes] = useState(false); // include non-grocery shops
+  // Which "mine" and which shop type to show are two different questions —
+  // kept as separate state (and separate chip rows below) so they read as
+  // two different questions too, instead of one row that looked like it had
+  // a redundant "show everything" option twice.
+  const [typeFilter, setTypeFilter] = useState("grocery"); // "grocery" | "homeGarden" | "all"
 
   const loadPolicies = useCallback(() => {
     db.fetchStorePolicies(ledgerId).then(setPolicies).catch((e) => setError(e.message || String(e)));
@@ -6291,8 +6307,9 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
     .filter((m) => m.merchant.toLowerCase().includes(query.toLowerCase()))
     .filter((m) => !onlyMine || isConfigured(policyFor(m.merchant)))
     // A search is an explicit request for that shop, so it overrides the
-    // grocery filter — otherwise searching "canadian tire" would find nothing.
-    .filter((m) => showAllTypes || query.trim() || !anyGrocery || m.isGrocery);
+    // type filter — otherwise searching "canadian tire" would find nothing.
+    .filter((m) => typeFilter === "all" || query.trim() || !anyGrocery
+      || (typeFilter === "homeGarden" ? m.isHomeGarden : m.isGrocery));
   const mineCount = policies.filter(isConfigured).length;
 
   return (
@@ -6303,12 +6320,19 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         <button onClick={() => setOnlyMine(false)} style={chip(!onlyMine)}>{t("showAll")}</button>
         <button onClick={() => setOnlyMine(true)} style={chip(onlyMine)}>{t("myStoresCount", { n: mineCount })}</button>
-        {/* Only offered once the mirror actually carries categories — before
-            that every shop looks non-grocery and the toggle would be a lie. */}
-        {anyGrocery && (
-          <button onClick={() => setShowAllTypes((s) => !s)} style={chip(showAllTypes)}>{t("includeNonGrocery")}</button>
-        )}
       </div>
+      {/* Only offered once the mirror actually carries categories — before
+          that every shop looks non-grocery and the filter would be a lie.
+          A separate row from "mine" above: that's which stores, this is
+          which kind of store, and stacking them in one row read as if
+          "All shop types" duplicated "Show all". */}
+      {anyGrocery && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button onClick={() => setTypeFilter("grocery")} style={chip(typeFilter === "grocery")}>{t("typeSupermarkets")}</button>
+          <button onClick={() => setTypeFilter("homeGarden")} style={chip(typeFilter === "homeGarden")}>{t("typeHardware")}</button>
+          <button onClick={() => setTypeFilter("all")} style={chip(typeFilter === "all")}>{t("includeNonGrocery")}</button>
+        </div>
+      )}
       {merchants === null ? (
         <Centered>{t("connecting")}</Centered>
       ) : visible.length === 0 ? (
