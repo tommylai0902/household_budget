@@ -5526,6 +5526,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   const postalRef = useRef(null); // focused when a search is attempted without one
   const [toast, setToast] = useState(null);
   const [checkingId, setCheckingId] = useState(null);
+  const [scanning, setScanning] = useState(false);
   const load = useCallback(() => {
     db.fetchGroceryList(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
   }, [ledgerId]);
@@ -5588,6 +5589,36 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     }
     setCheckingId(null);
   };
+  // Photograph a product in the aisle and jump straight to its flyer prices —
+  // the same price-match search as the row button, but the query is read off
+  // the label instead of coming from a list item. Picking a deal drops the
+  // product onto the list with that deal already attached (see pickDeal), so
+  // scan-and-save is one tap. Reads the label, not the barcode — see the
+  // inventory scanner and api/scan-product.js for why.
+  const scanForDeals = async (file) => {
+    if (!postalCode.trim()) { setToast({ id: Date.now(), text: t("postalCodeRequired") }); postalRef.current?.focus(); return; }
+    setScanning(true); setError("");
+    try {
+      const { image, mediaType } = await fileToUpload(file);
+      const { data } = await supabase.auth.getSession();
+      const out = await db.scanProduct({ image, mediaType, token: data.session?.access_token, lang });
+      // Same brand-dedupe the inventory scanner uses: don't repeat a brand the
+      // product name already leads with.
+      const name = out.brand && !out.name.toLowerCase().includes(out.brand.toLowerCase())
+        ? `${out.brand} ${out.name}` : out.name;
+      const result = await db.fetchDeals(name, postalCode, { brand: out.brand });
+      if (result.pending) setToast({ id: Date.now(), text: t("dealsPending") });
+      else if (!result.deals?.length) setToast({ id: Date.now(), text: t("dealsNoneFound") });
+      else setDealsFor({ item: { id: null, itemName: name, brand: out.brand || "" }, deals: result.deals });
+    } catch (e) {
+      setError(
+        e.code === "no_product" ? t("scanNoProduct")
+        : e.code === "rate_limited" ? t("scanRateLimited")
+        : (e.message || String(e)),
+      );
+    }
+    setScanning(false);
+  };
   const hasPostal = !!postalCode.trim();
   const [showStores, setShowStores] = useState(false);
   const [showPriceMatch, setShowPriceMatch] = useState(false);
@@ -5615,7 +5646,10 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
 
   const pickDeal = async (deal) => {
     try {
-      await db.setGroceryDeal(dealsFor.item.id, {
+      // A scanned product isn't on the list yet (id null) — add it first, then
+      // stamp the deal on the new row. A real list item already has an id.
+      const id = dealsFor.item.id ?? await db.addGroceryItem(ledgerId, dealsFor.item.itemName, 1, dealsFor.item.brand);
+      await db.setGroceryDeal(id, {
         targetSupermarket: deal.merchant, dealPrice: deal.price,
         dealImageUrl: deal.imageUrl, dealItemName: deal.name,
         dealValidTo: deal.validTo, dealMerchantLogo: deal.merchantLogo,
@@ -5630,6 +5664,15 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
+        {/* A label, not a button — the hidden file input is what opens the
+            camera, and wrapping it is the only way to style that. Photo →
+            flyer prices, straight to a price match. */}
+        <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+          style={{ ...ghostBtn, padding: "8px 10px", flexShrink: 0, cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+          {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />}
+          <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanForDeals(f); }} />
+        </label>
         <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
           <Plus size={15} /> {t("addItem")}
         </button>

@@ -942,9 +942,11 @@ export async function fetchGroceryList(ledgerId) {
 // `brand` is optional and trailing so the inventory panel's "add to grocery
 // list" call, which only knows a name and a shortfall, still works unchanged.
 export async function addGroceryItem(ledgerId, itemName, quantityNeeded = 1, brand = "") {
-  const { error } = await supabase.from("grocery_list")
-    .insert({ ledger_id: ledgerId, item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null });
+  const { data, error } = await supabase.from("grocery_list")
+    .insert({ ledger_id: ledgerId, item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null })
+    .select("id").single();
   if (error) throw error;
+  return data.id; // lets a scan-then-price-match attach the deal to the new row
 }
 export async function toggleGroceryItem(id, isCompleted) {
   const { error } = await supabase.from("grocery_list").update({ is_completed: isCompleted }).eq("id", id);
