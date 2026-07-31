@@ -1022,7 +1022,13 @@ export async function fetchDeals(query, postalCode, { brand } = {}) {
 export async function fetchNearbyMerchants(postalCode) {
   const { data, error } = await supabase.rpc("nearby_merchants", { p_postal_code: postalCode || "" });
   if (error) throw error;
-  return (data || []).map((r) => ({ merchant: r.merchant, merchantLogo: r.merchant_logo || "", itemCount: Number(r.item_count) }));
+  // isGrocery comes from Flipp's own flyer category (migration 032). Null on
+  // rows mirrored before that column existed, so it's coerced to false — an
+  // un-refreshed region falls back to "show everything" rather than an empty list.
+  return (data || []).map((r) => ({
+    merchant: r.merchant, merchantLogo: r.merchant_logo || "",
+    itemCount: Number(r.item_count), isGrocery: r.is_grocery === true,
+  }));
 }
 
 // `priceMatches` is tri-state: true / false / null (never asked). Callers must

@@ -155,6 +155,7 @@ const STRINGS = {
     priceMatchesQ: "Does this store price match?", yes: "Yes", no: "No", notSure: "Not sure",
     lastConfirmed: "Last confirmed {date}",
     storeNotePh: "Conditions, e.g. identical size, local competitors only",
+    includeNonGrocery: "All shop types",
     priceMatchMode: "Price Match Mode", pickShoppingStore: "Which store are you shopping at?",
     noMatchStores: "No stores marked as yours yet.", changeStore: "Change store",
     pmWillMatch: "Show a competitor's flyer at the till and they'll match it.",
@@ -350,6 +351,7 @@ const STRINGS = {
     priceMatchesQ: "呢間肯 match 價嗎？", yes: "肯", no: "唔肯", notSure: "唔清楚",
     lastConfirmed: "上次確認：{date}",
     storeNotePh: "條件，例如：同款同容量、只限本地對手",
+    includeNonGrocery: "所有類型",
     priceMatchMode: "格價模式", pickShoppingStore: "你而家喺邊間買嘢？",
     noMatchStores: "仲未設定過自己嘅超市。", changeStore: "換間舖",
     pmWillMatch: "喺收銀處攞對手嘅海報出嚟，佢哋就會 match 個價。",
@@ -545,6 +547,7 @@ const STRINGS = {
     priceMatchesQ: "这家愿意比价吗？", yes: "愿意", no: "不愿意", notSure: "不确定",
     lastConfirmed: "上次确认：{date}",
     storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
+    includeNonGrocery: "所有类型",
     priceMatchMode: "比价模式", pickShoppingStore: "你现在在哪家店购物？",
     noMatchStores: "还没有设定自己的超市。", changeStore: "更换商店",
     pmWillMatch: "在收银台出示对手的传单，他们就会比价。",
@@ -738,6 +741,7 @@ const STRINGS = {
     priceMatchesQ: "Ce magasin ajuste-t-il les prix ?", yes: "Oui", no: "Non", notSure: "Pas sûr",
     lastConfirmed: "Confirmé le {date}",
     storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
+    includeNonGrocery: "Tous les types",
     priceMatchMode: "Mode ajustement de prix", pickShoppingStore: "Dans quel magasin êtes-vous ?",
     noMatchStores: "Aucun magasin marqué comme le vôtre.", changeStore: "Changer de magasin",
     pmWillMatch: "Montrez la circulaire d'un concurrent à la caisse et ils ajusteront le prix.",
@@ -932,6 +936,7 @@ const STRINGS = {
     priceMatchesQ: "¿Esta tienda iguala precios?", yes: "Sí", no: "No", notSure: "No estoy seguro",
     lastConfirmed: "Confirmado el {date}",
     storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
+    includeNonGrocery: "Todos los tipos",
     priceMatchMode: "Modo igualar precios", pickShoppingStore: "¿En qué tienda estás comprando?",
     noMatchStores: "Aún no has marcado ninguna tienda como tuya.", changeStore: "Cambiar de tienda",
     pmWillMatch: "Muestra el folleto de un competidor en caja y te igualarán el precio.",
@@ -6077,6 +6082,7 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
+  const [showAllTypes, setShowAllTypes] = useState(false); // include non-grocery shops
 
   const loadPolicies = useCallback(() => {
     db.fetchStorePolicies(ledgerId).then(setPolicies).catch((e) => setError(e.message || String(e)));
@@ -6093,9 +6099,17 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
     catch (e) { setError(e.message || String(e)); }
   };
 
+  // The region returns ~109 merchants, most of them hardware, electronics and
+  // furniture shops. Leading with the ones Flipp files under Groceries is what
+  // makes the list usable — sort order alone never did, whether by flyer size
+  // or alphabetically (see migration 032). Non-grocers stay one tap away.
+  const anyGrocery = (merchants || []).some((m) => m.isGrocery);
   const visible = (merchants || [])
     .filter((m) => m.merchant.toLowerCase().includes(query.toLowerCase()))
-    .filter((m) => !onlyMine || policyFor(m.merchant).isLocal);
+    .filter((m) => !onlyMine || policyFor(m.merchant).isLocal)
+    // A search is an explicit request for that shop, so it overrides the
+    // grocery filter — otherwise searching "canadian tire" would find nothing.
+    .filter((m) => showAllTypes || query.trim() || !anyGrocery || m.isGrocery);
   const mineCount = policies.filter((p) => p.isLocal).length;
 
   return (
@@ -6106,6 +6120,11 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         <button onClick={() => setOnlyMine(false)} style={chip(!onlyMine)}>{t("showAll")}</button>
         <button onClick={() => setOnlyMine(true)} style={chip(onlyMine)}>{t("myStoresCount", { n: mineCount })}</button>
+        {/* Only offered once the mirror actually carries categories — before
+            that every shop looks non-grocery and the toggle would be a lie. */}
+        {anyGrocery && (
+          <button onClick={() => setShowAllTypes((s) => !s)} style={chip(showAllTypes)}>{t("includeNonGrocery")}</button>
+        )}
       </div>
       {merchants === null ? (
         <Centered>{t("connecting")}</Centered>

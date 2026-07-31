@@ -105,6 +105,11 @@ export default async function handler(req, res) {
             rows.push({
               postal_code: postalCode,
               merchant: f.merchant || "Unknown",
+              // Flipp's own labelling ("All Flyers,Groceries" vs
+              // "...,Home & Garden,Automotive") — lets store setup lead with
+              // supermarkets instead of listing every hardware shop in the
+              // region. Kept as the raw CSV it arrives as; see migration 032.
+              categories: f.categories_csv || null,
               name: it.name,
               price,
               valid_from: (it.valid_from || f.valid_from || "").slice(0, 10) || null,
