@@ -6108,6 +6108,7 @@ function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onC
   // doesn't price match is still offerable, it just changes the advice from
   // "show this at the till" to "it's cheaper over there".
   const myStores = stores.filter((s) => s.isLocal);
+  const myStoreNames = new Set(myStores.map((s) => s.merchant));
 
   const run = async (chosen) => {
     setStore(chosen); setRunning(true); setError(""); setReport(null);
@@ -6117,10 +6118,15 @@ function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onC
       const rows = await Promise.all(items.map(async (it) => {
         const out = await db.fetchDeals(it.itemName, postalCode, { brand: it.brand });
         const deals = out.deals || [];
-        // You can't price match a shop against itself: the proof has to come
-        // from a competitor's flyer.
-        const elsewhere = deals.filter((d) => d.merchant !== chosen.merchant);
-        const here = deals.find((d) => d.merchant === chosen.merchant);
+        // A cheaper flyer only matters if it's at a store you've actually
+        // marked as yours — Real Canadian Superstore won't match Walmart's
+        // flyer just because both happen to sell the same product, so
+        // pulling in every merchant in the region was just noise. Restrict
+        // the whole comparison to "my stores"; you can't price match a shop
+        // against itself either, so drop the chosen one from its own field.
+        const relevant = deals.filter((d) => myStoreNames.has(d.merchant));
+        const elsewhere = relevant.filter((d) => d.merchant !== chosen.merchant);
+        const here = relevant.find((d) => d.merchant === chosen.merchant);
         const best = elsewhere[0];
         // `here` beating everything else means there's nothing to ask for —
         // it's already the cheapest advertised price in the region.
