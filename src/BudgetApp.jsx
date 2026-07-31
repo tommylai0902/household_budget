@@ -150,7 +150,7 @@ const STRINGS = {
     dealExpiredHint: "This flyer price has expired — tap 🔍 to check again.",
     postalCodeRequired: "Enter your postal code first — flyer prices are local.",
     storeSetup: "My stores", storeSetupHint: "Shops with flyers near you. Set the one you actually shop at, then add others to its price-match list.",
-    searchStoresPh: "Search stores…", myStoresCount: "My stores ({n})",
+    searchStoresPh: "Search stores…", myStoresCount: "My stores ({n})", browseStores: "Browse",
     myStore: "My store", markMyStore: "Mark as mine",
     storeItemCount: "{n} items on sale", noStoresForRegion: "No flyers for this postal code yet — the weekly update runs Thursday.",
     noStoresMatch: "No stores match that.",
@@ -159,7 +159,7 @@ const STRINGS = {
     noMatchListStores: "No stores in the price-match list yet — add some in My stores.",
     lastConfirmed: "Last confirmed {date}",
     storeNotePh: "Conditions, e.g. identical size, local competitors only",
-    includeNonGrocery: "All shop types", typeSupermarkets: "Supermarkets", typeHardware: "Hardware & home",
+    includeNonGrocery: "All Stores", typeSupermarkets: "Supermarkets", typeHardware: "Hardware & home",
     priceMatchMode: "Price Match Mode", pickShoppingStore: "Which store are you shopping at?",
     noMatchStores: "No stores marked as yours yet.", changeStore: "Change store",
     pmWillMatch: "Show a competitor's flyer at the till and they'll match it.",
@@ -356,7 +356,7 @@ const STRINGS = {
     dealExpiredHint: "呢個海報價已經過期——撳 🔍 再check過。",
     postalCodeRequired: "請先填郵政編碼——海報優惠係分地區嘅。",
     storeSetup: "我嘅超市", storeSetupHint: "你附近有出海報嘅舖頭。揀返你真係會去嗰間做「我嘅舖」，再揀邊幾間肯畀佢 match 價，加入清單。",
-    searchStoresPh: "搵超市…", myStoresCount: "我嘅超市（{n}）",
+    searchStoresPh: "搵超市…", myStoresCount: "我嘅超市（{n}）", browseStores: "睇吓",
     myStore: "我嘅超市", markMyStore: "設為我嘅",
     storeItemCount: "{n} 件特價貨", noStoresForRegion: "呢個郵政編碼仲未有海報——星期四先更新。",
     noStoresMatch: "搵唔到相符嘅超市。",
@@ -365,7 +365,7 @@ const STRINGS = {
     noMatchListStores: "價目清單重未有舖——去「我嘅超市」加返幾間。",
     lastConfirmed: "上次確認：{date}",
     storeNotePh: "條件，例如：同款同容量、只限本地對手",
-    includeNonGrocery: "所有類型", typeSupermarkets: "超市", typeHardware: "五金/傢俬",
+    includeNonGrocery: "所有舖頭", typeSupermarkets: "超市", typeHardware: "五金/傢俬",
     priceMatchMode: "格價模式", pickShoppingStore: "你而家喺邊間買嘢？",
     noMatchStores: "仲未設定過自己嘅超市。", changeStore: "換間舖",
     pmWillMatch: "喺收銀處攞對手嘅海報出嚟，佢哋就會 match 個價。",
@@ -560,7 +560,7 @@ const STRINGS = {
     dealExpiredHint: "这个海报价已经过期——点击 🔍 重新查看。",
     postalCodeRequired: "请先填邮政编码——传单优惠是分地区的。",
     storeSetup: "我的超市", storeSetupHint: "你附近有发传单的商店。选出你实际会去的那一家作为「我的店」，再把愿意帮它比价的其他店加入清单。",
-    searchStoresPh: "搜索超市…", myStoresCount: "我的超市（{n}）",
+    searchStoresPh: "搜索超市…", myStoresCount: "我的超市（{n}）", browseStores: "浏览",
     myStore: "我的超市", markMyStore: "设为我的",
     storeItemCount: "{n} 件特价商品", noStoresForRegion: "这个邮政编码还没有传单——每周四更新。",
     noStoresMatch: "没有找到相符的超市。",
@@ -569,7 +569,7 @@ const STRINGS = {
     noMatchListStores: "比价清单还没有店——去「我的超市」添加几家。",
     lastConfirmed: "上次确认：{date}",
     storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
-    includeNonGrocery: "所有类型", typeSupermarkets: "超市", typeHardware: "五金/家具",
+    includeNonGrocery: "所有店铺", typeSupermarkets: "超市", typeHardware: "五金/家具",
     priceMatchMode: "比价模式", pickShoppingStore: "你现在在哪家店购物？",
     noMatchStores: "还没有设定自己的超市。", changeStore: "更换商店",
     pmWillMatch: "在收银台出示对手的传单，他们就会比价。",
@@ -762,7 +762,7 @@ const STRINGS = {
     dealExpiredHint: "Ce prix de circulaire a expiré — appuyez sur 🔍 pour vérifier à nouveau.",
     postalCodeRequired: "Entrez d'abord votre code postal — les circulaires sont régionales.",
     storeSetup: "Mes magasins", storeSetupHint: "Magasins avec circulaires près de chez vous. Choisissez celui où vous faites vos courses, puis ajoutez d'autres magasins à sa liste d'ajustement de prix.",
-    searchStoresPh: "Rechercher un magasin…", myStoresCount: "Mes magasins ({n})",
+    searchStoresPh: "Rechercher un magasin…", myStoresCount: "Mes magasins ({n})", browseStores: "Parcourir",
     myStore: "Mon magasin", markMyStore: "Marquer comme mien",
     storeItemCount: "{n} articles en solde", noStoresForRegion: "Aucune circulaire pour ce code postal — la mise à jour hebdomadaire a lieu le jeudi.",
     noStoresMatch: "Aucun magasin correspondant.",
@@ -771,7 +771,7 @@ const STRINGS = {
     noMatchListStores: "Aucun magasin dans la liste d'ajustement de prix — ajoutez-en dans Mes magasins.",
     lastConfirmed: "Confirmé le {date}",
     storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
-    includeNonGrocery: "Tous les types", typeSupermarkets: "Supermarchés", typeHardware: "Quincaillerie & maison",
+    includeNonGrocery: "Tous les magasins", typeSupermarkets: "Supermarchés", typeHardware: "Quincaillerie & maison",
     priceMatchMode: "Mode ajustement de prix", pickShoppingStore: "Dans quel magasin êtes-vous ?",
     noMatchStores: "Aucun magasin marqué comme le vôtre.", changeStore: "Changer de magasin",
     pmWillMatch: "Montrez la circulaire d'un concurrent à la caisse et ils ajusteront le prix.",
@@ -965,7 +965,7 @@ const STRINGS = {
     dealExpiredHint: "Este precio del folleto ha caducado — toca 🔍 para volver a comprobarlo.",
     postalCodeRequired: "Introduce primero tu código postal — las ofertas son regionales.",
     storeSetup: "Mis tiendas", storeSetupHint: "Tiendas con folletos cerca de ti. Elige la tienda donde realmente compras, luego añade otras a su lista de igualación de precios.",
-    searchStoresPh: "Buscar tiendas…", myStoresCount: "Mis tiendas ({n})",
+    searchStoresPh: "Buscar tiendas…", myStoresCount: "Mis tiendas ({n})", browseStores: "Explorar",
     myStore: "Mi tienda", markMyStore: "Marcar como mía",
     storeItemCount: "{n} artículos en oferta", noStoresForRegion: "Aún no hay folletos para este código postal — la actualización semanal es el jueves.",
     noStoresMatch: "Ninguna tienda coincide.",
@@ -974,7 +974,7 @@ const STRINGS = {
     noMatchListStores: "Aún no hay tiendas en la lista de igualación de precios — añade algunas en Mis tiendas.",
     lastConfirmed: "Confirmado el {date}",
     storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
-    includeNonGrocery: "Todos los tipos", typeSupermarkets: "Supermercados", typeHardware: "Ferretería y hogar",
+    includeNonGrocery: "Todas las tiendas", typeSupermarkets: "Supermercados", typeHardware: "Ferretería y hogar",
     priceMatchMode: "Modo igualar precios", pickShoppingStore: "¿En qué tienda estás comprando?",
     noMatchStores: "Aún no has marcado ninguna tienda como tuya.", changeStore: "Cambiar de tienda",
     pmWillMatch: "Muestra el folleto de un competidor en caja y te igualarán el precio.",
@@ -6306,9 +6306,10 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   const visible = (merchants || [])
     .filter((m) => m.merchant.toLowerCase().includes(query.toLowerCase()))
     .filter((m) => !onlyMine || isConfigured(policyFor(m.merchant)))
-    // A search is an explicit request for that shop, so it overrides the
-    // type filter — otherwise searching "canadian tire" would find nothing.
-    .filter((m) => typeFilter === "all" || query.trim() || !anyGrocery
+    // The type filter is hidden (and skipped) in "My stores" — see below —
+    // and a search is an explicit request for that shop, so both override it;
+    // otherwise searching "canadian tire" would find nothing.
+    .filter((m) => onlyMine || typeFilter === "all" || query.trim() || !anyGrocery
       || (typeFilter === "homeGarden" ? m.isHomeGarden : m.isGrocery));
   const mineCount = policies.filter(isConfigured).length;
 
@@ -6318,15 +6319,16 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
       {error && <div style={errorBox}>{error}</div>}
       <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchStoresPh")} style={input} />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button onClick={() => setOnlyMine(false)} style={chip(!onlyMine)}>{t("showAll")}</button>
+        <button onClick={() => setOnlyMine(false)} style={chip(!onlyMine)}>{t("browseStores")}</button>
         <button onClick={() => setOnlyMine(true)} style={chip(onlyMine)}>{t("myStoresCount", { n: mineCount })}</button>
       </div>
-      {/* Only offered once the mirror actually carries categories — before
-          that every shop looks non-grocery and the filter would be a lie.
-          A separate row from "mine" above: that's which stores, this is
-          which kind of store, and stacking them in one row read as if
-          "All shop types" duplicated "Show all". */}
-      {anyGrocery && (
+      {/* Hidden once you're looking at "My stores" — that list is already
+          short and hand-picked, so a type filter on top of it is just noise;
+          it only earns its keep cutting through the full ~109-merchant
+          region list in Browse mode. Also only offered once the mirror
+          actually carries categories — before that every shop looks
+          non-grocery and the filter would be a lie. */}
+      {!onlyMine && anyGrocery && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button onClick={() => setTypeFilter("grocery")} style={chip(typeFilter === "grocery")}>{t("typeSupermarkets")}</button>
           <button onClick={() => setTypeFilter("homeGarden")} style={chip(typeFilter === "homeGarden")}>{t("typeHardware")}</button>
