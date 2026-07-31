@@ -268,6 +268,7 @@ const STRINGS = {
     markAllRead: "Mark all as read", markAsRead: "Mark as read", dismiss: "Dismiss",
     manageReminders: "Manage reminders", noReminders: "No reminders set.",
     autoReminderHint: "From a recurring rule — resets once it reaches its next charge. Pause the rule to stop it for good.",
+    autoExpiryHint: "From an inventory item — resets while it still has an expiry date. Clear the item's expiry date to stop it for good.",
   },
   zh: {
     eyebrow: "Monira",
@@ -464,6 +465,7 @@ const STRINGS = {
     markAllRead: "全部標記為已讀", markAsRead: "標記為已讀", dismiss: "移除",
     manageReminders: "管理提醒", noReminders: "仲未設定任何提醒。",
     autoReminderHint: "嚟自定期規則——去到下次扣款會重設返。想永久停就去暫停嗰條規則。",
+    autoExpiryHint: "嚟自存貨項目——淨係要仲有到期日就會重設。想永久停就去清咗嗰件嘢嘅到期日。",
   },
   // Simplified Chinese is written in standard Mandarin, not a character-by-character
   // conversion of the zh block above — that one is deliberately colloquial Cantonese.
@@ -663,6 +665,7 @@ const STRINGS = {
     markAllRead: "全部标记为已读", markAsRead: "标记为已读", dismiss: "移除",
     manageReminders: "管理提醒", noReminders: "还没有设置任何提醒。",
     autoReminderHint: "来自定期规则——到下次扣款会重设。想永久停止请暂停该规则。",
+    autoExpiryHint: "来自库存物品——只要还有到期日就会重设。想永久停止请清除该物品的到期日。",
   },
   fr: {
     eyebrow: "Monira",
@@ -861,6 +864,7 @@ const STRINGS = {
     markAllRead: "Tout marquer comme lu", markAsRead: "Marquer comme lu", dismiss: "Ignorer",
     manageReminders: "Gérer les rappels", noReminders: "Aucun rappel défini.",
     autoReminderHint: "Issu d'une règle récurrente — se réinitialise à la prochaine échéance. Mettez la règle en pause pour l'arrêter définitivement.",
+    autoExpiryHint: "Issu d'un article de l'inventaire — se réinitialise tant qu'il a une date de péremption. Supprimez cette date pour l'arrêter définitivement.",
   },
   es: {
     eyebrow: "Monira",
@@ -1059,6 +1063,7 @@ const STRINGS = {
     markAllRead: "Marcar todo como leído", markAsRead: "Marcar como leído", dismiss: "Descartar",
     manageReminders: "Gestionar recordatorios", noReminders: "No hay recordatorios.",
     autoReminderHint: "Viene de una regla recurrente: se reinicia en el próximo cobro. Pausa la regla para detenerlo definitivamente.",
+    autoExpiryHint: "Viene de un artículo del inventario: se reinicia mientras tenga fecha de caducidad. Borra esa fecha para detenerlo definitivamente.",
   },
 };
 // Order here is the order of the toggle in Settings. `zh` predates the others
@@ -4844,19 +4849,14 @@ function ManageRemindersPanel({ t, lang, onClose }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((n) => {
-            // Auto-managed (recurring_rule_id) reminders are now editable —
-            // syncUpcomingChargeReminders tracks occurrences via cycle_date
-            // rather than remind_at, so an edited date survives until the
-            // rule actually advances to its next cycle (see db.js).
-            // ponytail: delete still isn't offered for these. notifications
-            // is part of subscribeLedger's realtime feed, so the open ledger
-            // would immediately re-run syncUpcomingChargeReminders and
-            // recreate the row the moment it's deleted — pause/delete the
-            // recurring rule itself to actually stop it.
-            // Expiry reminders (migration 033) are auto-managed the same way —
-            // syncExpiryReminders recreates a deleted one on the next ledger
-            // load, so they get the hint and no delete button too. Clear the
-            // item's expiry date to actually stop it.
+            // Auto-managed (recurring_rule_id / inventory_item_id) reminders
+            // are editable — their sync functions track occurrences via
+            // cycle_date rather than remind_at, so an edited date survives
+            // until the rule/item actually advances to its next cycle (see
+            // db.js). Removing one here now sets `dismissed` rather than
+            // deleting the row, so the sync's cycle_date check still sees it
+            // and won't recreate it — it only comes back once there's a
+            // genuinely new occurrence (next charge / new expiry date).
             const auto = !!n.recurringRuleId || !!n.inventoryItemId;
             return (
               <div key={n.id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
@@ -4864,11 +4864,9 @@ function ManageRemindersPanel({ t, lang, onClose }) {
                   <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
                   <input type="date" value={n.remindAt} onChange={(e) => updateDate(n.id, e.target.value)}
                     style={{ ...dateInput, marginTop: 6, padding: "6px 8px", fontSize: 13, width: "auto" }} />
-                  {auto && <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t("autoReminderHint")}</div>}
+                  {auto && <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{t(n.recurringRuleId ? "autoReminderHint" : "autoExpiryHint")}</div>}
                 </div>
-                {!auto && (
-                  <button onClick={() => remove(n.id)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
-                )}
+                <button onClick={() => remove(n.id)} style={{ ...iconBtn, color: DANGER, flexShrink: 0 }} aria-label={t("dismiss")}><Trash2 size={14} /></button>
               </div>
             );
           })}

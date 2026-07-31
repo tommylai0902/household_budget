@@ -493,7 +493,7 @@ export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
     if (trackedCycle.get(rule.id) === next) continue; // same occurrence already tracked — leave any manual edit alone
     const remindAt = addDays(next, -(rule.reminder_lead_days || 2));
     const { error } = await supabase.from("notifications").upsert(
-      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description, rule.reminder_lead_days || 2), remind_at: remindAt, cycle_date: next, read: false },
+      { ledger_id: ledgerId, recurring_rule_id: rule.id, title: buildTitle(rule.description, rule.reminder_lead_days || 2), remind_at: remindAt, cycle_date: next, read: false, dismissed: false },
       { onConflict: "recurring_rule_id" },
     );
     if (error) throw error;
@@ -532,7 +532,7 @@ export async function syncExpiryReminders(ledgerId, buildTitle) {
         ledger_id: ledgerId, inventory_item_id: item.id,
         title: buildTitle(item.name, item.expiry_date),
         remind_at: addDays(item.expiry_date, -EXPIRY_LEAD_DAYS),
-        cycle_date: item.expiry_date, read: false,
+        cycle_date: item.expiry_date, read: false, dismissed: false,
       },
       { onConflict: "inventory_item_id" },
     );
@@ -742,7 +742,7 @@ export async function deletePushSubscription(endpoint) {
 // expense form overwrites it rather than piling up duplicates.
 export async function upsertReminderNotification(ledgerId, expenseId, { title, remindAt }) {
   const { error } = await supabase.from("notifications").upsert(
-    { ledger_id: ledgerId, expense_id: expenseId, title, remind_at: remindAt, read: false },
+    { ledger_id: ledgerId, expense_id: expenseId, title, remind_at: remindAt, read: false, dismissed: false },
     { onConflict: "expense_id" },
   );
   if (error) throw error;
@@ -757,7 +757,8 @@ export async function deleteReminderNotification(expenseId) {
 // not-yet-due reminder still needs to show it as set.
 export async function fetchLedgerReminders(ledgerId) {
   const { data, error } = await supabase
-    .from("notifications").select("expense_id, title, remind_at").eq("ledger_id", ledgerId).not("expense_id", "is", null);
+    .from("notifications").select("expense_id, title, remind_at").eq("ledger_id", ledgerId)
+    .not("expense_id", "is", null).eq("dismissed", false);
   if (error) throw error;
   return new Map(data.map((r) => [r.expense_id, { title: r.title, remindAt: r.remind_at }]));
 }
@@ -771,18 +772,31 @@ export async function fetchLedgerReminders(ledgerId) {
 export async function fetchNotifications() {
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
-    .from("notifications").select("id, ledger_id, expense_id, title, remind_at, read")
-    .lte("remind_at", today).order("read", { ascending: true }).order("remind_at", { ascending: false });
+    .from("notifications").select("id, ledger_id, expense_id, recurring_rule_id, inventory_item_id, title, remind_at, read")
+    .lte("remind_at", today).eq("dismissed", false).order("read", { ascending: true }).order("remind_at", { ascending: false });
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, title: r.title, remindAt: r.remind_at, read: r.read }));
+  return data.map((r) => ({
+    id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, recurringRuleId: r.recurring_rule_id,
+    inventoryItemId: r.inventory_item_id, title: r.title, remindAt: r.remind_at, read: r.read,
+  }));
 }
 export async function markNotificationsRead(ids) {
   if (!ids.length) return;
   const { error } = await supabase.from("notifications").update({ read: true }).in("id", ids);
   if (error) throw error;
 }
+// Auto-managed reminders (recurring_rule_id / inventory_item_id) get recreated
+// by their sync function whenever it doesn't see a row for the current
+// cycle_date — a DELETE here would erase that memory and the reminder would
+// silently reappear on the next ledger load even though nothing changed.
+// Flagging instead keeps the row (and its cycle_date) in place, so it stays
+// hidden until the underlying thing actually moves to a new occurrence, at
+// which point the sync's upsert resets the flag. Plain expense reminders
+// have no sync to resurrect them, but flagging them the same way is harmless
+// (fetchLedgerReminders/fetchAllReminders both filter it out) and keeps this
+// one function instead of two.
 export async function dismissNotification(id) {
-  const { error } = await supabase.from("notifications").delete().eq("id", id);
+  const { error } = await supabase.from("notifications").update({ dismissed: true }).eq("id", id);
   if (error) throw error;
 }
 // Settings → Manage reminders: every reminder that exists — manual
@@ -794,7 +808,8 @@ export async function dismissNotification(id) {
 export async function fetchAllReminders() {
   const { data, error } = await supabase
     .from("notifications").select("id, ledger_id, expense_id, recurring_rule_id, inventory_item_id, title, remind_at, read")
-    .or("expense_id.not.is.null,recurring_rule_id.not.is.null,inventory_item_id.not.is.null").order("remind_at", { ascending: true });
+    .or("expense_id.not.is.null,recurring_rule_id.not.is.null,inventory_item_id.not.is.null")
+    .eq("dismissed", false).order("remind_at", { ascending: true });
   if (error) throw error;
   return data.map((r) => ({ id: r.id, ledgerId: r.ledger_id, expenseId: r.expense_id, recurringRuleId: r.recurring_rule_id, inventoryItemId: r.inventory_item_id, title: r.title, remindAt: r.remind_at, read: r.read }));
 }
