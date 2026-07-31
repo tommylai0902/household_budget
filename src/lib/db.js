@@ -1013,3 +1013,53 @@ export async function fetchDeals(query, postalCode, { brand } = {}) {
   if (!res.ok) throw new Error(out.error || res.statusText);
   return out; // { query, deals, lowestPrice, lowestMerchant, pending? }
 }
+
+/* ---- store setup + price match policy (migration 030) ---- */
+
+// The nearby-supermarkets list. Comes from the flyer mirror rather than a
+// places API — Flipp already answers per postal code, and the shops that
+// publish flyers there are exactly the ones price matching can act on.
+export async function fetchNearbyMerchants(postalCode) {
+  const { data, error } = await supabase.rpc("nearby_merchants", { p_postal_code: postalCode || "" });
+  if (error) throw error;
+  return (data || []).map((r) => ({ merchant: r.merchant, merchantLogo: r.merchant_logo || "", itemCount: Number(r.item_count) }));
+}
+
+// `priceMatches` is tri-state: true / false / null (never asked). Callers must
+// keep null distinct from false — see migration 030 for why.
+const toAppStorePolicy = (r) => ({
+  id: r.id, merchant: r.merchant, isLocal: r.is_local,
+  priceMatches: r.price_matches, note: r.note || "", confirmedAt: r.confirmed_at || null,
+});
+
+export async function fetchStorePolicies(ledgerId) {
+  const { data, error } = await supabase
+    .from("store_policies").select("*").eq("ledger_id", ledgerId).order("merchant");
+  if (error) throw error;
+  return data.map(toAppStorePolicy);
+}
+
+// Upsert by (ledger, merchant) — the row may not exist yet, since policies are
+// filled in as they're learned rather than seeded for every shop in the region.
+// Only the passed fields are written, so toggling `isLocal` can't wipe a note.
+// Answering the price-match question stamps confirmedAt, which is what the
+// staleness nudge later reads.
+export async function setStorePolicy(ledgerId, merchant, fields) {
+  const patch = { ledger_id: ledgerId, merchant };
+  if ("isLocal" in fields) patch.is_local = fields.isLocal;
+  if ("note" in fields) patch.note = fields.note || null;
+  if ("priceMatches" in fields) {
+    patch.price_matches = fields.priceMatches;
+    patch.confirmed_at = fields.priceMatches == null ? null : new Date().toISOString();
+  }
+  const { error } = await supabase.from("store_policies").upsert(patch, { onConflict: "ledger_id,merchant" });
+  if (error) throw error;
+}
+
+export function subscribeStorePolicies(ledgerId, onChange) {
+  const ch = supabase
+    .channel(`store-policies-${ledgerId}-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "store_policies", filter: `ledger_id=eq.${ledgerId}` }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}

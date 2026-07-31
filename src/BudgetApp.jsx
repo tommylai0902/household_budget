@@ -147,6 +147,14 @@ const STRINGS = {
     priceMatchCheck: "🔍 Price Match Check", checkingDeals: "Checking…",
     postalCodePh: "Postal code for price match", priceMatchBadge: "Best: {price} at {merchant}",
     postalCodeRequired: "Enter your postal code first — flyer prices are local.",
+    storeSetup: "My stores", storeSetupHint: "Shops with flyers near you. Mark the ones you actually visit, then say whether each honours a price match.",
+    searchStoresPh: "Search stores…", myStoresCount: "My stores ({n})",
+    myStore: "My store", markMyStore: "Mark as mine",
+    storeItemCount: "{n} items on sale", noStoresForRegion: "No flyers for this postal code yet — the weekly update runs Thursday.",
+    noStoresMatch: "No stores match that.",
+    priceMatchesQ: "Does this store price match?", yes: "Yes", no: "No", notSure: "Not sure",
+    lastConfirmed: "Last confirmed {date}",
+    storeNotePh: "Conditions, e.g. identical size, local competitors only",
     dealCheckErr: "Couldn't check prices: {msg}",
     dealsPending: "No flyer prices for this yet — the weekly update runs Thursday.",
     dealsNoneFound: "No flyer deals found for this item.",
@@ -327,6 +335,14 @@ const STRINGS = {
     priceMatchCheck: "🔍 格價", checkingDeals: "格緊價…",
     postalCodePh: "郵政編碼（用嚟格價）", priceMatchBadge: "最平：{merchant} {price}",
     postalCodeRequired: "請先填郵政編碼——海報優惠係分地區嘅。",
+    storeSetup: "我嘅超市", storeSetupHint: "你附近有出海報嘅舖頭。剔返你真係會去嗰啲，再話我知邊間肯 match 價。",
+    searchStoresPh: "搵超市…", myStoresCount: "我嘅超市（{n}）",
+    myStore: "我嘅超市", markMyStore: "設為我嘅",
+    storeItemCount: "{n} 件特價貨", noStoresForRegion: "呢個郵政編碼仲未有海報——星期四先更新。",
+    noStoresMatch: "搵唔到相符嘅超市。",
+    priceMatchesQ: "呢間肯 match 價嗎？", yes: "肯", no: "唔肯", notSure: "唔清楚",
+    lastConfirmed: "上次確認：{date}",
+    storeNotePh: "條件，例如：同款同容量、只限本地對手",
     dealCheckErr: "格價失敗：{msg}",
     dealsPending: "呢樣嘢仲未有海報價，星期四先更新。",
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
@@ -507,6 +523,14 @@ const STRINGS = {
     priceMatchCheck: "🔍 比价", checkingDeals: "比价中…",
     postalCodePh: "邮政编码（用于比价）", priceMatchBadge: "最低：{merchant} {price}",
     postalCodeRequired: "请先填邮政编码——传单优惠是分地区的。",
+    storeSetup: "我的超市", storeSetupHint: "你附近有发传单的商店。勾选你实际会去的，再标明哪家愿意比价。",
+    searchStoresPh: "搜索超市…", myStoresCount: "我的超市（{n}）",
+    myStore: "我的超市", markMyStore: "设为我的",
+    storeItemCount: "{n} 件特价商品", noStoresForRegion: "这个邮政编码还没有传单——每周四更新。",
+    noStoresMatch: "没有找到相符的超市。",
+    priceMatchesQ: "这家愿意比价吗？", yes: "愿意", no: "不愿意", notSure: "不确定",
+    lastConfirmed: "上次确认：{date}",
+    storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
     dealCheckErr: "比价失败：{msg}",
     dealsPending: "这件商品还没有传单价格，每周四更新。",
     dealsNoneFound: "没有找到这件商品的传单优惠。",
@@ -685,6 +709,14 @@ const STRINGS = {
     priceMatchCheck: "🔍 Comparer les prix", checkingDeals: "Vérification…",
     postalCodePh: "Code postal pour comparer les prix", priceMatchBadge: "Meilleur : {price} chez {merchant}",
     postalCodeRequired: "Entrez d'abord votre code postal — les circulaires sont régionales.",
+    storeSetup: "Mes magasins", storeSetupHint: "Magasins avec circulaires près de chez vous. Cochez ceux que vous fréquentez, puis indiquez lesquels acceptent l'ajustement de prix.",
+    searchStoresPh: "Rechercher un magasin…", myStoresCount: "Mes magasins ({n})",
+    myStore: "Mon magasin", markMyStore: "Marquer comme mien",
+    storeItemCount: "{n} articles en solde", noStoresForRegion: "Aucune circulaire pour ce code postal — la mise à jour hebdomadaire a lieu le jeudi.",
+    noStoresMatch: "Aucun magasin correspondant.",
+    priceMatchesQ: "Ce magasin ajuste-t-il les prix ?", yes: "Oui", no: "Non", notSure: "Pas sûr",
+    lastConfirmed: "Confirmé le {date}",
+    storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
     dealsPending: "Pas encore de prix de circulaire — la mise à jour hebdomadaire a lieu le jeudi.",
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
@@ -864,6 +896,14 @@ const STRINGS = {
     priceMatchCheck: "🔍 Comparar precios", checkingDeals: "Comprobando…",
     postalCodePh: "Código postal para comparar precios", priceMatchBadge: "Mejor: {price} en {merchant}",
     postalCodeRequired: "Introduce primero tu código postal — las ofertas son regionales.",
+    storeSetup: "Mis tiendas", storeSetupHint: "Tiendas con folletos cerca de ti. Marca las que visitas de verdad y luego indica cuáles igualan precios.",
+    searchStoresPh: "Buscar tiendas…", myStoresCount: "Mis tiendas ({n})",
+    myStore: "Mi tienda", markMyStore: "Marcar como mía",
+    storeItemCount: "{n} artículos en oferta", noStoresForRegion: "Aún no hay folletos para este código postal — la actualización semanal es el jueves.",
+    noStoresMatch: "Ninguna tienda coincide.",
+    priceMatchesQ: "¿Esta tienda iguala precios?", yes: "Sí", no: "No", notSure: "No estoy seguro",
+    lastConfirmed: "Confirmado el {date}",
+    storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
     dealsPending: "Aún no hay precios de folleto — la actualización semanal es el jueves.",
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
@@ -5509,6 +5549,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     setCheckingId(null);
   };
   const hasPostal = !!postalCode.trim();
+  const [showStores, setShowStores] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const pending = (items || []).filter((it) => !it.isCompleted);
   const done = (items || []).filter((it) => it.isCompleted);
@@ -5553,6 +5594,13 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       {/* Stated up front rather than only on a failed tap — price matching is
           the point of this screen and it can't work without a region. */}
       {!hasPostal && <div style={{ fontSize: 12, color: WARN, marginTop: -4 }}>{t("postalCodeRequired")}</div>}
+      {/* Sits with the postal code because that's what scopes it — the store
+          list is derived from the region's flyers. Hidden until there is one. */}
+      {hasPostal && (
+        <button onClick={() => setShowStores(true)} style={{ ...ghostBtn, alignSelf: "flex-start", marginTop: -4 }}>
+          <Store size={14} /> {t("storeSetup")}
+        </button>
+      )}
       {/* Stays open after each add — the toast comment below spells out why
           adding several in a row is the normal case here. */}
       {showAddForm && (
@@ -5587,6 +5635,9 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
       {dealsFor && (
         <PriceMatchPanel deals={dealsFor.deals} itemName={dealsFor.item.itemName} t={t} lang={lang}
           onPick={pickDeal} onClose={() => setDealsFor(null)} />
+      )}
+      {showStores && (
+        <StoreSetupPanel ledgerId={ledgerId} postalCode={postalCode} t={t} lang={lang} onClose={() => setShowStores(false)} />
       )}
       {toast && <Toast key={toast.id} message={toast.text} onDone={() => setToast(null)} />}
     </div>
@@ -5792,6 +5843,108 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
         </button>
       </div>
     </div>
+  );
+}
+
+// Store setup — the prerequisite for Price Match Mode (migration 030).
+//
+// The "nearby supermarkets" list comes from the flyer mirror, not a places
+// API: Flipp already answers per postal code, and shops that publish flyers
+// there are exactly the ones price matching can act on. A Places lookup would
+// list stores we hold no flyer data for.
+//
+// Price-match policy is asked, never assumed. Three states, and "not sure"
+// must stay distinct from "no" — a wrong "no" quietly hides real savings, a
+// wrong "yes" sends you to the counter for an argument. Nothing ships
+// pre-filled because policies vary by franchise owner and change unannounced.
+function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
+  const [merchants, setMerchants] = useState(null); // null = loading
+  const [policies, setPolicies] = useState([]);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
+  const [onlyMine, setOnlyMine] = useState(false);
+
+  const loadPolicies = useCallback(() => {
+    db.fetchStorePolicies(ledgerId).then(setPolicies).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
+  useEffect(() => {
+    db.fetchNearbyMerchants(postalCode).then(setMerchants).catch((e) => { setError(e.message || String(e)); setMerchants([]); });
+  }, [postalCode]);
+  useEffect(() => { loadPolicies(); }, [loadPolicies]);
+  useEffect(() => db.subscribeStorePolicies(ledgerId, loadPolicies), [ledgerId, loadPolicies]);
+
+  const policyFor = (merchant) => policies.find((p) => p.merchant === merchant) || {};
+  const patch = async (merchant, fields) => {
+    try { await db.setStorePolicy(ledgerId, merchant, fields); loadPolicies(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+
+  const visible = (merchants || [])
+    .filter((m) => m.merchant.toLowerCase().includes(query.toLowerCase()))
+    .filter((m) => !onlyMine || policyFor(m.merchant).isLocal);
+  const mineCount = policies.filter((p) => p.isLocal).length;
+
+  return (
+    <Overlay title={t("storeSetup")} onClose={onClose} t={t}>
+      <div style={{ fontSize: 12.5, color: SUB }}>{t("storeSetupHint")}</div>
+      {error && <div style={errorBox}>{error}</div>}
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchStoresPh")} style={input} />
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={() => setOnlyMine(false)} style={chip(!onlyMine)}>{t("showAll")}</button>
+        <button onClick={() => setOnlyMine(true)} style={chip(onlyMine)}>{t("myStoresCount", { n: mineCount })}</button>
+      </div>
+      {merchants === null ? (
+        <Centered>{t("connecting")}</Centered>
+      ) : visible.length === 0 ? (
+        <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>
+          {merchants.length === 0 ? t("noStoresForRegion") : t("noStoresMatch")}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {visible.map((m) => {
+            const p = policyFor(m.merchant);
+            return (
+              <div key={m.merchant} style={{ background: CARD, border: `1px solid ${p.isLocal ? OK_LINE : LINE}`, borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {m.merchantLogo && <img src={m.merchantLogo} alt="" loading="lazy" style={{ height: 18, maxWidth: 64, objectFit: "contain", flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.merchant}</div>
+                    <div style={{ fontSize: 11.5, color: SUB }}>{t("storeItemCount", { n: m.itemCount })}</div>
+                  </div>
+                  <button onClick={() => patch(m.merchant, { isLocal: !p.isLocal })} style={chip(!!p.isLocal)}>
+                    {p.isLocal ? <><Check size={13} /> {t("myStore")}</> : t("markMyStore")}
+                  </button>
+                </div>
+                {/* Only worth asking about shops you actually visit. */}
+                {p.isLocal && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${LINE}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("priceMatchesQ")}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {[[true, t("yes")], [false, t("no")], [null, t("notSure")]].map(([val, label]) => (
+                        <button key={String(val)} onClick={() => patch(m.merchant, { priceMatches: val })}
+                          style={chip(p.priceMatches === val || (val === null && p.priceMatches == null))}>{label}</button>
+                      ))}
+                    </div>
+                    {p.confirmedAt && (
+                      <div style={{ fontSize: 11, color: SUB, marginTop: 6 }}>
+                        {t("lastConfirmed", { date: shortDate(p.confirmedAt.slice(0, 10), lang) })}
+                      </div>
+                    )}
+                    {/* The boolean can't hold "identical item and size only" or
+                        "local competitors, not online" — this is the text you
+                        actually want in front of you at the counter. */}
+                    {p.priceMatches === true && (
+                      <input defaultValue={p.note} onBlur={(e) => e.target.value !== (p.note || "") && patch(m.merchant, { note: e.target.value })}
+                        placeholder={t("storeNotePh")} style={{ ...input, marginTop: 8, fontSize: 13 }} />
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Overlay>
   );
 }
 
