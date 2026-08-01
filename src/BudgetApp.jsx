@@ -1832,7 +1832,7 @@ function NewLedgerFlow({ t, busy, onCreate }) {
   return (
     <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 8 }}>{t("startWith")}</div>
-      <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 6 }}>
+      <div className="no-scrollbar" style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 4 }}>
         {NEW_LEDGER_TEMPLATE_ORDER.map((k) => {
           const Icon = ledgerIcon(k);
           const active = template === k;
@@ -1920,7 +1920,9 @@ function NewLedgerFlow({ t, busy, onCreate }) {
           </button>
         </div>
       )}
-      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+        .no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}
+        .no-scrollbar::-webkit-scrollbar{display:none}`}</style>
     </div>
   );
 }
