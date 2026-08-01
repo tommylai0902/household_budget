@@ -253,6 +253,7 @@ const STRINGS = {
     transactionsCount: "{n} Transactions", justNow: "Just now", minutesAgo: "{n}m ago", hoursAgo: "{n}h ago",
     updatedToday: "Today", updatedYesterday: "Yesterday", updatedLine: "Updated {when}",
     currency: "Currency",
+    tripDates: "Trip dates", tripStartDate: "Trip start date", tripEndDate: "Trip end date",
     vaultTitle: "Treasure Vault", earnedMoney: "Earned Money", boughtSomething: "Bought Something",
     kidAdd: "Add it!", noGoalYet: "No goal yet — tap to set one!",
     setGoalTitle: "Set a wishlist goal", goalNameLabel: "What are you saving for?",
@@ -457,6 +458,7 @@ const STRINGS = {
     deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
     deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
     currency: "貨幣",
+    tripDates: "旅程日期", tripStartDate: "旅程開始日", tripEndDate: "旅程結束日",
     vaultTitle: "寶藏庫", earnedMoney: "賺咗錢", boughtSomething: "買咗嘢",
     kidAdd: "加落去！", noGoalYet: "仲未有目標 — 撳呢度設定一個！",
     setGoalTitle: "設定願望清單目標", goalNameLabel: "你想儲錢買咩？",
@@ -662,6 +664,7 @@ const STRINGS = {
     deleteLedger: "删除账本", renameLedger: "重命名账本",
     deleteLedgerConfirm: "删除「{name}」及其中所有支出？此操作无法撤销。",
     currency: "货币",
+    tripDates: "旅程日期", tripStartDate: "旅程开始日", tripEndDate: "旅程结束日",
     vaultTitle: "宝藏库", earnedMoney: "赚到钱", boughtSomething: "买了东西",
     kidAdd: "记一笔！", noGoalYet: "还没有目标 — 点这里设置一个！",
     setGoalTitle: "设置心愿清单目标", goalNameLabel: "你想攒钱买什么？",
@@ -866,6 +869,7 @@ const STRINGS = {
     deleteLedger: "Supprimer le registre", renameLedger: "Renommer le registre",
     deleteLedgerConfirm: "Supprimer « {name} » et toutes ses dépenses ? Action irréversible.",
     currency: "Devise",
+    tripDates: "Dates du voyage", tripStartDate: "Date de début du voyage", tripEndDate: "Date de fin du voyage",
     vaultTitle: "Coffre au trésor", earnedMoney: "Argent gagné", boughtSomething: "Achat",
     kidAdd: "Ajouter !", noGoalYet: "Pas encore d'objectif — touche ici pour en fixer un !",
     setGoalTitle: "Fixer un objectif", goalNameLabel: "Pour quoi économises-tu ?",
@@ -1070,6 +1074,7 @@ const STRINGS = {
     deleteLedger: "Eliminar libro", renameLedger: "Renombrar libro",
     deleteLedgerConfirm: '¿Eliminar "{name}" y todos sus gastos? No se puede deshacer.',
     currency: "Moneda",
+    tripDates: "Fechas del viaje", tripStartDate: "Fecha de inicio del viaje", tripEndDate: "Fecha de fin del viaje",
     vaultTitle: "Cofre del tesoro", earnedMoney: "Dinero ganado", boughtSomething: "Compra",
     kidAdd: "¡Añadir!", noGoalYet: "Aún no hay meta — ¡toca aquí para poner una!",
     setGoalTitle: "Establecer una meta", goalNameLabel: "¿Para qué estás ahorrando?",
@@ -2202,6 +2207,16 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
   const [error, setError] = useState("");
 
   const [month, setMonth] = useState(monthOf(todayISO()));
+  // A travel ledger with a trip period set (migration 040) stops being
+  // month-scoped entirely — transaction list/budget/Report/Settlement/Home
+  // banner all become whole-ledger instead of flipping between calendar
+  // months. Opt-in: a travel ledger with neither date set is unaffected.
+  const isPeriodLedger = ledger.template === "travel" && !!ledger.startDate && !!ledger.endDate;
+  // Budgets stay keyed the same way they always were (ledger + a
+  // "YYYY-MM"-shaped string) — a period ledger just always resolves to the
+  // same fixed key, so "this month's budget" becomes "the trip's budget"
+  // for free, with no change to the budgets table at all.
+  const budgetMonth = isPeriodLedger ? ledger.startDate.slice(0, 7) : month;
   const [editing, setEditing] = useState(null);   // null | "new" | expense
   const [detail, setDetail] = useState(null);      // null | expense
   const [managingCats, setManagingCats] = useState(false);
@@ -2274,31 +2289,35 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
 
   const catById = (id) => categories.find((c) => c.id === id);
 
-  // Spend per category for the month on screen, for the budget bars.
+  // Spend per category — the month on screen, or (period ledger) the whole
+  // trip — for the budget bars.
   const spentByCategory = useMemo(() => {
     const m = new Map();
     for (const e of expenses) {
-      if (monthOf(e.date) !== month || !e.categoryId) continue;
+      if ((!isPeriodLedger && monthOf(e.date) !== month) || !e.categoryId) continue;
       m.set(e.categoryId, (m.get(e.categoryId) || 0) + (Number(e.amount) || 0));
     }
     return m;
-  }, [expenses, month]);
+  }, [expenses, month, isPeriodLedger]);
 
   // For the calendar footer's "Balance from budget" — sum of each category's
-  // saved budget for the month on screen (0 if nothing's been set at all).
+  // saved budget for the month on screen, or the trip's one budget for a
+  // period ledger (0 if nothing's been set at all).
   const totalBudget = useMemo(
-    () => categories.reduce((sum, c) => sum + (budgets.get(db.budgetKey(month, c.id)) || 0), 0),
-    [categories, budgets, month]
+    () => categories.reduce((sum, c) => sum + (budgets.get(db.budgetKey(budgetMonth, c.id)) || 0), 0),
+    [categories, budgets, budgetMonth]
   );
 
   const saveBudgets = async (entries) => {
     try {
-      for (const { categoryId, amount } of entries) await db.setBudget(ledger.id, categoryId, month, amount);
+      for (const { categoryId, amount } of entries) await db.setBudget(ledger.id, categoryId, budgetMonth, amount);
       setBudgets(await db.fetchBudgets(ledger.id));
     } catch (e) { setError(e.message); }
   };
   // Copies this month's saved budget onto next month, category by category —
-  // categories with no budget set are skipped rather than carrying a 0.
+  // categories with no budget set are skipped rather than carrying a 0. Not
+  // offered for a period ledger (see the Budget panel mount) — there's no
+  // "next month" for a single trip.
   const carryBudgetForward = async () => {
     try {
       const next = nextMonthOf(month);
@@ -2365,6 +2384,15 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
     try { await db.updateLedger(ledger.id, { currency }); onSwitchLedger({ ...ledger, currency }); }
     catch (e) { setError(e.message); }
   };
+  // Same pattern as changeCurrency — updates the ledger object App holds, not
+  // just the DB row, so the switch away from monthly scoping takes effect
+  // immediately rather than waiting for a reload.
+  const changePeriod = async (startDate, endDate) => {
+    try {
+      await db.updateLedger(ledger.id, { start_date: startDate || null, end_date: endDate || null });
+      onSwitchLedger({ ...ledger, startDate: startDate || null, endDate: endDate || null });
+    } catch (e) { setError(e.message); }
+  };
   const commitMembers = async (list) => {
     try { setMembers(await db.persistMembers(list, members, ledger.id)); }
     catch (e) { setError(/foreign key/i.test(e.message || "") ? t("memberHasExpenses") : e.message); }
@@ -2377,8 +2405,8 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
   }, [expenses]);
 
   const rows = useMemo(
-    () => expenses.filter((e) => monthOf(e.date) === month).sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [expenses, month]
+    () => (isPeriodLedger ? expenses : expenses.filter((e) => monthOf(e.date) === month)).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [expenses, month, isPeriodLedger]
   );
   // Display-only filter from tapping a MonthCalendar day — summary/settlement
   // below are computed from `rows`, not this, so they stay whole-month.
@@ -2419,6 +2447,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
   }
 
   const label = monthName(month, lang);
+  const periodLabel = isPeriodLedger ? `${shortDate(ledger.startDate, lang)} – ${shortDate(ledger.endDate, lang)}` : label;
 
   // Bell + overflow menu, the same in every view — only which menu entries are
   // offered changes. Hoisted so the branded header (home/inventory/grocery) and
@@ -2433,7 +2462,9 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
         onStores={viewState === "ledger" ? () => setManagingStores(true) : undefined}
         onManageMembers={viewState === "ledger" && features.showSplit ? () => setShowManageMembers(true) : undefined}
         onRecurring={viewState === "ledger" && features.hasRecurring ? () => setShowRecurring(true) : undefined}
-        currency={viewState === "ledger" && features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency} />
+        currency={viewState === "ledger" && features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency}
+        tripDates={viewState === "ledger" && ledger.template === "travel" ? { startDate: ledger.startDate, endDate: ledger.endDate } : undefined}
+        onChangeTripDates={changePeriod} />
     </>
   );
 
@@ -2482,11 +2513,18 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
                 screen the controls wrap to their own line; marginLeft:auto then
                 holds them against the right edge instead of falling back left. */}
             <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
-              <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
-                {monthsAvailable.map((m) => (
-                  <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
-                ))}
-              </select>
+              {/* A period ledger has nothing to switch between — one fixed
+                  trip, not a recurring monthly cycle — so this is a label,
+                  not a picker. */}
+              {isPeriodLedger ? (
+                <span style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{periodLabel}</span>
+              ) : (
+                <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
+                  {monthsAvailable.map((m) => (
+                    <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
+                  ))}
+                </select>
+              )}
               {headerControls}
             </div>
           </div>
@@ -2625,21 +2663,24 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
         <MemberManager members={members} t={t} onChange={commitMembers} onClose={() => setManagingMembers(false)} />
       )}
       {showBudget && (
-        <BudgetPanel month={month} monthLabel={label} categories={categories} expenses={expenses} budgets={budgets} lang={lang}
+        <BudgetPanel month={budgetMonth} monthLabel={periodLabel} categories={categories} expenses={expenses} budgets={budgets} lang={lang}
           spentByCategory={spentByCategory} spent={summary.total} t={t}
+          periodRange={isPeriodLedger ? { startDate: ledger.startDate, endDate: ledger.endDate } : null}
           onEditBudget={() => setShowEditBudget(true)} onClose={() => setShowBudget(false)} />
       )}
       {/* Rendered after BudgetPanel — same fixed z-index everywhere, later in
           the DOM wins, so opening this from BudgetPanel's "Edit budget" badge
           stacks on top instead of behind it (same fix as the batch-import/
-          member-manager stacking issue). */}
+          member-manager stacking issue). onCarryForward omitted for a period
+          ledger — one trip has no "next month" to carry a budget into. */}
       {showEditBudget && (
-        <EditBudgetPanel month={month} monthLabel={label} categories={categories} budgets={budgets} t={t}
-          onSave={saveBudgets} onCarryForward={carryBudgetForward} onClose={() => setShowEditBudget(false)} />
+        <EditBudgetPanel month={budgetMonth} monthLabel={periodLabel} categories={categories} budgets={budgets} t={t}
+          onSave={saveBudgets} onCarryForward={isPeriodLedger ? undefined : carryBudgetForward} onClose={() => setShowEditBudget(false)} />
       )}
       {showReport && (
         <MonthlyReport month={month} months={monthsAvailable} expenses={expenses} categories={categories}
-          lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)} />
+          lang={lang} t={t} onMonthChange={setMonth} onClose={() => setShowReport(false)}
+          isPeriodLedger={isPeriodLedger} periodLabel={periodLabel} />
       )}
       {showSettlement && <SettlementDetails members={members} summary={summary} t={t} onClose={() => setShowSettlement(false)} />}
       {showManageMembers && <ManageMembersModal ledger={ledger} isOwner={isOwner} t={t} onClose={() => setShowManageMembers(false)} />}
@@ -4000,7 +4041,7 @@ function BudgetBar({ spent, budget, height = 8, pace }) {
 // Read-only — editing moved to EditBudgetPanel, reached via the "Edit
 // budget" badge. Budget figures here come straight from the saved `budgets`
 // map, not from a local draft, since there's nothing to draft.
-function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onEditBudget, onClose }) {
+function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentByCategory, spent, lang, t, onEditBudget, onClose, periodRange }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   const budgetOf = (id) => budgets.get(db.budgetKey(month, id)) || 0;
@@ -4008,12 +4049,17 @@ function BudgetPanel({ month, monthLabel, categories, expenses, budgets, spentBy
   const left = totalBudget - spent;
   const over = left < 0;
   const uncategorised = spent - categories.reduce((s, c) => s + (spentByCategory.get(c.id) || 0), 0);
-  // Only meaningful for the month actually in progress — a past or future
-  // month has no "today" to mark a pace against.
+  // Only meaningful while the thing being paced against is actually in
+  // progress — a past/future month (or a trip not yet started/already over)
+  // has nothing to mark a pace against.
   const today = todayISO();
-  const pace = monthOf(today) === month
-    ? (Number(today.slice(-2)) / new Date(...month.split("-").map(Number), 0).getDate()) * 100
-    : null;
+  const pace = periodRange
+    ? (periodRange.startDate && periodRange.endDate && today >= periodRange.startDate && today <= periodRange.endDate
+        ? ((new Date(today) - new Date(periodRange.startDate)) / (new Date(periodRange.endDate) - new Date(periodRange.startDate)) || 0) * 100
+        : null)
+    : (monthOf(today) === month
+        ? (Number(today.slice(-2)) / new Date(...month.split("-").map(Number), 0).getDate()) * 100
+        : null);
 
   return (
     <Overlay onClose={onClose} title={t("budget")} t={t}>
@@ -4107,7 +4153,9 @@ function EditBudgetPanel({ month, monthLabel, categories, budgets, t, onSave, on
     <Overlay onClose={onClose} title={t("editBudget")} t={t}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{t("budgetFor", { month: monthLabel })}</div>
-        {hasAnyBudget && (
+        {/* Absent for a period ledger (onCarryForward undefined) — one trip
+            has no "next month" to carry a budget into. */}
+        {hasAnyBudget && onCarryForward && (
           <button onClick={carryForward} disabled={carrying || carried} style={{ ...pill(TEAL), opacity: carrying ? 0.6 : 1 }}>
             {carried ? <Check size={13} /> : carrying ? <Loader2 size={13} className="spin" /> : null}
             {carried ? t("carryForwardDone") : t("carryForward")}
@@ -4153,10 +4201,12 @@ function dailyTotalsFor(month, expenses) {
 
 // Category totals for one month, shared by the pie chart and both sides of the
 // month-over-month comparison so the two views can never disagree on a number.
+// A falsy targetMonth means "every expense, no filter" — used for a period
+// ledger's whole-trip breakdown instead of one calendar month.
 function categoryTotalsFor(targetMonth, expenses, categories, lang, t) {
   const totals = new Map();
   for (const expense of expenses) {
-    if (monthOf(expense.date) !== targetMonth) continue;
+    if (targetMonth && monthOf(expense.date) !== targetMonth) continue;
     const key = expense.categoryId || "uncategorised";
     totals.set(key, (totals.get(key) || 0) + (Number(expense.amount) || 0));
   }
@@ -4172,9 +4222,10 @@ function categoryTotalsFor(targetMonth, expenses, categories, lang, t) {
   }).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount);
 }
 
-function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthChange, onClose }) {
+function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthChange, onClose, isPeriodLedger, periodLabel }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const breakdown = useMemo(() => categoryTotalsFor(month, expenses, categories, lang, t), [expenses, month, categories, lang, t]);
+  // null for a period ledger — the whole trip, not one calendar month.
+  const breakdown = useMemo(() => categoryTotalsFor(isPeriodLedger ? null : month, expenses, categories, lang, t), [expenses, month, categories, lang, t, isPeriodLedger]);
 
   // Defaults to the month right before the one on screen (months is newest-first),
   // so opening the report already shows a meaningful comparison.
@@ -4218,7 +4269,7 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
       <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 1 }}>{t("reportTotal")}</div>
         <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{money(total)}</div>
-        <div style={{ fontSize: 13, color: SUB, marginTop: 2 }}>{t("reportFor", { month: monthName(month, lang) })}</div>
+        <div style={{ fontSize: 13, color: SUB, marginTop: 2 }}>{t("reportFor", { month: isPeriodLedger ? periodLabel : monthName(month, lang) })}</div>
       </div>
       {breakdown.length === 0 ? (
         <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "28px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("reportEmpty")}</div>
@@ -4248,7 +4299,9 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
         </>
       )}
 
-      <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 14 }}>
+      {/* Comparing to another month doesn't mean anything for a single trip
+          — there's no "last month" to compare a period ledger against. */}
+      {!isPeriodLedger && <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 14 }}>
         {/* Select month/Compare to used to sit at the top of the whole panel;
             moved here since this comparison section is the only place they
             actually matter — the pie chart/breakdown above only ever reflect
@@ -4302,20 +4355,25 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
             })}
           </div>
         )}
-      </div>
+      </div>}
 
-      {selectedCategory && <CategoryExpenseList category={selectedCategory} month={month} expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />}
+      {selectedCategory && (
+        <CategoryExpenseList category={selectedCategory} month={isPeriodLedger ? null : month} periodLabel={periodLabel}
+          expenses={expenses} lang={lang} t={t} onClose={() => setSelectedCategory(null)} />
+      )}
     </Overlay>
   );
 }
 
-function CategoryExpenseList({ category, month, expenses, lang, t, onClose }) {
-  const rows = expenses.filter((expense) => monthOf(expense.date) === month && (expense.categoryId || "uncategorised") === category.id)
+// month null (a period ledger's whole-trip drill-down) means every expense
+// in that category, not one calendar month's worth.
+function CategoryExpenseList({ category, month, periodLabel, expenses, lang, t, onClose }) {
+  const rows = expenses.filter((expense) => (!month || monthOf(expense.date) === month) && (expense.categoryId || "uncategorised") === category.id)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 
   return (
     <Overlay title={t("categoryExpenses", { category: category.name })} t={t} onClose={onClose}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{monthName(month, lang)}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{month ? monthName(month, lang) : periodLabel}</div>
       {rows.length === 0 ? (
         <div style={{ border: `1px dashed ${LINE}`, borderRadius: 12, padding: "28px 16px", color: SUB, textAlign: "center", fontSize: 13 }}>{t("categoryExpensesEmpty")}</div>
       ) : (
@@ -4532,7 +4590,7 @@ function NotificationBell({ t, lang }) {
   );
 }
 
-function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency }) {
+function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency, tripDates, onChangeTripDates }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [profile, refreshProfile] = useMyProfile();
@@ -4596,7 +4654,26 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
               </select>
             </div>
           )}
-          {(onHome || onBudget || onReport || onRecurring || onManageMembers || currency) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {/* Travel-only (migration 040) — a fixed trip period instead of
+              the monthly cycle every other ledger runs on. Blank means "not
+              set yet", not an error; the ledger just stays month-scoped
+              until both are filled in. */}
+          {tripDates && (
+            <div style={{ ...menuItem, flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Plane size={15} /> <span style={{ flex: 1 }}>{t("tripDates")}</span>
+              </div>
+              <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
+                <input type="date" value={tripDates.startDate || ""} max={tripDates.endDate || undefined}
+                  onChange={(e) => onChangeTripDates(e.target.value, tripDates.endDate)}
+                  aria-label={t("tripStartDate")} style={{ ...input, flex: 1, fontSize: 12, padding: "6px 8px" }} />
+                <input type="date" value={tripDates.endDate || ""} min={tripDates.startDate || undefined}
+                  onChange={(e) => onChangeTripDates(tripDates.startDate, e.target.value)}
+                  aria-label={t("tripEndDate")} style={{ ...input, flex: 1, fontSize: 12, padding: "6px 8px" }} />
+              </div>
+            </div>
+          )}
+          {(onHome || onBudget || onReport || onRecurring || onManageMembers || currency || tripDates) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
           <button role="menuitem" onClick={() => { setOpen(false); setShowSettings(true); }} style={menuItem}>
             <Settings size={15} /> {t("settings")}
           </button>

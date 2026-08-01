@@ -48,7 +48,13 @@ const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.
 export async function fetchLedgers() {
   const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
   if (error) throw error;
-  return data.map((r) => ({ id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id, currency: r.currency || "CAD", postalCode: r.postal_code || "" }));
+  return data.map((r) => ({
+    id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id,
+    currency: r.currency || "CAD", postalCode: r.postal_code || "",
+    // Travel-only (migration 040) — a fixed trip period instead of the
+    // monthly cycle. Null/null means "not set", same as today's behaviour.
+    startDate: r.start_date || null, endDate: r.end_date || null,
+  }));
 }
 // Picker-card-only (count + last activity) — kept out of fetchLedgers() itself
 // since every other caller (switchers, dropdowns) just needs name/icon and
