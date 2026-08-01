@@ -255,7 +255,7 @@ const STRINGS = {
     ledgerNameLabel: "Ledger name", continueBtn: "Continue",
     deleteLedger: "Delete ledger", renameLedger: "Rename ledger", moreActions: "More actions",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
-    archiveLedger: "Archive", archivedLedgers: "Archived ledgers",
+    archiveLedger: "Archive", archivedLedgers: "Archived ledgers", archivedShort: "Archived",
     noArchivedLedgers: "Nothing archived yet.",
     archiveConfirm: 'Archive "{name}"? It keeps everything in it and hides from your list — restore it any time from Settings.',
     restoreLedger: "Restore", restoreConfirm: 'Put "{name}" back in your ledger list?',
@@ -471,7 +471,7 @@ const STRINGS = {
     ledgerNameLabel: "帳簿名稱", continueBtn: "繼續",
     deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
     deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
-    archiveLedger: "封存", archivedLedgers: "已封存帳簿",
+    archiveLedger: "封存", archivedLedgers: "已封存帳簿", archivedShort: "已封存",
     noArchivedLedgers: "仲未封存過任何帳簿。",
     archiveConfirm: '封存「{name}」？入面啲嘢全部留住，淨係喺清單度收起，隨時可以喺設定度攞返出嚟。',
     restoreLedger: "還原", restoreConfirm: '將「{name}」放返落帳簿清單？',
@@ -684,7 +684,7 @@ const STRINGS = {
     ledgerNameLabel: "账本名称", continueBtn: "继续",
     deleteLedger: "删除账本", renameLedger: "重命名账本",
     deleteLedgerConfirm: "删除「{name}」及其中所有支出？此操作无法撤销。",
-    archiveLedger: "归档", archivedLedgers: "已归档账本",
+    archiveLedger: "归档", archivedLedgers: "已归档账本", archivedShort: "已归档",
     noArchivedLedgers: "还没有归档任何账本。",
     archiveConfirm: "归档「{name}」？其中内容全部保留，只是从列表中隐藏，随时可以在设置中恢复。",
     restoreLedger: "恢复", restoreConfirm: "将「{name}」放回账本列表？",
@@ -896,7 +896,7 @@ const STRINGS = {
     ledgerNameLabel: "Nom du registre", continueBtn: "Continuer",
     deleteLedger: "Supprimer le registre", renameLedger: "Renommer le registre",
     deleteLedgerConfirm: "Supprimer « {name} » et toutes ses dépenses ? Action irréversible.",
-    archiveLedger: "Archiver", archivedLedgers: "Registres archivés",
+    archiveLedger: "Archiver", archivedLedgers: "Registres archivés", archivedShort: "Archivés",
     noArchivedLedgers: "Rien d'archivé pour l'instant.",
     archiveConfirm: "Archiver « {name} » ? Tout son contenu est conservé, il disparaît simplement de votre liste — restaurable à tout moment depuis les Réglages.",
     restoreLedger: "Restaurer", restoreConfirm: "Remettre « {name} » dans votre liste de registres ?",
@@ -1108,7 +1108,7 @@ const STRINGS = {
     ledgerNameLabel: "Nombre del libro", continueBtn: "Continuar",
     deleteLedger: "Eliminar libro", renameLedger: "Renombrar libro",
     deleteLedgerConfirm: '¿Eliminar "{name}" y todos sus gastos? No se puede deshacer.',
-    archiveLedger: "Archivar", archivedLedgers: "Libros archivados",
+    archiveLedger: "Archivar", archivedLedgers: "Libros archivados", archivedShort: "Archivados",
     noArchivedLedgers: "Nada archivado todavía.",
     archiveConfirm: '¿Archivar "{name}"? Conserva todo su contenido y desaparece de tu lista — puedes restaurarlo cuando quieras desde Ajustes.',
     restoreLedger: "Restaurar", restoreConfirm: '¿Devolver "{name}" a tu lista de libros?',
@@ -1743,7 +1743,10 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           {/* Same overflow menu as inside a ledger, minus the entries that need one
               — plus Home, which jumps into a ledger's Bento dashboard (shown
               whenever there's at least one ledger to land on). */}
-          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onHome={ledgers?.length ? onHome : undefined} />
+          {/* Shown here too: the picker *is* the ledger list, so a ledger
+              hidden from it is exactly what someone standing here would look
+              for. */}
+          <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} onHome={ledgers?.length ? onHome : undefined} showArchivedLedgers />
         </>} />
 
         {inviteMsg && (
@@ -2779,6 +2782,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         onManageMembers={viewState === "ledger" && features.showSplit ? () => setShowManageMembers(true) : undefined}
         onRecurring={viewState === "ledger" && features.hasRecurring ? () => setShowRecurring(true) : undefined}
         currency={viewState === "ledger" && features.hasCurrency ? ledger.currency : undefined} onChangeCurrency={changeCurrency}
+        showArchivedLedgers={viewState === "ledger"}
         tripDates={viewState === "ledger" && ledger.template === "travel" ? { startDate: ledger.startDate, endDate: ledger.endDate } : undefined}
         onChangeTripDates={changePeriod} />
     </>
@@ -4928,9 +4932,10 @@ function NotificationBell({ t, lang, onNavigate }) {
   );
 }
 
-function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency, tripDates, onChangeTripDates }) {
+function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAccent, onHome, onBudget, onReport, onStores, onRecurring, onManageMembers, currency, onChangeCurrency, tripDates, onChangeTripDates, showArchivedLedgers }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [profile, refreshProfile] = useMyProfile();
   const ref = useCloseOnOutside(open, () => setOpen(false));
 
@@ -5012,6 +5017,17 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
             </div>
           )}
           {(onHome || onBudget || onReport || onRecurring || onManageMembers || currency || tripDates) && <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />}
+          {/* Beside Settings rather than inside it: getting a ledger back is a
+              navigation action like the entries above, not a preference, and
+              burying it two taps deep made archiving feel one-way. Gated to the
+              transactions view for the same reason Budget/Report/Recurring are —
+              Inventory and Smart Grocery are household-wide tools, so a
+              ledger-management action has no business in their menus. */}
+          {showArchivedLedgers && (
+            <button role="menuitem" onClick={() => { setOpen(false); setShowArchived(true); }} style={menuItem}>
+              <Archive size={15} /> {t("archivedShort")}
+            </button>
+          )}
           <button role="menuitem" onClick={() => { setOpen(false); setShowSettings(true); }} style={menuItem}>
             <Settings size={15} /> {t("settings")}
           </button>
@@ -5025,6 +5041,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
         <SettingsPanel t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
           profile={profile} onProfileChange={refreshProfile} onStores={onStores} onClose={() => setShowSettings(false)} />
       )}
+      {showArchived && <ArchivedLedgersPanel t={t} onClose={() => setShowArchived(false)} />}
     </div>
   );
 }
@@ -5058,7 +5075,6 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showReminders, setShowReminders] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
   // Same row style as Manage reminders/Saved shops below, but these four
   // expand in place instead of opening a new stacked panel — quick tweaks,
   // not screens with their own data. Accordion, not independent toggles, so
@@ -5207,13 +5223,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         <Bell size={15} /> {t("manageReminders")}
       </button>
       <PushToggle t={t} lang={lang} />
-      {/* Account-wide like the reminders row above it — archived ledgers belong
-          to the household, not to whichever ledger Settings opened from. */}
-      <button onClick={() => setShowArchived(true)} style={ghostBtn}>
-        <Archive size={15} /> {t("archivedLedgers")}
-      </button>
       {showReminders && <ManageRemindersPanel t={t} lang={lang} onClose={() => setShowReminders(false)} />}
-      {showArchived && <ArchivedLedgersPanel t={t} onClose={() => setShowArchived(false)} />}
       {/* Absent on the picker (no ledger, nothing to remember shops for) — same
           optional-prop gate every other ledger-scoped menu entry already uses. */}
       {onStores && (
