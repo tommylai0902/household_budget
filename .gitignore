@@ -8,6 +8,12 @@ dev-dist
 .DS_Store
 .vercel
 
+# Claude Code's per-machine permission allowlist. Not shared config: it grows
+# every session, and it records approved commands verbatim — which means any
+# secret passed on a command line (CRON_SECRET in a curl header, say) ends up
+# in it. .claude/launch.json is real project config and stays tracked.
+.claude/settings.local.json
+
 # editor
 .vscode/*
 !.vscode/extensions.json
