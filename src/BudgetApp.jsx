@@ -1871,17 +1871,34 @@ function NewLedgerFlow({ t, busy, onCreate }) {
   };
 
   return (
-    <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 8 }}>{t("startWith")}</div>
+    <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 20, paddingTop: 20 }}>
+      {/* Same eyebrow-over-title idiom as the ledger cards above, so starting a
+          new one reads as a peer of the list rather than a footnote under it. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 14 }}>
+        <span style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, flexShrink: 0, background: TEAL, color: ACCENT_INK, boxShadow: ACCENT_GLOW }}>
+          <Plus size={21} strokeWidth={2.5} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL }}>
+            <Sparkles size={12} style={{ flexShrink: 0 }} /> {t("startWith")}
+          </div>
+          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.3, color: INK, marginTop: 1 }}>{t("createLedger")}</div>
+        </div>
+      </div>
       <div className="no-scrollbar" style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 4 }}>
         {NEW_LEDGER_TEMPLATE_ORDER.map((k) => {
           const Icon = ledgerIcon(k);
           const active = template === k;
           return (
-            <button key={k} onClick={() => pickTemplate(k)} style={{
+            // Same frosted-glass surface as the ledger rows above (and the
+            // same hover glow, via .swipe-row) — one card treatment for the
+            // whole page instead of these sitting flat against it.
+            <button key={k} onClick={() => pickTemplate(k)} className="swipe-row" style={{
               position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
-              padding: "12px 16px 12px 12px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
-              border: `1.5px solid ${active ? TEAL : LINE}`, background: CARD, boxShadow: active ? ACCENT_GLOW : "none",
+              padding: "13px 16px 13px 13px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
+              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: `1.5px solid ${active ? TEAL : "var(--glass-border)"}`,
+              boxShadow: active ? ACCENT_GLOW : "0 8px 32px var(--glass-shadow)",
             }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: active ? TEAL : MUTED_BG }}>
                 <Icon size={18} style={{ color: active ? ACCENT_INK : SUB }} />
