@@ -1861,6 +1861,7 @@ function NewLedgerFlow({ t, busy, onCreate }) {
   const [travelConfirmed, setTravelConfirmed] = useState(false);
   const [name, setName] = useState("");
   const [profile] = useMyProfile();
+  const carouselRef = useRef(null);
   const confirmRef = useRef(null);
   const membersRef = useRef(null);
   const travelRef = useRef(null);
@@ -1874,11 +1875,53 @@ function NewLedgerFlow({ t, busy, onCreate }) {
   const showName = templateConfirmed && (!needsMembers || membersConfirmed) && (!needsTravel || travelConfirmed);
 
   const pickTemplate = (k) => {
+    // A drag that ended on a card is scrolling, not choosing.
+    if (dragRef.current?.moved) return;
     setTemplate(k);
     setTemplateConfirmed(false);
     setMembersConfirmed(false);
     setTravelConfirmed(false);
   };
+
+  // Hiding the scrollbar left the desktop with no way into this strip: a mouse
+  // wheel only scrolls vertically and a scroll container isn't click-draggable,
+  // so both gestures are translated to scrollLeft here. Touch and trackpad
+  // already scroll it natively and are left alone.
+  //
+  // Native listener rather than onWheel: React registers wheel passively, so a
+  // preventDefault inside its handler is ignored.
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      const next = Math.min(el.scrollWidth - el.clientWidth, Math.max(0, el.scrollLeft + delta));
+      // At either end, leave the event alone so the page scrolls on instead of
+      // the cursor getting stuck over a dead strip.
+      if (next === el.scrollLeft) return;
+      e.preventDefault();
+      el.scrollLeft = next;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const dragRef = useRef(null);
+  const onPointerDown = (e) => {
+    if (e.pointerType === "touch") return; // native touch scrolling is already right
+    dragRef.current = { x: e.clientX, left: carouselRef.current.scrollLeft, moved: false };
+  };
+  const onPointerMove = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    if (Math.abs(dx) > 3) d.moved = true; // past a jitter threshold this is a drag, not a click
+    if (d.moved) carouselRef.current.scrollLeft = d.left - dx;
+  };
+  // Cleared after the click event that follows pointerup, so pickTemplate above
+  // can see it and swallow that click.
+  const onPointerUp = () => { setTimeout(() => { dragRef.current = null; }, 0); };
 
   useEffect(() => {
     if (template && !templateConfirmed) confirmRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1935,7 +1978,12 @@ function NewLedgerFlow({ t, busy, onCreate }) {
           <Sparkles size={12} style={{ flexShrink: 0 }} /> {t("startWith")}
         </div>
       </div>
-      <div className="no-scrollbar" style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 4 }}>
+      <div ref={carouselRef} className="no-scrollbar"
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onPointerLeave={onPointerUp}
+        style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 4,
+          // Otherwise dragging across the strip highlights the card labels.
+          userSelect: "none" }}>
         {NEW_LEDGER_TEMPLATE_ORDER.map((k) => {
           const Icon = ledgerIcon(k);
           const active = template === k;
