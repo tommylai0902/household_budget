@@ -15,6 +15,8 @@ const LEDGER_ACCENTS = { household: "#2DD4BF", travel: "#38BDF8", personal: "#C0
 const ledgerAccent = (tpl) => LEDGER_ACCENTS[tpl] || LEDGER_ACCENTS.blank;
 const LEDGER_LABEL_KEYS = { household: "ledgerLabelHousehold", travel: "ledgerLabelTravel", personal: "ledgerLabelPersonal", kid: "ledgerLabelKid", blank: "ledgerLabelBlank" };
 const ledgerLabelKey = (tpl) => LEDGER_LABEL_KEYS[tpl] || LEDGER_LABEL_KEYS.blank;
+const LEDGER_DESC_KEYS = { household: "tplDescHousehold", travel: "tplDescTravel", personal: "tplDescPersonal", kid: "tplDescKid", blank: "tplDescBlank" };
+const ledgerDescKey = (tpl) => LEDGER_DESC_KEYS[tpl] || LEDGER_DESC_KEYS.blank;
 const MEMBER_ICONS = { user: User, people: Users, home: Home, plane: Plane, book: BookOpen, tag: Tag };
 const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
@@ -246,6 +248,9 @@ const STRINGS = {
     tplPersonal: "Personal", tplKid: "Kids", tplBlank: "Blank",
     tplHint: "{n} categories — you can rename or add more later",
     tplHintBlank: "No categories — add your own from inside the ledger",
+    tplDescHousehold: "Detailed household tracking", tplDescPersonal: "Individual spending",
+    tplDescTravel: "Trip expense categories", tplDescKid: "Chores, savings & allowance", tplDescBlank: "Start from scratch",
+    ledgerNameLabel: "Ledger name", continueBtn: "Continue",
     deleteLedger: "Delete ledger", renameLedger: "Rename ledger", moreActions: "More actions",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
     ledgerLabelHousehold: "Home Budget", ledgerLabelTravel: "Travel Expenses", ledgerLabelPersonal: "Personal Expenses",
@@ -455,6 +460,9 @@ const STRINGS = {
     tplPersonal: "個人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 個類別 — 之後可以改名或者加",
     tplHintBlank: "冇類別 — 入咗帳簿之後自己加",
+    tplDescHousehold: "詳細家庭開支追蹤", tplDescPersonal: "個人洗費",
+    tplDescTravel: "旅行洗費分類", tplDescKid: "家務、儲蓄同零用錢", tplDescBlank: "由零開始自訂",
+    ledgerNameLabel: "帳簿名稱", continueBtn: "繼續",
     deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
     deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
     currency: "貨幣",
@@ -661,6 +669,9 @@ const STRINGS = {
     tplPersonal: "个人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 个类别 — 之后可以改名或添加",
     tplHintBlank: "没有类别 — 进入账本后自己添加",
+    tplDescHousehold: "详细的家庭开支追踪", tplDescPersonal: "个人消费",
+    tplDescTravel: "旅行开支分类", tplDescKid: "家务、储蓄与零花钱", tplDescBlank: "从零开始自定义",
+    ledgerNameLabel: "账本名称", continueBtn: "继续",
     deleteLedger: "删除账本", renameLedger: "重命名账本",
     deleteLedgerConfirm: "删除「{name}」及其中所有支出？此操作无法撤销。",
     currency: "货币",
@@ -866,6 +877,9 @@ const STRINGS = {
     tplPersonal: "Personnel", tplKid: "Enfants", tplBlank: "Vierge",
     tplHint: "{n} catégories — renommables, et vous pouvez en ajouter",
     tplHintBlank: "Aucune catégorie — ajoutez les vôtres depuis le registre",
+    tplDescHousehold: "Suivi détaillé du foyer", tplDescPersonal: "Dépenses individuelles",
+    tplDescTravel: "Catégories de dépenses de voyage", tplDescKid: "Corvées, épargne et argent de poche", tplDescBlank: "Partir de zéro",
+    ledgerNameLabel: "Nom du registre", continueBtn: "Continuer",
     deleteLedger: "Supprimer le registre", renameLedger: "Renommer le registre",
     deleteLedgerConfirm: "Supprimer « {name} » et toutes ses dépenses ? Action irréversible.",
     currency: "Devise",
@@ -1071,6 +1085,9 @@ const STRINGS = {
     tplPersonal: "Personal", tplKid: "Niños", tplBlank: "En blanco",
     tplHint: "{n} categorías — puedes renombrarlas o añadir más",
     tplHintBlank: "Sin categorías — añade las tuyas dentro del libro",
+    tplDescHousehold: "Seguimiento detallado del hogar", tplDescPersonal: "Gastos individuales",
+    tplDescTravel: "Categorías de gastos de viaje", tplDescKid: "Tareas, ahorros y mesada", tplDescBlank: "Empezar desde cero",
+    ledgerNameLabel: "Nombre del libro", continueBtn: "Continuar",
     deleteLedger: "Eliminar libro", renameLedger: "Renombrar libro",
     deleteLedgerConfirm: '¿Eliminar "{name}" y todos sus gastos? No se puede deshacer.',
     currency: "Moneda",
@@ -1547,8 +1564,6 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
   // so the list can be ranked by it before LedgerRow ever renders.
   const [statsById, setStatsById] = useState({});
   const [showAll, setShowAll] = useState(false);
-  const [name, setName] = useState("");
-  const [template, setTemplate] = useState("household");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -1575,14 +1590,25 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
   );
   const visibleLedgers = showAll ? rankedLedgers : rankedLedgers.slice(0, 3);
 
-  const create = async () => {
+  const create = async ({ name, template, members, currency, startDate, endDate }) => {
     const trimmed = name.trim();
     if (!trimmed || busy) return;
     setBusy(true);
     try {
       const created = await db.createLedger(trimmed, template);
-      setName("");
-      onOpen(created); // drop straight into the ledger you just made
+      // Travel-only fields and starter members are set right after creation
+      // (same create-then-patch pattern changeCurrency/changePeriod already
+      // use) rather than threading them through createLedger's own signature.
+      if (template === "travel") {
+        await db.updateLedger(created.id, { currency, start_date: startDate || null, end_date: endDate || null });
+      }
+      if (db.featuresFor(template).showSplit && members?.length) {
+        await db.persistMembers(members, [], created.id);
+      }
+      // Merge the travel fields in so the ledger opens already showing the
+      // right period/currency with no reload; members are skipped here — the
+      // ledger view fetches them itself, and persistMembers has already landed.
+      onOpen({ ...created, currency: template === "travel" ? currency : undefined, startDate, endDate });
     } catch (e) { setError(e.message || String(e)); setBusy(false); }
   };
 
@@ -1712,32 +1738,189 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           )}
         </div>
 
-        <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("startWith")}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {["household", "travel", "personal", "kid", "blank"].map((k) => (
-              <button key={k} onClick={() => setTemplate(k)} style={selectablePill(TEAL, template === k)}>
-                {t("tpl" + k[0].toUpperCase() + k.slice(1))}
-              </button>
+        <NewLedgerFlow t={t} busy={busy} onCreate={create} />
+      </div>
+      {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
+    </div>
+  );
+}
+
+const NEW_LEDGER_TEMPLATE_ORDER = ["household", "personal", "travel", "kid", "blank"];
+
+// Progressive mobile flow: pick a template (horizontal snap carousel), confirm
+// it, then members (split-capable templates only) and travel-only trip
+// dates/currency each get their own section with their own "Continue" —
+// nothing later in the flow shows until the step before it is confirmed, and
+// the name field (the actual create step) only appears once every step ahead
+// of it is done. Member setup here is the same ledger_members concept
+// MemberManager edits post-creation (display-name+colour tags for splitting),
+// not the email/role invite system — that one requires a ledger id to already
+// exist, so it stays a post-creation action.
+function NewLedgerFlow({ t, busy, onCreate }) {
+  const [template, setTemplate] = useState(null);
+  const [templateConfirmed, setTemplateConfirmed] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [memberName, setMemberName] = useState("");
+  const [membersConfirmed, setMembersConfirmed] = useState(false);
+  const [currency, setCurrency] = useState("CAD");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [travelConfirmed, setTravelConfirmed] = useState(false);
+  const [name, setName] = useState("");
+  const [profile] = useMyProfile();
+  const confirmRef = useRef(null);
+  const membersRef = useRef(null);
+  const travelRef = useRef(null);
+  const nameRef = useRef(null);
+
+  const features = template ? db.featuresFor(template) : null;
+  const needsMembers = !!features?.showSplit;
+  const needsTravel = template === "travel";
+  const showMembers = templateConfirmed && needsMembers;
+  const showTravel = templateConfirmed && needsTravel && (!needsMembers || membersConfirmed);
+  const showName = templateConfirmed && (!needsMembers || membersConfirmed) && (!needsTravel || travelConfirmed);
+
+  const pickTemplate = (k) => {
+    setTemplate(k);
+    setTemplateConfirmed(false);
+    setMembersConfirmed(false);
+    setTravelConfirmed(false);
+  };
+
+  useEffect(() => {
+    if (template && !templateConfirmed) confirmRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [template, templateConfirmed]);
+  useEffect(() => {
+    if (showMembers) membersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showMembers]);
+  useEffect(() => {
+    if (showTravel) travelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showTravel]);
+  useEffect(() => {
+    if (showName) nameRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showName]);
+
+  // Seed one default member ("you") the first time a split-capable template
+  // is confirmed, same fallback name createLedger itself uses for the silent
+  // single-payer templates.
+  useEffect(() => {
+    if (showMembers && members.length === 0) {
+      setMembers([{ id: uid(), name: profile?.name || "Me", color: db.MEMBER_COLORS[0], icon: "user" }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMembers, profile]);
+
+  const addMember = () => {
+    const trimmed = memberName.trim();
+    if (!trimmed) return;
+    setMembers((m) => [...m, { id: uid(), name: trimmed, color: db.MEMBER_COLORS[m.length % db.MEMBER_COLORS.length], icon: "user" }]);
+    setMemberName("");
+  };
+  const removeMember = (id) => setMembers((m) => m.filter((x) => x.id !== id));
+
+  const create = () => {
+    if (!name.trim() || busy) return;
+    onCreate({
+      name, template,
+      members: features?.showSplit ? members : [],
+      currency: template === "travel" ? currency : "CAD",
+      startDate: template === "travel" ? (startDate || null) : null,
+      endDate: template === "travel" ? (endDate || null) : null,
+    });
+  };
+
+  return (
+    <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 16, paddingTop: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 8 }}>{t("startWith")}</div>
+      <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 6 }}>
+        {NEW_LEDGER_TEMPLATE_ORDER.map((k) => {
+          const Icon = ledgerIcon(k);
+          const active = template === k;
+          return (
+            <button key={k} onClick={() => pickTemplate(k)} style={{
+              position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
+              padding: "12px 16px 12px 12px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
+              border: `1.5px solid ${active ? TEAL : LINE}`, background: CARD, boxShadow: active ? ACCENT_GLOW : "none",
+            }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: active ? TEAL : MUTED_BG }}>
+                <Icon size={18} style={{ color: active ? ACCENT_INK : SUB }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: INK }}>{t(ledgerLabelKey(k))}</div>
+                <div style={{ fontSize: 11.5, color: SUB, marginTop: 2, lineHeight: 1.3 }}>{t(ledgerDescKey(k))}</div>
+              </div>
+              <Sparkles size={12} style={{ position: "absolute", top: 10, right: 10, color: active ? TEAL : SUB, opacity: active ? 0.9 : 0.35 }} />
+            </button>
+          );
+        })}
+      </div>
+
+      {template && !templateConfirmed && (
+        <button ref={confirmRef} onClick={() => setTemplateConfirmed(true)} className="btn-glow"
+          style={{ ...addBtn, marginTop: 14 }}>
+          <Check size={17} /> {t("continueBtn")}
+        </button>
+      )}
+
+      {showMembers && (
+        <div ref={membersRef} style={{ paddingTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("members")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {members.map((m) => (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 99, background: m.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 14, color: INK }}>{m.name}</span>
+                <button onClick={() => removeMember(m.id)} style={{ ...iconBtn, width: 28, height: 28 }} aria-label={t("deleteMember")}><X size={14} /></button>
+              </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: SUB, margin: "8px 0 12px" }}>
-            {db.TEMPLATES[template].length
-              ? `${t("tplHint", { n: db.TEMPLATES[template].length })} · ${db.TEMPLATES[template].map((c) => c.name).join(", ")}`
-              : t("tplHintBlank")}
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <input value={memberName} onChange={(e) => setMemberName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMember(); } }}
+              placeholder={t("newMemberPh")} style={{ ...input, flex: 1 }} />
+            <button onClick={addMember} style={{ ...ghostBtn, padding: "10px 12px" }}><Plus size={16} /></button>
           </div>
+          {!membersConfirmed && (
+            <button onClick={() => setMembersConfirmed(true)} className="btn-glow" style={{ ...addBtn, marginTop: 12 }}>
+              <Check size={17} /> {t("continueBtn")}
+            </button>
+          )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+      )}
+
+      {showTravel && (
+        <div ref={travelRef} style={{ paddingTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("tripDates")}</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <input type="date" value={startDate} max={endDate || undefined} onChange={(e) => setStartDate(e.target.value)}
+              aria-label={t("tripStartDate")} style={{ ...input, flex: 1 }} />
+            <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)}
+              aria-label={t("tripEndDate")} style={{ ...input, flex: 1 }} />
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("currency")}</div>
+          <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ ...input, width: "auto" }}>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {!travelConfirmed && (
+            <button onClick={() => setTravelConfirmed(true)} className="btn-glow" style={{ ...addBtn, marginTop: 12 }}>
+              <Check size={17} /> {t("continueBtn")}
+            </button>
+          )}
+        </div>
+      )}
+
+      {showName && (
+        <div ref={nameRef} style={{ paddingTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("ledgerNameLabel")}</div>
           <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()}
-            placeholder={t("newLedgerPh")} style={{ ...input, flex: 1 }} />
+            placeholder={t("newLedgerPh")} style={input} autoFocus />
           <button onClick={create} disabled={!name.trim() || busy} className="btn-glow"
-            style={{ ...addBtn, width: "auto", flexShrink: 0, marginTop: 0, whiteSpace: "nowrap", opacity: !name.trim() || busy ? 0.5 : 1, cursor: !name.trim() || busy ? "not-allowed" : "pointer" }}>
+            style={{ ...addBtn, opacity: !name.trim() || busy ? 0.5 : 1, cursor: !name.trim() || busy ? "not-allowed" : "pointer" }}>
             {busy ? <Loader2 size={17} className="spin" /> : <Plus size={17} />} {t("createLedger")}
           </button>
         </div>
-        <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-      {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
+      )}
+      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
@@ -2554,7 +2737,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
                 <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
                   <Receipt size={26} style={{ opacity: 0.4 }} />
                   <p style={{ margin: "10px 0 0" }}>
-                    {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: label })}
+                    {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: periodLabel })}
                   </p>
                 </div>
               ) : (
