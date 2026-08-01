@@ -245,7 +245,7 @@ const STRINGS = {
     inviteUsed: "This invite has already been used.",
     noLedgers: "No ledgers yet. Create your first one below.",
     language: "Language", openLedger: "Open {name}",
-    startWith: "Start with", tplHousehold: "Home Budget", tplTravel: "Travel",
+    startWith: "Start with a template", tplHousehold: "Home Budget", tplTravel: "Travel",
     tplPersonal: "Personal", tplKid: "Kids", tplBlank: "Blank",
     tplHint: "{n} categories — you can rename or add more later",
     tplHintBlank: "No categories — add your own from inside the ledger",
@@ -457,7 +457,7 @@ const STRINGS = {
     inviteUsed: "呢個邀請已經用咗。",
     noLedgers: "仲未有帳簿。喺下面建立第一本。",
     language: "語言", openLedger: "開啟{name}",
-    startWith: "起始類別", tplHousehold: "家庭預算", tplTravel: "旅行",
+    startWith: "揀個範本開始", tplHousehold: "家庭預算", tplTravel: "旅行",
     tplPersonal: "個人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 個類別 — 之後可以改名或者加",
     tplHintBlank: "冇類別 — 入咗帳簿之後自己加",
@@ -666,7 +666,7 @@ const STRINGS = {
     inviteUsed: "这个邀请已经被使用过了。",
     noLedgers: "还没有账本。在下面创建第一个。",
     language: "语言", openLedger: "打开{name}",
-    startWith: "起始类别", tplHousehold: "家庭预算", tplTravel: "旅行",
+    startWith: "选个模板开始", tplHousehold: "家庭预算", tplTravel: "旅行",
     tplPersonal: "个人", tplKid: "小朋友", tplBlank: "空白",
     tplHint: "{n} 个类别 — 之后可以改名或添加",
     tplHintBlank: "没有类别 — 进入账本后自己添加",
@@ -874,7 +874,7 @@ const STRINGS = {
     inviteUsed: "Cette invitation a déjà été utilisée.",
     noLedgers: "Aucun registre. Créez le premier ci-dessous.",
     language: "Langue", openLedger: "Ouvrir {name}",
-    startWith: "Commencer avec", tplHousehold: "Budget familial", tplTravel: "Voyage",
+    startWith: "Commencer avec un modèle", tplHousehold: "Budget familial", tplTravel: "Voyage",
     tplPersonal: "Personnel", tplKid: "Enfants", tplBlank: "Vierge",
     tplHint: "{n} catégories — renommables, et vous pouvez en ajouter",
     tplHintBlank: "Aucune catégorie — ajoutez les vôtres depuis le registre",
@@ -1082,7 +1082,7 @@ const STRINGS = {
     inviteUsed: "Esta invitación ya se ha usado.",
     noLedgers: "Aún no hay libros. Crea el primero abajo.",
     language: "Idioma", openLedger: "Abrir {name}",
-    startWith: "Empezar con", tplHousehold: "Presupuesto del hogar", tplTravel: "Viaje",
+    startWith: "Empezar con una plantilla", tplHousehold: "Presupuesto del hogar", tplTravel: "Viaje",
     tplPersonal: "Personal", tplKid: "Niños", tplBlank: "En blanco",
     tplHint: "{n} categorías — puedes renombrarlas o añadir más",
     tplHintBlank: "Sin categorías — añade las tuyas dentro del libro",
@@ -1874,15 +1874,13 @@ function NewLedgerFlow({ t, busy, onCreate }) {
     <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 20, paddingTop: 20 }}>
       {/* Same eyebrow-over-title idiom as the ledger cards above, so starting a
           new one reads as a peer of the list rather than a footnote under it. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 14 }}>
-        <span style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, flexShrink: 0, background: TEAL, color: ACCENT_INK, boxShadow: ACCENT_GLOW }}>
-          <Plus size={21} strokeWidth={2.5} />
-        </span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL }}>
-            <Sparkles size={12} style={{ flexShrink: 0 }} /> {t("startWith")}
-          </div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.3, color: INK, marginTop: 1 }}>{t("createLedger")}</div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Plus size={22} strokeWidth={2.75} style={{ color: TEAL, flexShrink: 0 }} />
+          <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.3, color: INK }}>{t("createLedger")}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL }}>
+          <Sparkles size={12} style={{ flexShrink: 0 }} /> {t("startWith")}
         </div>
       </div>
       <div className="no-scrollbar" style={{ display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 4 }}>
