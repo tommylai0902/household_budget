@@ -2238,8 +2238,10 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
       // rules — no toggle, just kept current alongside the generation above.
       await db.syncUpcomingChargeReminders(ledger.id, (name, days) => t("upcomingChargeTitle", { name, days })).catch(() => {});
       // Same deal for food about to go off — expiry_date has existed since
-      // migration 021 but never reached the bell (migration 033).
-      await db.syncExpiryReminders(ledger.id, (name, date) => t("expiryReminderTitle", { name, date: shortDate(date, lang) })).catch(() => {});
+      // migration 021 but never reached the bell (migration 033). Inventory
+      // is household-wide (038), so this isn't scoped to this ledger — it
+      // just runs opportunistically whenever any ledger loads.
+      await db.syncExpiryReminders((name, date) => t("expiryReminderTitle", { name, date: shortDate(date, lang) })).catch(() => {});
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
       // Wishlist goal is Kid-Ledger-only — every other template skips the query
@@ -2582,8 +2584,10 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
             else it appears (the Home dashboard's card does the same); the
             in-ledger transactions view is reached via the budget banner's
             "View transactions" instead, same as from Home. */}
-        {viewState === "inventory" && <InventoryPanel ledgerId={ledger.id} t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
-        {viewState === "grocery" && <GroceryListPanel ledgerId={ledger.id} ledgerPostalCode={ledger.postalCode} t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
+        {/* No ledgerId — Inventory Hub and Smart Grocery are household-wide,
+            not scoped to this ledger (migration 038). */}
+        {viewState === "inventory" && <InventoryPanel t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
+        {viewState === "grocery" && <GroceryListPanel t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
       </div>
 
       {detail && (
@@ -5044,14 +5048,17 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
   const [pendingGrocery, setPendingGrocery] = useState(0);
   const [dealsActive, setDealsActive] = useState(false);
 
+  // Inventory/grocery are household-wide, not ledger-scoped (migration 038)
+  // — these counts don't depend on ledgerId, and shouldn't refetch (or
+  // change) when the Home ledger switcher changes.
   useEffect(() => {
     let live = true;
-    db.fetchInventoryItems(ledgerId).then((items) => {
+    db.fetchInventoryItems().then((items) => {
       if (!live) return;
       setInventoryCount(items.length);
       setLowStockCount(items.filter((it) => it.minQuantity != null && it.quantity <= it.minQuantity).length);
     }).catch(() => {});
-    db.fetchGroceryList(ledgerId).then((items) => {
+    db.fetchGroceryList().then((items) => {
       if (!live) return;
       setPendingGrocery(items.filter((it) => !it.isCompleted).length);
       // A deal past its own valid-to date isn't "active" — the flyer mirror
@@ -5062,7 +5069,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
       setDealsActive(items.some((it) => it.targetSupermarket && (!it.dealValidTo || it.dealValidTo >= today)));
     }).catch(() => {});
     return () => { live = false; };
-  }, [ledgerId]);
+  }, []);
 
   const over = budget > 0 && spent > budget;
   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
@@ -5314,7 +5321,7 @@ function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
   );
 }
 
-function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
+function InventoryPanel({ t, lang, onSwitchView }) {
   const [items, setItems] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -5351,23 +5358,23 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
     setScanning(false);
   };
   const load = useCallback(() => {
-    db.fetchInventoryItems(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
-  }, [ledgerId]);
+    db.fetchInventoryItems().then(setItems).catch((e) => setError(e.message || String(e)));
+  }, []);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => db.subscribeInventory(ledgerId, load), [ledgerId, load]);
+  useEffect(() => db.subscribeInventory(load), [load]);
 
   const [labels, setLabels] = useState([]);
   const [manageKind, setManageKind] = useState(null); // 'category' | 'location' while its manager is open
   const loadLabels = useCallback(() => {
-    db.fetchInventoryLabels(ledgerId).then(setLabels).catch((e) => setError(e.message || String(e)));
-  }, [ledgerId]);
+    db.fetchInventoryLabels().then(setLabels).catch((e) => setError(e.message || String(e)));
+  }, []);
   useEffect(() => { loadLabels(); }, [loadLabels]);
-  useEffect(() => db.subscribeInventoryLabels(ledgerId, loadLabels), [ledgerId, loadLabels]);
+  useEffect(() => db.subscribeInventoryLabels(loadLabels), [loadLabels]);
   const categories = labels.filter((l) => l.kind === "category");
   const locations = labels.filter((l) => l.kind === "location");
   const labelName = (id) => labels.find((l) => l.id === id)?.name || "";
   const saveLabels = async (kind, list) => {
-    await db.saveInventoryLabels(ledgerId, kind, list);
+    await db.saveInventoryLabels(kind, list);
     loadLabels();
     load(); // a deleted label leaves its items unfiled — reflect that straight away
   };
@@ -5390,13 +5397,13 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
   const [toast, setToast] = useState(null); // { id, text } — id changes so a repeat message restarts the timer
   const doAddToGrocery = async (item) => {
     try {
-      await db.addGroceryItem(ledgerId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity));
+      await db.addGroceryItem(item.name, Math.max(1, (item.minQuantity || 1) - item.quantity));
       setToast({ id: Date.now(), text: t("addedToGroceryList", { name: item.name }) });
     } catch (e) { setError(e.message || String(e)); }
   };
   const addToGrocery = async (item) => {
     try {
-      const groceryItems = await db.fetchGroceryList(ledgerId);
+      const groceryItems = await db.fetchGroceryList();
       const alreadyPending = groceryItems.some((g) => !g.isCompleted && g.itemName.toLowerCase() === item.name.toLowerCase());
       if (alreadyPending) { setConfirmAddItem(item); return; }
       await doAddToGrocery(item);
@@ -5406,7 +5413,7 @@ function InventoryPanel({ ledgerId, t, lang, onSwitchView }) {
     if (!draft.name.trim() || saving) return;
     setSaving(true);
     try {
-      await db.upsertInventoryItem(ledgerId, {
+      await db.upsertInventoryItem({
         name: draft.name.trim(), quantity: draft.quantity, unit: draft.unit,
         minQuantity: draft.minQuantity === "" ? null : Number(draft.minQuantity),
         expiryDate: draft.expiryDate || null,
@@ -5679,24 +5686,25 @@ function InventoryItemForm({ item, t, categories = [], locations = [], onManage,
 
 const NEW_GROCERY_ITEM = { itemName: "", quantityNeeded: 1, brand: "" };
 
-function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView }) {
+function GroceryListPanel({ t, lang, onSwitchView }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  // The ledger's saved code wins over the device cache: the weekly flyer cron
-  // looks up prices for whatever is stored on the ledger, so a stale
-  // localStorage value from another device would query a region nothing was
-  // ever cached for and every lookup would come back "pending" forever.
-  const [postalCode, setPostalCode] = useState(() => ledgerPostalCode || getPostalCode());
+  // The device cache renders instantly while the real (household-wide, not
+  // per-ledger — migration 038) value loads in the background below.
+  const [postalCode, setPostalCode] = useState(() => getPostalCode());
+  useEffect(() => {
+    db.fetchHouseholdPostalCode().then((pc) => { if (pc) { setPostalCode(pc); cachePostalCode(pc); } }).catch(() => {});
+  }, []);
   const postalRef = useRef(null); // focused when a search is attempted without one
   const [toast, setToast] = useState(null);
   const [checkingId, setCheckingId] = useState(null);
   const [scanning, setScanning] = useState(false);
   const load = useCallback(() => {
-    db.fetchGroceryList(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
-  }, [ledgerId]);
+    db.fetchGroceryList().then(setItems).catch((e) => setError(e.message || String(e)));
+  }, []);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => db.subscribeGroceryList(ledgerId, load), [ledgerId, load]);
+  useEffect(() => db.subscribeGroceryList(load), [load]);
 
   // Same form as editing, so brand can be set while adding. Bumping addKey
   // remounts it blank: the form seeds its fields from props once, and the
@@ -5704,7 +5712,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   const [addKey, setAddKey] = useState(0);
   const add = async ({ itemName, quantityNeeded, brand }) => {
     try {
-      await db.addGroceryItem(ledgerId, itemName, quantityNeeded, brand);
+      await db.addGroceryItem(itemName, quantityNeeded, brand);
       setAddKey((k) => k + 1);
       load();
     } catch (e) { setError(e.message || String(e)); }
@@ -5792,10 +5800,10 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
   // stay in step — marking a store in one is reflected in the other.
   const [storePolicies, setStorePolicies] = useState([]);
   const loadStorePolicies = useCallback(() => {
-    db.fetchStorePolicies(ledgerId).then(setStorePolicies).catch(() => {});
-  }, [ledgerId]);
+    db.fetchStorePolicies().then(setStorePolicies).catch(() => {});
+  }, []);
   useEffect(() => { loadStorePolicies(); }, [loadStorePolicies]);
-  useEffect(() => db.subscribeStorePolicies(ledgerId, loadStorePolicies), [ledgerId, loadStorePolicies]);
+  useEffect(() => db.subscribeStorePolicies(loadStorePolicies), [loadStorePolicies]);
   const pending = (items || []).filter((it) => !it.isCompleted);
   const done = (items || []).filter((it) => it.isCompleted);
   // Both lists render the same thing; only which bucket they sit in differs.
@@ -5813,7 +5821,7 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
     try {
       // A scanned product isn't on the list yet (id null) — add it first, then
       // stamp the deal on the new row. A real list item already has an id.
-      const id = dealsFor.item.id ?? await db.addGroceryItem(ledgerId, dealsFor.item.itemName, 1, dealsFor.item.brand);
+      const id = dealsFor.item.id ?? await db.addGroceryItem(dealsFor.item.itemName, 1, dealsFor.item.brand);
       await db.setGroceryDeal(id, {
         targetSupermarket: deal.merchant, dealPrice: deal.price,
         dealImageUrl: deal.imageUrl, dealItemName: deal.name,
@@ -5843,10 +5851,10 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
         </button>
       </div>
       {error && <div style={errorBox}>{error}</div>}
-      {/* Saved to the ledger on blur, not per keystroke — the cron reads it
+      {/* Saved household-wide on blur, not per keystroke — the cron reads it
           from there to know which region's flyers to pull. */}
       <input ref={postalRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
-        onBlur={() => db.updateLedger(ledgerId, { postal_code: postalCode.trim() || null }).catch((e) => setError(e.message || String(e)))}
+        onBlur={() => db.updateHouseholdPostalCode(postalCode.trim()).catch((e) => setError(e.message || String(e)))}
         placeholder={t("postalCodePh")} style={{ ...input, borderColor: hasPostal ? undefined : WARN }} />
       {/* Stated up front rather than only on a failed tap — price matching is
           the point of this screen and it can't work without a region. */}
@@ -5903,10 +5911,10 @@ function GroceryListPanel({ ledgerId, ledgerPostalCode, t, lang, onSwitchView })
           onPick={pickDeal} onClose={() => setDealsFor(null)} />
       )}
       {showStores && (
-        <StoreSetupPanel ledgerId={ledgerId} postalCode={postalCode} t={t} lang={lang} onClose={() => setShowStores(false)} />
+        <StoreSetupPanel postalCode={postalCode} t={t} lang={lang} onClose={() => setShowStores(false)} />
       )}
       {showPriceMatch && (
-        <PriceMatchModePanel ledgerId={ledgerId} postalCode={postalCode} items={pending} stores={storePolicies}
+        <PriceMatchModePanel postalCode={postalCode} items={pending} stores={storePolicies}
           t={t} lang={lang} onClose={() => setShowPriceMatch(false)}
           onSetUpStores={() => { setShowPriceMatch(false); setShowStores(true); }} />
       )}
@@ -6156,7 +6164,7 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
 // unknowable for anything not in this store's own flyer. A savings number
 // would have to be invented for those, and an invented number on a screen you
 // take to a cashier is worse than no number.
-function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onClose, onSetUpStores }) {
+function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSetUpStores }) {
   // Exactly one store is local (migration 036) — the one you actually stand
   // in. Nothing left to pick, so the report just runs.
   const localStore = stores.find((s) => s.isLocal);
@@ -6297,7 +6305,7 @@ function PriceMatchModePanel({ ledgerId, postalCode, items, stores, t, lang, onC
 // must stay distinct from "no" — a wrong "no" quietly hides real savings, a
 // wrong "yes" sends you to the counter for an argument. Nothing ships
 // pre-filled because policies vary by franchise owner and change unannounced.
-function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
+function StoreSetupPanel({ postalCode, t, lang, onClose }) {
   const [merchants, setMerchants] = useState(null); // null = loading
   const [policies, setPolicies] = useState([]);
   const [query, setQuery] = useState("");
@@ -6321,21 +6329,21 @@ function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   }, [typeFilterOpen]);
 
   const loadPolicies = useCallback(() => {
-    db.fetchStorePolicies(ledgerId).then(setPolicies).catch((e) => setError(e.message || String(e)));
-  }, [ledgerId]);
+    db.fetchStorePolicies().then(setPolicies).catch((e) => setError(e.message || String(e)));
+  }, []);
   useEffect(() => {
     db.fetchNearbyMerchants(postalCode).then(setMerchants).catch((e) => { setError(e.message || String(e)); setMerchants([]); });
   }, [postalCode]);
   useEffect(() => { loadPolicies(); }, [loadPolicies]);
-  useEffect(() => db.subscribeStorePolicies(ledgerId, loadPolicies), [ledgerId, loadPolicies]);
+  useEffect(() => db.subscribeStorePolicies(loadPolicies), [loadPolicies]);
 
   const policyFor = (merchant) => policies.find((p) => p.merchant === merchant) || {};
   const patch = async (merchant, fields) => {
-    try { await db.setStorePolicy(ledgerId, merchant, fields); loadPolicies(); }
+    try { await db.setStorePolicy(merchant, fields); loadPolicies(); }
     catch (e) { setError(e.message || String(e)); }
   };
   const setLocal = async (merchant) => {
-    try { await db.setLocalStore(ledgerId, merchant); loadPolicies(); }
+    try { await db.setLocalStore(merchant); loadPolicies(); }
     catch (e) { setError(e.message || String(e)); }
   };
 
