@@ -349,7 +349,7 @@ building for statements yet.
 | `GOOGLE_VISION_CREDENTIALS_JSON` | server only; optional — unset just means every receipt scan goes straight to Gemini |
 | `VITE_VAPID_PUBLIC_KEY` | client (safe to ship) |
 | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | server only |
-| `CRON_SECRET` | Vercel only; gates both crons |
+| `CRON_SECRET` | Vercel only; gates both crons — **pending rotation, see State** |
 
 Anything `VITE_`-prefixed is bundled into browser JS and readable by anyone.
 Only the **anon** key belongs there.
@@ -418,6 +418,18 @@ on a home-screen-installed iPhone (`push_subscriptions.endpoint` is
 deleting the test row.
 
 **Unfinished:**
+- **Rotate `CRON_SECRET` (precautionary, not an incident).** The current value
+  ended up in plaintext in `.claude/settings.local.json`: Claude Code stores
+  approved commands verbatim, and an approved `curl -H "Authorization: Bearer
+  <secret>"` against `/api/refresh-flyers` was recorded whole. It was **never
+  committed** — verified with `git log --all -S` across every branch — and that
+  file is gitignored and untracked as of a056f69, so nothing leaked. Still worth
+  replacing, since it now sits in a file any future agent session can read. To
+  rotate: generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`,
+  set it in Vercel's env vars *and* `.env.local` so local matches production,
+  redeploy, confirm a cron route returns 200 with the new secret and 401
+  without, then delete the stale token from the allowlist file. Nothing
+  client-side reads it — only the two cron routes below.
 - **Known quirk, unfixed:** from Inventory or Grocery, the view switcher's
   "Ledger & Transactions" calls `onExit()` and lands on the ledger *picker*,
   not the transactions view (`BudgetApp.jsx`, the `onSwitchView` props). Looks
