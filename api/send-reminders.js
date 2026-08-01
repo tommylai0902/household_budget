@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     // recipients now — inventory expiry uses the household-wide set below.
     const [{ data: roles }, { data: ledgers }] = await Promise.all([
       supabase.from("ledger_role").select("ledger_id, user_id"),
-      supabase.from("ledgers").select("id, owner_id"),
+      supabase.from("ledgers").select("id, owner_id, archived"),
     ]);
     const usersByLedger = new Map();
     for (const l of ledgers || []) usersByLedger.set(l.id, new Set([l.owner_id].filter(Boolean)));
@@ -93,6 +93,11 @@ export default async function handler(req, res) {
     // Everyone in the household allowlist — the recipient set for
     // household-wide (ledger_id null) notifications, i.e. inventory expiry.
     const householdUsers = new Set((members || []).map((m) => m.user_id));
+    // An archived ledger (migration 041) is hidden everywhere in the app, so it
+    // has no business buzzing a phone about a subscription nobody can see any
+    // more. Household-wide inventory reminders (ledger_id null) aren't tied to
+    // a ledger at all and keep sending.
+    const archivedLedgers = new Set((ledgers || []).filter((l) => l.archived).map((l) => l.id));
 
     // Which language to write a row's title in. The row feeds the in-app bell,
     // which is shared by everyone who can see it, so there is no single right
@@ -142,6 +147,7 @@ export default async function handler(req, res) {
     let sent = 0, pruned = 0;
     const pushedIds = [], deadEndpoints = [];
     for (const n of due) {
+      if (n.ledger_id && archivedLedgers.has(n.ledger_id)) continue;
       let anySent = false;
       const url = notificationUrl(n);
       const recipients = n.ledger_id == null ? householdUsers : (usersByLedger.get(n.ledger_id) || []);

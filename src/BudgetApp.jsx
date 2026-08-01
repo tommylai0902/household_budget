@@ -4,6 +4,7 @@ import {
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
   Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, ExternalLink,
+  Archive, ArchiveRestore,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -254,6 +255,10 @@ const STRINGS = {
     ledgerNameLabel: "Ledger name", continueBtn: "Continue",
     deleteLedger: "Delete ledger", renameLedger: "Rename ledger", moreActions: "More actions",
     deleteLedgerConfirm: 'Delete "{name}" and every expense in it? This cannot be undone.',
+    archiveLedger: "Archive", archivedLedgers: "Archived ledgers",
+    noArchivedLedgers: "Nothing archived yet.",
+    archiveConfirm: 'Archive "{name}"? It keeps everything in it and hides from your list — restore it any time from Settings.',
+    restoreLedger: "Restore", restoreConfirm: 'Put "{name}" back in your ledger list?',
     ledgerLabelHousehold: "Home Budget", ledgerLabelTravel: "Travel Expenses", ledgerLabelPersonal: "Personal Expenses",
     ledgerLabelKid: "Kids Fund", ledgerLabelBlank: "Custom Ledger",
     transactionsCount: "{n} Transactions", justNow: "Just now", minutesAgo: "{n}m ago", hoursAgo: "{n}h ago",
@@ -466,6 +471,10 @@ const STRINGS = {
     ledgerNameLabel: "帳簿名稱", continueBtn: "繼續",
     deleteLedger: "刪除帳簿", renameLedger: "重新命名帳簿",
     deleteLedgerConfirm: '刪除「{name}」同入面所有支出？此操作無法復原。',
+    archiveLedger: "封存", archivedLedgers: "已封存帳簿",
+    noArchivedLedgers: "仲未封存過任何帳簿。",
+    archiveConfirm: '封存「{name}」？入面啲嘢全部留住，淨係喺清單度收起，隨時可以喺設定度攞返出嚟。',
+    restoreLedger: "還原", restoreConfirm: '將「{name}」放返落帳簿清單？',
     currency: "貨幣",
     tripDates: "旅程日期", tripStartDate: "旅程開始日", tripEndDate: "旅程結束日",
     vaultTitle: "寶藏庫", earnedMoney: "賺咗錢", boughtSomething: "買咗嘢",
@@ -675,6 +684,10 @@ const STRINGS = {
     ledgerNameLabel: "账本名称", continueBtn: "继续",
     deleteLedger: "删除账本", renameLedger: "重命名账本",
     deleteLedgerConfirm: "删除「{name}」及其中所有支出？此操作无法撤销。",
+    archiveLedger: "归档", archivedLedgers: "已归档账本",
+    noArchivedLedgers: "还没有归档任何账本。",
+    archiveConfirm: "归档「{name}」？其中内容全部保留，只是从列表中隐藏，随时可以在设置中恢复。",
+    restoreLedger: "恢复", restoreConfirm: "将「{name}」放回账本列表？",
     currency: "货币",
     tripDates: "旅程日期", tripStartDate: "旅程开始日", tripEndDate: "旅程结束日",
     vaultTitle: "宝藏库", earnedMoney: "赚到钱", boughtSomething: "买了东西",
@@ -883,6 +896,10 @@ const STRINGS = {
     ledgerNameLabel: "Nom du registre", continueBtn: "Continuer",
     deleteLedger: "Supprimer le registre", renameLedger: "Renommer le registre",
     deleteLedgerConfirm: "Supprimer « {name} » et toutes ses dépenses ? Action irréversible.",
+    archiveLedger: "Archiver", archivedLedgers: "Registres archivés",
+    noArchivedLedgers: "Rien d'archivé pour l'instant.",
+    archiveConfirm: "Archiver « {name} » ? Tout son contenu est conservé, il disparaît simplement de votre liste — restaurable à tout moment depuis les Réglages.",
+    restoreLedger: "Restaurer", restoreConfirm: "Remettre « {name} » dans votre liste de registres ?",
     currency: "Devise",
     tripDates: "Dates du voyage", tripStartDate: "Date de début du voyage", tripEndDate: "Date de fin du voyage",
     vaultTitle: "Coffre au trésor", earnedMoney: "Argent gagné", boughtSomething: "Achat",
@@ -1091,6 +1108,10 @@ const STRINGS = {
     ledgerNameLabel: "Nombre del libro", continueBtn: "Continuar",
     deleteLedger: "Eliminar libro", renameLedger: "Renombrar libro",
     deleteLedgerConfirm: '¿Eliminar "{name}" y todos sus gastos? No se puede deshacer.',
+    archiveLedger: "Archivar", archivedLedgers: "Libros archivados",
+    noArchivedLedgers: "Nada archivado todavía.",
+    archiveConfirm: '¿Archivar "{name}"? Conserva todo su contenido y desaparece de tu lista — puedes restaurarlo cuando quieras desde Ajustes.',
+    restoreLedger: "Restaurar", restoreConfirm: '¿Devolver "{name}" a tu lista de libros?',
     currency: "Moneda",
     tripDates: "Fechas del viaje", tripStartDate: "Fecha de inicio del viaje", tripEndDate: "Fecha de fin del viaje",
     vaultTitle: "Cofre del tesoro", earnedMoney: "Dinero ganado", boughtSomething: "Compra",
@@ -1668,6 +1689,22 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
     catch (e) { setError(e.message || String(e)); }
   };
 
+  // Archiving keeps everything and just hides the ledger (migration 041).
+  // Owner-only for the same reason rename/delete are: ledger_update's RLS is
+  // owner_id = auth.uid(), so checking here turns a raw policy violation into
+  // a sentence the user can act on.
+  const [confirmArchive, setConfirmArchive] = useState(null);
+  const archive = (l) => {
+    if (l.ownerId !== currentUserId) { setError(t("ownerOnlyErr")); return; }
+    setConfirmArchive(l);
+  };
+  const doArchive = async () => {
+    const l = confirmArchive;
+    setConfirmArchive(null);
+    try { await db.updateLedger(l.id, { archived: true }); cancelRename(); load(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+
   // Renaming happens in place: the row swaps its open-button for an input so the
   // whole row can't double as "open this ledger" while you're typing in it.
   const [editingId, setEditingId] = useState(null);
@@ -1758,6 +1795,11 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                       </select>
                     </div>
                   )}
+                  {/* Put it away without losing it — the gentler neighbour of the
+                      delete action on the row behind this editor. */}
+                  <button onClick={() => archive(l)} style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginTop: 10 }}>
+                    <Archive size={15} /> {t("archiveLedger")}
+                  </button>
                 </div>
               ) : (
                 <LedgerRow l={l} stats={statsById[l.id]} t={t} lang={lang} onOpen={onOpen} onRename={startRename} onDelete={remove} />
@@ -1782,6 +1824,13 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
         <NewLedgerFlow t={t} busy={busy} onCreate={create} />
       </div>
       {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
+      {/* Not the danger tone — nothing is destroyed, so it shouldn't wear the
+          same red as delete. */}
+      {confirmArchive && (
+        <ConfirmDialog t={t} message={t("archiveConfirm", { name: confirmArchive.name })}
+          confirmLabel={t("archiveLedger")} icon={Archive} tone="primary"
+          onConfirm={doArchive} onCancel={() => setConfirmArchive(null)} />
+      )}
     </div>
   );
 }
@@ -5009,6 +5058,7 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showReminders, setShowReminders] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   // Same row style as Manage reminders/Saved shops below, but these four
   // expand in place instead of opening a new stacked panel — quick tweaks,
   // not screens with their own data. Accordion, not independent toggles, so
@@ -5157,7 +5207,13 @@ function SettingsPanel({ t, lang, changeLang, theme, changeTheme, accent, change
         <Bell size={15} /> {t("manageReminders")}
       </button>
       <PushToggle t={t} lang={lang} />
+      {/* Account-wide like the reminders row above it — archived ledgers belong
+          to the household, not to whichever ledger Settings opened from. */}
+      <button onClick={() => setShowArchived(true)} style={ghostBtn}>
+        <Archive size={15} /> {t("archivedLedgers")}
+      </button>
       {showReminders && <ManageRemindersPanel t={t} lang={lang} onClose={() => setShowReminders(false)} />}
+      {showArchived && <ArchivedLedgersPanel t={t} onClose={() => setShowArchived(false)} />}
       {/* Absent on the picker (no ledger, nothing to remember shops for) — same
           optional-prop gate every other ledger-scoped menu entry already uses. */}
       {onStores && (
@@ -5297,6 +5353,75 @@ function ManageRemindersPanel({ t, lang, onClose }) {
             );
           })}
         </div>
+      )}
+    </Overlay>
+  );
+}
+
+// The other side of archiving (migration 041). Everywhere else in the app
+// reads db.fetchLedgers(), which filters archived ones out — this is the one
+// place that asks for them, which is why restoring lives here rather than in
+// the picker that can no longer see them.
+function ArchivedLedgersPanel({ t, onClose }) {
+  const [items, setItems] = useState(null); // null = loading
+  const [error, setError] = useState("");
+  const [confirmRestore, setConfirmRestore] = useState(null);
+  // Archiving and restoring are both the owner's call (ledger_update's RLS is
+  // owner_id = auth.uid()). Settings has no ledger and never carried a user id,
+  // so read it here rather than threading one through HeaderMenu's three
+  // render sites for a single check.
+  const [myId, setMyId] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setMyId(data.session?.user?.id || null));
+  }, []);
+  const load = useCallback(() => {
+    db.fetchArchivedLedgers().then(setItems).catch((e) => setError(e.message || String(e)));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  // Same show-it-then-check-on-tap shape the picker uses for rename/delete: a
+  // non-owner gets a sentence they can act on instead of a hidden row or a
+  // policy violation.
+  const askRestore = (l) => {
+    if (l.ownerId !== myId) { setError(t("ownerOnlyErr")); return; }
+    setError("");
+    setConfirmRestore(l);
+  };
+  const doRestore = async () => {
+    const l = confirmRestore;
+    setConfirmRestore(null);
+    try { await db.updateLedger(l.id, { archived: false }); load(); }
+    catch (e) { setError(e.message || String(e)); }
+  };
+
+  return (
+    <Overlay title={t("archivedLedgers")} onClose={onClose} t={t}>
+      {error && <div style={errorBox}>{error}</div>}
+      {items === null ? (
+        <Centered>{t("connecting")}</Centered>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noArchivedLedgers")}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((l) => {
+            const Icon = ledgerIcon(l.template);
+            return (
+              <button key={l.id} onClick={() => askRestore(l)}
+                style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
+                <Icon size={16} style={{ color: SUB, flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: TEAL, flexShrink: 0 }}>
+                  <ArchiveRestore size={14} /> {t("restoreLedger")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {confirmRestore && (
+        <ConfirmDialog t={t} message={t("restoreConfirm", { name: confirmRestore.name })}
+          confirmLabel={t("restoreLedger")} icon={ArchiveRestore} tone="primary"
+          onConfirm={doRestore} onCancel={() => setConfirmRestore(null)} />
       )}
     </Overlay>
   );

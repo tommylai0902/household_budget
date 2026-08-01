@@ -45,16 +45,32 @@ const toRowMember = (m, sortOrder) => ({
 const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id);
 
 /* ---- ledgers ---- */
+const toAppLedger = (r) => ({
+  id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id,
+  currency: r.currency || "CAD", postalCode: r.postal_code || "",
+  // Travel-only (migration 040) — a fixed trip period instead of the
+  // monthly cycle. Null/null means "not set", same as today's behaviour.
+  startDate: r.start_date || null, endDate: r.end_date || null,
+});
+
+// Archived ledgers (migration 041) are excluded here rather than at each call
+// site, which is what actually hides them everywhere: the picker, the ledger
+// switcher, `allLedgers` in the ledger view, the notification router's
+// pickLedger, and the cached last-opened ledger (a cached id that's since
+// been archived just isn't found, and falls through to the picker).
 export async function fetchLedgers() {
-  const { data, error } = await supabase.from("ledgers").select("*").order("sort_order").order("created_at");
+  const { data, error } = await supabase.from("ledgers").select("*")
+    .eq("archived", false).order("sort_order").order("created_at");
   if (error) throw error;
-  return data.map((r) => ({
-    id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id,
-    currency: r.currency || "CAD", postalCode: r.postal_code || "",
-    // Travel-only (migration 040) — a fixed trip period instead of the
-    // monthly cycle. Null/null means "not set", same as today's behaviour.
-    startDate: r.start_date || null, endDate: r.end_date || null,
-  }));
+  return data.map(toAppLedger);
+}
+// The other half, for Settings → Archived ledgers. Deliberately its own call:
+// nothing else in the app should ever see these mixed in with the live ones.
+export async function fetchArchivedLedgers() {
+  const { data, error } = await supabase.from("ledgers").select("*")
+    .eq("archived", true).order("sort_order").order("created_at");
+  if (error) throw error;
+  return data.map(toAppLedger);
 }
 // Picker-card-only (count + last activity) — kept out of fetchLedgers() itself
 // since every other caller (switchers, dropdowns) just needs name/icon and
