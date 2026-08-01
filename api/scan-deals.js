@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { hasChineseChars, translateZhGroceryTerm } from "../src/lib/zhGroceryTerms.js";
 
 // User-facing price lookup. Searches the flyer_items mirror and nothing else --
 // Flipp is only ever called by the Thursday cron (api/refresh-flyers.js), so
@@ -25,12 +26,14 @@ export default async function handler(req, res) {
 
   // Rebuilt per attempt rather than reused — postgrest-js filter methods mutate
   // and return `this`, so a shared builder can't be branched on brand below.
-  const baseQuery = () => {
+  // Takes the search term as a parameter (not closed over q) so the Chinese
+  // fallback further down can rebuild it against a translated term too.
+  const baseQuery = (term) => {
     let qb = supabase
       .from("flyer_items")
       .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id, item_id")
       .eq("postal_code", postalCode)
-      .ilike("name", `%${escapeLike(q)}%`);
+      .ilike("name", `%${escapeLike(term)}%`);
     // Expired deals are worse than no deal — a cashier checks the date and turns
     // it down, having wasted the trip. Weekly flyers overlap, so the mirror
     // always holds some already-past items. Rows with no end date are kept: an
@@ -51,7 +54,7 @@ export default async function handler(req, res) {
   // "MILK BONE DOG BISCUITS ... 750-900 G" on a search for milk.
   const brand = (searchParams.get("brand") || "").trim();
 
-  let { data, error } = await (brand ? baseQuery().ilike("name", `%${escapeLike(brand)}%`) : baseQuery())
+  let { data, error } = await (brand ? baseQuery(q).ilike("name", `%${escapeLike(brand)}%`) : baseQuery(q))
     .order("price", { ascending: true }).limit(MAX_RESULTS);
   if (error) return res.status(500).json({ error: error.message });
 
@@ -62,8 +65,22 @@ export default async function handler(req, res) {
   // missing, so fall back to the unfiltered name search rather than
   // reporting a false "no deals".
   if (brand && !data.length) {
-    ({ data, error } = await baseQuery().order("price", { ascending: true }).limit(MAX_RESULTS));
+    ({ data, error } = await baseQuery(q).order("price", { ascending: true }).limit(MAX_RESULTS));
     if (error) return res.status(500).json({ error: error.message });
+  }
+
+  // A Chinese-typed grocery-list item ("雞脾") found nothing directly — most
+  // flyers are English-only, though a handful of ethnic grocers' ARE in
+  // Chinese and would already have matched above without reaching here. Retry
+  // once against a known English equivalent rather than reporting a false
+  // "no deals" for a translation gap, not an actual absence.
+  if (!data.length && hasChineseChars(q)) {
+    const en = translateZhGroceryTerm(q);
+    if (en) {
+      ({ data, error } = await (brand ? baseQuery(en).ilike("name", `%${escapeLike(brand)}%`) : baseQuery(en))
+        .order("price", { ascending: true }).limit(MAX_RESULTS));
+      if (error) return res.status(500).json({ error: error.message });
+    }
   }
 
   const deals = (data || []).map((d) => ({
