@@ -24,6 +24,7 @@ import * as db from "./lib/db";
 import { settlements, netBalances } from "./lib/settle";
 import { nextOccurrence, addDays } from "./lib/recurring";
 import { parseCsvText, guessCategoryId, buildPreviewRows } from "./lib/csv";
+import { parseNotificationUrl, notificationTarget } from "./lib/notificationLink";
 import { suggestCategoryId } from "./lib/categorize";
 
 /* ------------------------------------------------------------------ *
@@ -1329,18 +1330,58 @@ export default function App() {
   const [entryView, setEntryView] = useState("home");
   const openLedger = (l, view) => { setEntryView(view); cacheLastLedgerId(l.id); setLedger(l); };
 
+  // Arriving from a tapped push notification: /?view=…[&ledger=…][&expense=…],
+  // built by api/send-reminders.js and opened by sw.js. Read once at mount
+  // (same one-shot shape as ?invite= below) and cleared from the address bar
+  // so a later refresh doesn't yank the user back to it.
+  const [deepLink] = useState(() => parseNotificationUrl(window.location.search));
+  useEffect(() => {
+    if (deepLink) window.history.replaceState({}, "", window.location.pathname);
+  }, [deepLink]);
+
+  // Where a tapped notification wants to go — set by the push link above, and
+  // by the in-app bell, which routes to exactly the same place. `n` counts
+  // taps so re-tapping the same notification is a new instruction rather than
+  // one the Ledger has already handled and ignores.
+  const [nav, setNav] = useState(() => (deepLink ? { ...deepLink, n: 0 } : null));
+
+  // Which ledger a notification opens in. Its own, when it names one —
+  // otherwise the last-used one, since household-wide inventory reminders
+  // (migration 038) belong to no single ledger. Never a Kid ledger: that
+  // template replaces the whole UI and has no Inventory Hub to land on.
+  const pickLedger = (all, wantedId) => {
+    const grownUp = all.filter((l) => l.template !== "kid");
+    return all.find((l) => l.id === wantedId) || grownUp.find((l) => l.id === getLastLedgerId()) || grownUp[0] || null;
+  };
+
+  const openNotification = useCallback(async (target) => {
+    if (!target) return;
+    try {
+      const all = await db.fetchLedgers();
+      const match = pickLedger(all, target.ledgerId);
+      if (!match) return;
+      setNav((prev) => ({ ...target, n: (prev?.n || 0) + 1 }));
+      // "recurring" is a panel over the ledger, not a view of its own — the
+      // Ledger's nav effect opens it; entryView just needs the page under it.
+      openLedger(match, target.view === "recurring" ? "ledger" : target.view);
+    } catch { /* offline or the ledger vanished — the bell stays open, nothing breaks */ }
+  }, []);
+
   // Bento home is the landing page now — on a fresh sign-in, skip the picker
   // and drop straight into whichever ledger was open last, same idea as the
   // accent/theme caches. Silently falls back to the picker (unchanged) if
   // nothing's cached yet, or the cached ledger is gone/inaccessible.
   useEffect(() => {
     if (!userId || ledger) return;
-    const cached = getLastLedgerId();
-    if (!cached) return;
+    // A deep link names its own ledger, except for household-wide inventory
+    // (migration 038), which still needs *some* ledger to render inside —
+    // hence the first-ledger fallback rather than bouncing to the picker.
+    if (!deepLink && !getLastLedgerId()) return;
     let live = true;
     db.fetchLedgers().then((all) => {
-      const match = all.find((l) => l.id === cached);
-      if (live && match) openLedger(match, "home");
+      const match = deepLink ? pickLedger(all, deepLink.ledgerId) : all.find((l) => l.id === getLastLedgerId());
+      if (!live || !match) return;
+      openLedger(match, deepLink?.view === "recurring" ? "ledger" : (deepLink?.view || "home"));
     }).catch(() => {});
     return () => { live = false; };
   }, [userId]);
@@ -1373,9 +1414,9 @@ export default function App() {
 
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
     onOpen={(l) => openLedger(l, "ledger")} onHome={() => goToView("home")}
-    onNavigate={goToView}
+    onNavigate={goToView} onNotification={openNotification}
     currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
-  return <Ledger ledger={ledger} startView={entryView} currentUserId={session.user.id} onExit={() => setLedger(null)}
+  return <Ledger ledger={ledger} startView={entryView} nav={nav} onNotification={openNotification} currentUserId={session.user.id} onExit={() => setLedger(null)}
     onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
     theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />;
 }
@@ -1558,7 +1599,7 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, inviteMsg, onDismissInvite, currentUserId }) {
+function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, onNotification, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   // Transaction count per ledger, fetched once here (rather than per-row)
   // so the list can be ranked by it before LedgerRow ever renders.
@@ -1661,7 +1702,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
         <BrandHeader
           left={onNavigate && ledgers?.length ? <ViewSwitcher current="ledger" label={t("navDropdownLabel")} hideIcon onSwitch={onNavigate} t={t} /> : undefined}
           right={<>
-          <NotificationBell t={t} lang={lang} />
+          <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
               — plus Home, which jumps into a ledger's Bento dashboard (shown
               whenever there's at least one ledger to land on). */}
@@ -2090,7 +2131,7 @@ const kidActionBtn = (color) => ({
 });
 
 function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAddExpense, onSaveGoal, error,
-  lang, changeLang, t, theme, changeTheme, accent, changeAccent, onExit, onSwitchLedger }) {
+  lang, changeLang, t, theme, changeTheme, accent, changeAccent, onExit, onSwitchLedger, onNotification }) {
   const [actionKind, setActionKind] = useState(null); // null | "earn" | "spend"
   const [editingGoal, setEditingGoal] = useState(false);
 
@@ -2117,7 +2158,7 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
-            <NotificationBell t={t} lang={lang} />
+            <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
             <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
               accent={accent} changeAccent={changeAccent} onHome={onExit} />
           </div>
@@ -2381,7 +2422,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
 }
 
 /* ============================ Ledger ============================== */
-function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSwitchLedgerHome, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
+function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit, onSwitchLedger, onSwitchLedgerHome, lang, changeLang, t, theme, changeTheme, accent, changeAccent }) {
   activeCurrency = ledger.currency || "CAD"; // set before children below read money()/currencySymbol()
   const isOwner = ledger.ownerId === currentUserId; // only owners may manage access
   const features = useLedgerFeatures(ledger);
@@ -2471,6 +2512,31 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => db.subscribeLedger(() => refresh()), [refresh]); // live sync
+
+  // A tapped notification (bell, or the push that opened the app) says which
+  // view it belongs to — see notificationLink.js. "recurring" is a panel over
+  // the ledger rather than a view of its own.
+  useEffect(() => {
+    if (!nav) return;
+    if (nav.view === "recurring") { setViewState("ledger"); setShowRecurring(true); }
+    else if (nav.view) setViewState(nav.view);
+  }, [nav]);
+
+  // ...and, for a cancellation reminder, which expense: open its own detail
+  // panel rather than the list it's buried somewhere in, with the month moved
+  // to match. Waits for `expenses` because the tap can land before this
+  // ledger's rows have loaded, so this retries until the row shows up.
+  // `handledNav` keeps that retry from re-opening the panel on every later
+  // refresh, while still letting the *next* tap through.
+  const handledNav = useRef(-1);
+  useEffect(() => {
+    if (!nav?.expenseId || handledNav.current === nav.n) return;
+    const match = expenses.find((e) => e.id === nav.expenseId);
+    if (!match) return;
+    handledNav.current = nav.n;
+    setMonth(monthOf(match.date));
+    setDetail(match);
+  }, [nav, expenses]);
 
   const catById = (id) => categories.find((c) => c.id === id);
 
@@ -2627,7 +2693,8 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
       <KidLedgerDashboard ledger={ledger} categories={categories} expenses={expenses} members={members}
         goal={goal} onAddExpense={upsertExpense} onSaveGoal={saveGoal} error={error}
         lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme}
-        accent={accent} changeAccent={changeAccent} onExit={onExit} onSwitchLedger={onSwitchLedger} />
+        accent={accent} changeAccent={changeAccent} onExit={onExit} onSwitchLedger={onSwitchLedger}
+        onNotification={onNotification} />
     );
   }
 
@@ -2639,7 +2706,7 @@ function Ledger({ ledger, startView, currentUserId, onExit, onSwitchLedger, onSw
   // the ledger's back-button header share one definition instead of two copies.
   const headerControls = (
     <>
-      <NotificationBell t={t} lang={lang} />
+      <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
       <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
         onHome={viewState === "home" ? undefined : () => setViewState("home")}
         onBudget={viewState === "ledger" ? () => setShowBudget(true) : undefined}
@@ -4699,7 +4766,7 @@ function useMyProfile() {
 // db.fetchNotifications() to whatever ledgers this account can see, so one
 // bell covers every ledger without threading a ledgerId through it. Sits next
 // to HeaderMenu everywhere that renders (picker, every ledger template).
-function NotificationBell({ t, lang }) {
+function NotificationBell({ t, lang, onNavigate }) {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -4735,6 +4802,16 @@ function NotificationBell({ t, lang }) {
   const markRead = async (id) => { try { await db.markNotificationsRead([id]); load(); } catch {} };
   const markAllRead = async () => { try { await db.markNotificationsRead(unread.map((n) => n.id)); load(); } catch {} };
   const dismiss = async (id) => { try { await db.dismissNotification(id); load(); } catch {} };
+  // Tapping the row itself goes to whatever triggered it — the same
+  // destination its push notification uses (notificationLink.js). Acting on
+  // one is as good as reading it, so this marks it read on the way out.
+  const go = async (n) => {
+    const target = notificationTarget(n);
+    if (!target || !onNavigate) return;
+    setOpen(false);
+    if (!n.read) { try { await db.markNotificationsRead([n.id]); load(); } catch {} }
+    onNavigate(target);
+  };
 
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
@@ -4758,16 +4835,28 @@ function NotificationBell({ t, lang }) {
           {items.length === 0 ? (
             <div style={{ padding: "26px 14px", textAlign: "center", color: SUB, fontSize: 13 }}>{t("noNotifications")}</div>
           ) : (
-            items.map((n) => (
+            items.map((n) => {
+            // Not every row has somewhere to go (a source row can be deleted
+            // out from under it) — those stay plain text rather than a button
+            // that looks tappable and does nothing.
+            const target = onNavigate ? notificationTarget(n) : null;
+            return (
               <div key={n.id} style={{ padding: "10px 14px", borderBottom: `1px solid ${LINE}`, background: n.read ? "transparent" : OK_BG }}>
-                <div style={{ fontSize: 13, fontWeight: n.read ? 600 : 800, color: INK }}>{n.title}</div>
-                <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{shortDate(n.remindAt, lang)}</div>
+                <button onClick={() => go(n)} disabled={!target}
+                  style={{ display: "block", width: "100%", padding: 0, border: "none", background: "none", textAlign: "left", fontFamily: "inherit", cursor: target ? "pointer" : "default" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: n.read ? 600 : 800, color: INK }}>{n.title}</span>
+                    {target && <ChevronRight size={14} style={{ color: SUB, flexShrink: 0 }} />}
+                  </div>
+                  <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{shortDate(n.remindAt, lang)}</div>
+                </button>
                 <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
                   {!n.read && <button onClick={() => markRead(n.id)} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("markAsRead")}</button>}
                   <button onClick={() => dismiss(n.id)} style={{ ...categoryLink, fontSize: 12, color: SUB }}>{t("dismiss")}</button>
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       )}

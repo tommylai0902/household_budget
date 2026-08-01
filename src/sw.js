@@ -49,7 +49,16 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const open = clients.find((c) => c.url.startsWith(self.location.origin));
-    if (open) { await open.focus(); return; }
+    if (open) {
+      // Focusing alone would leave the tab on whatever page it happened to be
+      // showing, which is the whole bug this fixes — navigate it to the
+      // notification's own target so a tap always lands on the item that
+      // triggered it. Focus first (always allowed); navigate is best-effort,
+      // it throws on a window this worker doesn't control yet.
+      await open.focus();
+      try { await open.navigate(url); } catch { /* uncontrolled window: the focus above still got them there */ }
+      return;
+    }
     await self.clients.openWindow(url);
   })());
 });

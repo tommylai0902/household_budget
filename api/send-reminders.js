@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { notificationUrl } from "../src/lib/notificationLink.js";
 
 // Daily reminder run (scheduled in vercel.json). Two jobs, in order:
 //
@@ -122,8 +123,10 @@ export default async function handler(req, res) {
     // ---- 2. push what's due ----
     // Unread only: something already dealt with in the bell shouldn't buzz a
     // phone. pushed_at null keeps a daily cron from re-sending the same one.
+    // The three source ids come along so each push can deep-link to the row
+    // that triggered it (notificationUrl) instead of dumping everyone on "/".
     const { data: due, error: derr } = await supabase
-      .from("notifications").select("id, ledger_id, title")
+      .from("notifications").select("id, ledger_id, expense_id, recurring_rule_id, inventory_item_id, title")
       .lte("remind_at", today).is("pushed_at", null).eq("read", false);
     if (derr) throw derr;
 
@@ -140,13 +143,14 @@ export default async function handler(req, res) {
     const pushedIds = [], deadEndpoints = [];
     for (const n of due) {
       let anySent = false;
+      const url = notificationUrl(n);
       const recipients = n.ledger_id == null ? householdUsers : (usersByLedger.get(n.ledger_id) || []);
       for (const userId of recipients) {
         for (const s of subsByUser.get(userId) || []) {
           try {
             await webpush.sendNotification(
               { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-              JSON.stringify({ title: n.title, body: "", tag: `notif-${n.id}`, url: "/" }),
+              JSON.stringify({ title: n.title, body: "", tag: `notif-${n.id}`, url }),
             );
             sent++; anySent = true;
           } catch (e) {
