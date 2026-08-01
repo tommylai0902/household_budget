@@ -115,6 +115,10 @@ export default async function handler(req, res) {
               valid_from: (it.valid_from || f.valid_from || "").slice(0, 10) || null,
               valid_to: (it.valid_to || f.valid_to || "").slice(0, 10) || null,
               flyer_id: f.id,
+              // Flipp's own per-item id — lets a link jump straight to this
+              // item's position in the flyer instead of the front page. See
+              // migration 039.
+              item_id: it.id || null,
               image_url: https(it.cutout_image_url),
               merchant_logo: https(f.merchant_logo),
               fetched_at: runAt,

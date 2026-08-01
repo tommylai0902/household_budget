@@ -5826,7 +5826,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
         targetSupermarket: deal.merchant, dealPrice: deal.price,
         dealImageUrl: deal.imageUrl, dealItemName: deal.name,
         dealValidTo: deal.validTo, dealMerchantLogo: deal.merchantLogo,
-        dealFlyerId: deal.flyerId, dealPostalCode: deal.postalCode,
+        dealFlyerId: deal.flyerId, dealItemId: deal.itemId, dealPostalCode: deal.postalCode,
       });
       setDealsFor(null);
       load();
@@ -5959,7 +5959,7 @@ function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
           {/* Its own control, not nested in the card button — a link inside a
               button is invalid HTML and picking the deal would swallow the tap. */}
           {d.flyerId && (
-            <a href={db.flyerUrl(d.flyerId, d.postalCode)} target="_blank" rel="noopener noreferrer"
+            <a href={db.dealUrl(d.itemId, d.flyerId, d.postalCode)} target="_blank" rel="noopener noreferrer"
               title={t("viewFullFlyer")} aria-label={t("viewFullFlyer")}
               style={{ ...iconBtn, position: "absolute", top: 8, right: 8, width: 28, height: 28, background: CARD }}>
               <ExternalLink size={14} />
@@ -6089,9 +6089,11 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
             </div>
             {/* Some cashiers want the whole flyer, not just the cutout. Links
                 out to Flipp's own page rather than mirroring it — see
-                migration 028. stopPropagation so it doesn't collapse the row. */}
+                migration 028 — and straight to this item's position when a
+                deal_item_id is on hand (migration 039), not just the front
+                page. stopPropagation so it doesn't collapse the row. */}
             {it.dealFlyerId && (
-              <a href={db.flyerUrl(it.dealFlyerId, it.dealPostalCode)} target="_blank" rel="noopener noreferrer"
+              <a href={db.dealUrl(it.dealItemId, it.dealFlyerId, it.dealPostalCode)} target="_blank" rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center", textDecoration: "none", boxSizing: "border-box" }}>
                 <ExternalLink size={14} /> {t("viewFullFlyer")}
@@ -6202,7 +6204,7 @@ function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSe
         productName: it.itemName, status: "can_match",
         cheaperStore: best.merchant, lowestPrice: best.price, matchedName: best.name,
         imageUrl: best.imageUrl, merchantLogo: best.merchantLogo, validTo: best.validTo,
-        flyerUrl: db.flyerUrl(best.flyerId, best.postalCode),
+        flyerUrl: db.dealUrl(best.itemId, best.flyerId, best.postalCode),
       };
     })).then((rows) => { if (live) setReport(rows); })
       .catch((e) => { if (live) setError(e.message || String(e)); })

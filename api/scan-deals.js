@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const baseQuery = () => {
     let qb = supabase
       .from("flyer_items")
-      .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id")
+      .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id, item_id")
       .eq("postal_code", postalCode)
       .ilike("name", `%${escapeLike(q)}%`);
     // Expired deals are worse than no deal — a cashier checks the date and turns
@@ -71,7 +71,10 @@ export default async function handler(req, res) {
     validFrom: d.valid_from, validTo: d.valid_to,
     imageUrl: d.image_url, merchantLogo: d.merchant_logo,
     // Enough to rebuild the public flyer URL client-side — see migration 028.
-    flyerId: d.flyer_id, postalCode,
+    // itemId (039) lets that link jump straight to this item's position in
+    // the flyer instead of the front page; older mirrored rows may not have
+    // one yet, in which case the client falls back to the flyer-only link.
+    flyerId: d.flyer_id, itemId: d.item_id, postalCode,
   }));
 
   // No rows for the region at all means the weekly mirror hasn't run for it

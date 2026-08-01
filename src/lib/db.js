@@ -1009,15 +1009,25 @@ const toAppGroceryItem = (r) => ({
   dealPrice: r.deal_price != null ? Number(r.deal_price) : null,
   dealImageUrl: r.deal_image_url || "", dealItemName: r.deal_item_name || "",
   dealValidTo: r.deal_valid_to || null, dealMerchantLogo: r.deal_merchant_logo || "",
-  dealFlyerId: r.deal_flyer_id || null, dealPostalCode: r.deal_postal_code || "",
+  dealFlyerId: r.deal_flyer_id || null, dealItemId: r.deal_item_id || null, dealPostalCode: r.deal_postal_code || "",
 });
+
+const normalisedPostal = (postalCode) => encodeURIComponent((postalCode || "").toUpperCase().replace(/\s+/g, ""));
 
 // Flipp publishes each flyer at this public URL; the city segment and name
 // slug that appear in their own links are optional, so the numeric id we
-// already store is enough. Used for "view the whole flyer" at the till —
-// see migration 028 for why this links out instead of mirroring the pages.
+// already store is enough. Used as the fallback when a deal has no itemId
+// (older mirrored rows, migration 039) — see migration 028 for why this
+// links out instead of mirroring the pages.
 export const flyerUrl = (flyerId, postalCode) =>
-  flyerId ? `https://flipp.com/en-ca/flyer/${flyerId}?postal_code=${encodeURIComponent((postalCode || "").toUpperCase().replace(/\s+/g, ""))}` : "";
+  flyerId ? `https://flipp.com/en-ca/flyer/${flyerId}?postal_code=${normalisedPostal(postalCode)}` : "";
+
+// Jumps straight to the deal's own position in the flyer rather than its
+// front page. Verified against Flipp's own site: /en-ca/item/{id}-<anything>
+// resolves purely by the numeric id — a deliberately wrong slug still opened
+// the exact right item — so no merchant-name-to-slug mapping is needed.
+export const dealUrl = (itemId, flyerId, postalCode) =>
+  itemId ? `https://flipp.com/en-ca/item/${itemId}-deal?postal_code=${normalisedPostal(postalCode)}` : flyerUrl(flyerId, postalCode);
 
 // Household-wide, not ledger-scoped (migration 038) — same list regardless
 // of which ledger you're viewing.
@@ -1037,7 +1047,7 @@ export async function addGroceryItem(itemName, quantityNeeded = 1, brand = "") {
 }
 const CLEARED_DEAL = {
   target_supermarket: null, deal_price: null, deal_image_url: null, deal_item_name: null,
-  deal_valid_to: null, deal_merchant_logo: null, deal_flyer_id: null, deal_postal_code: null,
+  deal_valid_to: null, deal_merchant_logo: null, deal_flyer_id: null, deal_item_id: null, deal_postal_code: null,
 };
 // Completed items are done being shopped for — the cutout, price and flyer
 // link only mattered in the aisle, and keeping them attached after just
@@ -1062,13 +1072,13 @@ export async function deleteGroceryItem(id) {
   const { error } = await supabase.from("grocery_list").delete().eq("id", id);
   if (error) throw error;
 }
-export async function setGroceryDeal(id, { targetSupermarket, dealPrice, dealImageUrl, dealItemName, dealValidTo, dealMerchantLogo, dealFlyerId, dealPostalCode }) {
+export async function setGroceryDeal(id, { targetSupermarket, dealPrice, dealImageUrl, dealItemName, dealValidTo, dealMerchantLogo, dealFlyerId, dealItemId, dealPostalCode }) {
   const { error } = await supabase.from("grocery_list")
     .update({
       target_supermarket: targetSupermarket, deal_price: dealPrice,
       deal_image_url: dealImageUrl || null, deal_item_name: dealItemName || null,
       deal_valid_to: dealValidTo || null, deal_merchant_logo: dealMerchantLogo || null,
-      deal_flyer_id: dealFlyerId || null, deal_postal_code: dealPostalCode || null,
+      deal_flyer_id: dealFlyerId || null, deal_item_id: dealItemId || null, deal_postal_code: dealPostalCode || null,
     }).eq("id", id);
   if (error) throw error;
 }
