@@ -1734,32 +1734,36 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
       {/* Dark-mode-only aurora — like the Kid Ledger's own fixed bright
           palette elsewhere in this file, this is a deliberate decorative
           exception to the single user-pickable --accent that drives every
-          other glow in the app. Three diagonal ribbons (teal/violet/mint)
-          sweep down from the top of the viewport through the card list and
-          fade into the page's own dark background before the fold — actual
-          aurora-curtain coverage per the source spec, not corner glow blobs.
-          screen blend + isolation so the ribbons brighten where they overlap
-          each other without bleeding into content painted above them.
-          Colours only read right against a near-black canvas, and the spec
-          gave no light-mode version, so light mode keeps the original
+          other glow in the app. A wide emerald field with a narrower violet
+          band crossing through it (screen blend, so the overlap brightens
+          instead of washing to grey) and a mint highlight for variation —
+          verified by rendering this exact markup standalone and comparing
+          screenshots against the source spec, because the previous ribbon
+          version *looked* right in code but rendered as a near-invisible
+          smear: too much blur plus too-low alpha on overlapping screen-blend
+          layers desaturates everything toward the background instead of
+          producing distinct colour. This version keeps blur moderate (35-
+          40px, not 55-65px) and core alpha high (0.8-0.9) so colour survives
+          the blend. Fades into the page's own dark background before the
+          fold. Colours only read right against a near-black canvas, and the
+          spec gave no light-mode version, so light mode keeps the original
           single-glow treatment below rather than guessing one. */}
       {theme === "dark" ? (
-        <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0, isolation: "isolate" }}>
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 100% 60% at 50% 0%, rgba(20,184,166,0.18), transparent 65%)" }} />
-          <div style={{ position: "absolute", left: "5%", top: "-15%", width: "72vw", height: "82vh", maxWidth: 480, maxHeight: 700, borderRadius: "50%",
-            background: "linear-gradient(180deg, transparent 0%, rgba(45,212,191,0.55) 28%, rgba(16,185,129,0.6) 48%, rgba(20,184,166,0.35) 68%, transparent 88%)",
-            mixBlendMode: "screen", filter: "blur(65px)", transform: "rotate(14deg)", animation: "auroraTealDrift 16s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", left: "22%", top: "-10%", width: "56vw", height: "76vh", maxWidth: 400, maxHeight: 640, borderRadius: "50%",
-            background: "linear-gradient(180deg, transparent 5%, rgba(139,92,246,0.5) 42%, rgba(168,85,247,0.5) 58%, transparent 88%)",
-            mixBlendMode: "screen", filter: "blur(60px)", transform: "rotate(24deg)", animation: "auroraVioletDrift 14s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", right: "2%", top: "-12%", width: "48vw", height: "68vh", maxWidth: 340, maxHeight: 560, borderRadius: "50%",
-            background: "linear-gradient(180deg, transparent 10%, rgba(110,231,183,0.55) 40%, rgba(52,211,153,0.3) 68%, transparent 90%)",
-            mixBlendMode: "screen", filter: "blur(55px)", transform: "rotate(-12deg)", animation: "auroraMintDrift 18s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", inset: "auto 0 0 0", height: "38%", background: "linear-gradient(to bottom, transparent, var(--paper) 85%)" }} />
+        <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+          <div style={{ position: "absolute", left: "-30%", top: "-15%", width: "160vw", height: "80vh",
+            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(16,185,129,0.85) 0%, rgba(20,184,166,0.6) 40%, rgba(13,148,136,0.25) 65%, transparent 82%)",
+            mixBlendMode: "screen", filter: "blur(40px)", transform: "rotate(8deg)", animation: "auroraGreenDrift 16s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", left: "-25%", top: "-20%", width: "62vw", height: "86vh",
+            background: "radial-gradient(ellipse 42% 100% at 50% 50%, rgba(168,85,247,0.9) 0%, rgba(147,51,234,0.65) 38%, rgba(124,58,237,0.2) 60%, transparent 78%)",
+            mixBlendMode: "screen", filter: "blur(38px)", transform: "rotate(27deg)", animation: "auroraVioletDrift 14s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", left: "-10%", top: "-6%", width: "110vw", height: "44vh",
+            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(110,231,183,0.85) 0%, rgba(52,211,153,0.45) 45%, transparent 78%)",
+            mixBlendMode: "screen", filter: "blur(35px)", transform: "rotate(11deg)", animation: "auroraMintDrift 18s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", inset: "auto 0 0 0", height: "30%", background: "linear-gradient(to bottom, transparent, var(--paper) 90%)" }} />
           <style>{`
-            @keyframes auroraTealDrift { 0%,100% { transform: translate(0,0) rotate(14deg) scaleY(1); opacity: .8; } 50% { transform: translate(3vw,2vh) rotate(18deg) scaleY(1.06); opacity: .95; } }
-            @keyframes auroraVioletDrift { 0%,100% { transform: translate(0,0) rotate(24deg) scaleY(1); opacity: .65; } 50% { transform: translate(-3vw,3vh) rotate(19deg) scaleY(1.1); opacity: .85; } }
-            @keyframes auroraMintDrift { 0%,100% { transform: translate(0,0) rotate(-12deg) scaleY(1); opacity: .6; } 50% { transform: translate(-2vw,-2vh) rotate(-16deg) scaleY(1.12); opacity: .8; } }
+            @keyframes auroraGreenDrift { 0%,100% { transform: rotate(8deg) translate(0,0) scale(1); } 50% { transform: rotate(11deg) translate(2vw,1vh) scale(1.05); } }
+            @keyframes auroraVioletDrift { 0%,100% { transform: rotate(27deg) translate(0,0) scale(1); } 50% { transform: rotate(23deg) translate(-2vw,2vh) scale(1.06); } }
+            @keyframes auroraMintDrift { 0%,100% { transform: rotate(11deg) translate(0,0) scale(1); } 50% { transform: rotate(15deg) translate(-1.5vw,-1.5vh) scale(1.08); } }
           `}</style>
         </div>
       ) : (
