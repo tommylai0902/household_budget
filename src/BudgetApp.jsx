@@ -6504,7 +6504,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
         <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noGroceryItems")}</div>
       ) : (
         <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{pending.map(renderRow)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{pending.map(renderRow)}</div>
           {/* Ticked-off items drop out of the shopping list into a collapsed
               pile at the bottom. What's left to buy is the only thing worth
               scanning while you're in the aisle; done items are just proof the
@@ -6518,7 +6518,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
                 <ChevronDown size={14} style={{ transition: "transform .15s", transform: showDone ? "rotate(180deg)" : "none", flexShrink: 0 }} />
                 <span style={{ flex: 1, textAlign: "left" }}>{t("completedCount", { n: done.length })}</span>
               </button>
-              {showDone && <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{done.map(renderRow)}</div>}
+              {showDone && <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{done.map(renderRow)}</div>}
             </div>
           )}
         </>
