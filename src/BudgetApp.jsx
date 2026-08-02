@@ -1620,6 +1620,15 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
+// The picker's three card surfaces (ledger rows, the "view all" toggle,
+// NewLedgerFlow's template strip) all sit directly over the dark-mode aurora,
+// so the app-wide --glass-* tokens (tuned for cards over a flat background)
+// read as barely-there against it — stronger border + blur + an extra sheen
+// layer specifically here, rather than pushing the shared tokens this far
+// for every glass card app-wide.
+const pickerGlass = (theme) => theme === "dark"
+  ? { background: "linear-gradient(rgba(255,255,255,.08), rgba(255,255,255,.08)), var(--glass-bg)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", border: "1px solid rgba(255,255,255,0.26)" }
+  : { background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--glass-border)" };
 function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, onNotification, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   // Transaction count per ledger, fetched once here (rather than per-row)
@@ -1848,7 +1857,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                   </button>
                 </div>
               ) : (
-                <LedgerRow l={l} stats={statsById[l.id]} t={t} lang={lang} onOpen={onOpen} onRename={startRename} onDelete={remove} />
+                <LedgerRow l={l} stats={statsById[l.id]} t={t} lang={lang} theme={theme} onOpen={onOpen} onRename={startRename} onDelete={remove} />
               )}
             </div>
             );
@@ -1856,8 +1865,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           {rankedLedgers.length > 3 && (
             <button onClick={() => setShowAll((s) => !s)} className="swipe-row" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-              border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
+              ...pickerGlass(theme), boxShadow: "0 8px 32px var(--glass-shadow)",
               borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
               fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
             }}>
@@ -1867,7 +1875,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           )}
         </div>
 
-        <NewLedgerFlow t={t} busy={busy} onCreate={create} />
+        <NewLedgerFlow t={t} busy={busy} onCreate={create} theme={theme} />
       </div>
       {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
       {/* Not the danger tone — nothing is destroyed, so it shouldn't wear the
@@ -1892,7 +1900,7 @@ const NEW_LEDGER_TEMPLATE_ORDER = ["household", "personal", "travel", "kid", "bl
 // MemberManager edits post-creation (display-name+colour tags for splitting),
 // not the email/role invite system — that one requires a ledger id to already
 // exist, so it stays a post-creation action.
-function NewLedgerFlow({ t, busy, onCreate }) {
+function NewLedgerFlow({ t, busy, onCreate, theme }) {
   const [template, setTemplate] = useState(null);
   const [templateConfirmed, setTemplateConfirmed] = useState(false);
   const [members, setMembers] = useState([]);
@@ -2037,8 +2045,8 @@ function NewLedgerFlow({ t, busy, onCreate }) {
             <button key={k} onClick={() => pickTemplate(k)} className="swipe-row" style={{
               position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
               padding: "13px 16px 13px 13px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
-              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-              border: `1.5px solid ${active ? TEAL : "var(--glass-border)"}`,
+              ...pickerGlass(theme),
+              border: active ? `1.5px solid ${TEAL}` : pickerGlass(theme).border,
               boxShadow: active ? ACCENT_GLOW : "0 8px 32px var(--glass-shadow)",
             }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: active ? TEAL : MUTED_BG }}>
@@ -2206,7 +2214,7 @@ function useSwipeReveal(actionsWidth) {
 // each row; now they live under it, revealed by dragging the row left. Mice
 // without a drag gesture get a hover-revealed "more" button as a click
 // fallback (CSS-only, see .swipe-more-btn in index.css).
-function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
+function LedgerRow({ l, stats, t, lang, theme, onOpen, onRename, onDelete }) {
   const accent = ledgerAccent(l.template);
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(LEDGER_ROW_ACTIONS_WIDTH);
   const handleRowClick = () => onTapOrClose(() => onOpen(l));
@@ -2228,11 +2236,11 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
         style={{
           position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
-          // Same frosted glass treatment as the Bento home cards: translucent
-          // surface + backdrop blur, neutral translucent border. The template
-          // accent stays in the eyebrow/icon/dot only, plus the hover glow.
-          background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
+          // Same frosted glass treatment as the Bento home cards, but boosted
+          // (see pickerGlass) since this one sits directly over the aurora.
+          // The template accent stays in the eyebrow/icon/dot only, plus the
+          // hover glow.
+          ...pickerGlass(theme), boxShadow: "0 8px 32px var(--glass-shadow)",
           borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
