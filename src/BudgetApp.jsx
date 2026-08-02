@@ -85,7 +85,7 @@ const STRINGS = {
     connecting: "Connecting…",
     categories: "Categories", manageCats: "Manage categories", selectMonth: "Select month",
     addExpense: "Add expense",
-    totalSpending: "Total Spending", balance: "Balance", settleUp: "Settle up",
+    totalSpending: "Spending", balance: "Balance", settleUp: "Settle up",
     emptyState: "No expenses in {month} yet. Add your first one above.",
     emptyStateDay: "No expenses on {date}.", showAll: "Show all",
     viewAllLedgers: "View all {n} ledgers", showLess: "Show less",
@@ -302,7 +302,7 @@ const STRINGS = {
     connecting: "連線中…",
     categories: "類別", manageCats: "管理類別", selectMonth: "選擇月份",
     addExpense: "新增支出",
-    totalSpending: "總支出", balance: "結餘", settleUp: "結算",
+    totalSpending: "支出", balance: "結餘", settleUp: "結算",
     emptyState: "{month}還沒有支出，先在上方新增一筆。",
     emptyStateDay: "{date} 冇支出記錄。", showAll: "顯示全部",
     paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "唔分帳",
@@ -514,7 +514,7 @@ const STRINGS = {
     connecting: "连接中…",
     categories: "类别", manageCats: "管理类别", selectMonth: "选择月份",
     addExpense: "添加支出",
-    totalSpending: "总支出", balance: "结余", settleUp: "结算",
+    totalSpending: "支出", balance: "结余", settleUp: "结算",
     emptyState: "{month}还没有支出，先在上方添加一笔。",
     emptyStateDay: "{date} 没有支出记录。", showAll: "显示全部",
     paidByRow: "{name} 已付", split5050: "平分 50/50", personal: "不分账",
@@ -725,7 +725,7 @@ const STRINGS = {
     connecting: "Connexion…",
     categories: "Catégories", manageCats: "Gérer les catégories", selectMonth: "Choisir le mois",
     addExpense: "Ajouter une dépense",
-    totalSpending: "Dépenses totales", balance: "Solde", settleUp: "Régler",
+    totalSpending: "Dépenses", balance: "Solde", settleUp: "Régler",
     emptyState: "Aucune dépense en {month}. Ajoutez la première ci-dessus.",
     emptyStateDay: "Aucune dépense le {date}.", showAll: "Tout afficher",
     paidByRow: "Payé par {name}", split5050: "Partagé 50/50", personal: "Non partagé",
@@ -937,7 +937,7 @@ const STRINGS = {
     connecting: "Conectando…",
     categories: "Categorías", manageCats: "Gestionar categorías", selectMonth: "Elegir mes",
     addExpense: "Añadir gasto",
-    totalSpending: "Gasto total", balance: "Saldo", settleUp: "Liquidar",
+    totalSpending: "Gasto", balance: "Saldo", settleUp: "Liquidar",
     emptyState: "No hay gastos en {month}. Añade el primero arriba.",
     emptyStateDay: "No hay gastos el {date}.", showAll: "Ver todo",
     paidByRow: "Pagó {name}", split5050: "Dividido 50/50", personal: "Sin dividir",
@@ -2887,7 +2887,11 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
               {isPeriodLedger ? (
                 <span style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{periodLabel}</span>
               ) : (
-                <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")} style={selectStyle}>
+                // Same 34px/radius-8 box as the bell/menu buttons beside it —
+                // selectStyle's own height/radius (built for a full-width
+                // Report picker) read taller and rounder next to them.
+                <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")}
+                  style={{ ...selectStyle, height: 34, borderRadius: 8, fontSize: 14, padding: "0 10px" }}>
                   {monthsAvailable.map((m) => (
                     <option key={m} value={m}>{new Date(m + "-02").toLocaleDateString(dateLocale(lang), { month: "short", year: "numeric" })}</option>
                   ))}
