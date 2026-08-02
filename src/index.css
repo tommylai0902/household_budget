@@ -76,12 +76,8 @@ html, body {
   --ok-bg: #123833; --ok-ink: #7FD9CA; --ok-line: #1F544C; --ok-strong: #1A4B43;
   --bad-bg: #3A1D1D; --bad-ink: #F19B94; --bad-line: #5E2E2A;
   --track: #2A3137; --muted-bg: #242A2F; --danger: #F1897F; --warn: #F5A97A;
-  /* Tuned lighter/more translucent per the Aurora spec — cards over the
-     picker's new animated background need to actually let it glow through,
-     and a neutral white border reads as "glass edge" rather than tinting
-     every card's outline with whatever accent colour is picked. */
-  --glass-bg: rgba(14, 26, 32, 0.45); --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-shadow: rgba(0, 0, 0, 0.3);
+  --glass-bg: rgba(14, 34, 41, 0.75); --glass-border: rgba(var(--accent-rgb), 0.2);
+  --glass-shadow: rgba(0, 0, 0, 0.35);
   --badge-teal-bg: rgba(var(--accent-rgb), 0.15); --badge-teal-border: rgba(var(--accent-rgb), 0.3); --badge-teal-ink: var(--accent);
   --badge-amber-bg: rgba(245, 158, 11, 0.15); --badge-amber-border: rgba(245, 158, 11, 0.3); --badge-amber-ink: #FCD34D;
   --badge-sky-bg: rgba(56, 189, 248, 0.15); --badge-sky-border: rgba(56, 189, 248, 0.3); --badge-sky-ink: #7DD3FC;

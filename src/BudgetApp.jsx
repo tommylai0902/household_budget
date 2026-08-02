@@ -1731,34 +1731,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
 
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      {/* Dark-mode-only aurora — like the Kid Ledger's own fixed bright
-          palette elsewhere in this file, this is a deliberate decorative
-          exception to the single user-pickable --accent that drives every
-          other glow in the app. Its three colours (violet/teal/emerald)
-          only read right against a near-black canvas, and the source spec
-          gave no light-mode version, so light mode keeps the original
-          single-glow treatment below rather than guessing one. */}
-      {theme === "dark" ? (
-        <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 85% 0%, rgba(13,148,136,0.15), transparent 60%)" }} />
-          <div style={{ position: "absolute", top: 180, left: -120, width: 420, height: 420, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(147,51,234,0.65), rgba(124,58,237,0.35) 55%, transparent 72%)",
-            filter: "blur(50px)", transform: "rotate(-25deg)", animation: "auroraPurpleWave 14s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", top: -30, right: -90, width: 380, height: 380, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(20,184,166,0.70), rgba(13,148,136,0.40) 55%, transparent 72%)",
-            filter: "blur(45px)", animation: "auroraTealCurtain 12s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", bottom: -80, left: -40, width: 320, height: 320, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(16,185,129,0.50), transparent 68%)",
-            filter: "blur(55px)", animation: "auroraEmeraldGlow 16s ease-in-out infinite" }} />
-          <style>{`
-            @keyframes auroraPurpleWave { 0%,100% { transform: translate(0,0) rotate(-25deg) scale(1); opacity: .70; } 50% { transform: translate(-35px,25px) rotate(-18deg) scale(1.18); opacity: .85; } }
-            @keyframes auroraTealCurtain { 0%,100% { transform: translate(0,0) scale(1); opacity: .75; } 50% { transform: translate(25px,-30px) scale(1.2); opacity: .95; } }
-            @keyframes auroraEmeraldGlow { 0%,100% { transform: translate(0,0) scale(1); opacity: .50; } 50% { transform: translate(-20px,-20px) scale(1.25); opacity: .75; } }
-          `}</style>
-        </div>
-      ) : (
-        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.11), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
-      )}
+      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.11), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
         {/* Same header block as the Bento home now: brand centered, bell/menu
             on the right — same string in every language, like the eyebrow on
