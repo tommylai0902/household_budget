@@ -1738,32 +1738,38 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           band crossing through it (screen blend, so the overlap brightens
           instead of washing to grey) and a mint highlight for variation —
           verified by rendering this exact markup standalone and comparing
-          screenshots against the source spec, because the previous ribbon
-          version *looked* right in code but rendered as a near-invisible
-          smear: too much blur plus too-low alpha on overlapping screen-blend
-          layers desaturates everything toward the background instead of
-          producing distinct colour. This version keeps blur moderate (35-
-          40px, not 55-65px) and core alpha high (0.8-0.9) so colour survives
-          the blend. Fades into the page's own dark background before the
-          fold. Colours only read right against a near-black canvas, and the
-          spec gave no light-mode version, so light mode keeps the original
-          single-glow treatment below rather than guessing one. */}
+          screenshots/computed styles against the source spec rather than
+          just reading the CSS, because two earlier passes each *looked*
+          right in code but weren't: too much blur + too-low alpha desaturated
+          everything to a smear (fixed with moderate 35-40px blur and 0.8-0.9
+          core alpha), and the drift keyframes' translate/rotate deltas were
+          too small to read as motion at a glance (bumped to ±5-8vw/deg over
+          8-11s, confirmed by diffing getComputedStyle(...).transform a few
+          seconds apart — screenshots alone couldn't show this, the capture
+          freezes animations to a fixed frame for a deterministic image).
+          Fixed positioning covers the full viewport height and only fades to
+          the page's own dark background in the bottom 15%, so content lower
+          on the page (e.g. "Create ledger" once the picker scrolls) still
+          sits over colour instead of flat black. Colours only read right
+          against a near-black canvas, and the spec gave no light-mode
+          version, so light mode keeps the original single-glow treatment
+          below rather than guessing one. */}
       {theme === "dark" ? (
         <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          <div style={{ position: "absolute", left: "-30%", top: "-15%", width: "160vw", height: "80vh",
-            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(16,185,129,0.85) 0%, rgba(20,184,166,0.6) 40%, rgba(13,148,136,0.25) 65%, transparent 82%)",
-            mixBlendMode: "screen", filter: "blur(40px)", transform: "rotate(8deg)", animation: "auroraGreenDrift 16s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", left: "-25%", top: "-20%", width: "62vw", height: "86vh",
-            background: "radial-gradient(ellipse 42% 100% at 50% 50%, rgba(168,85,247,0.9) 0%, rgba(147,51,234,0.65) 38%, rgba(124,58,237,0.2) 60%, transparent 78%)",
-            mixBlendMode: "screen", filter: "blur(38px)", transform: "rotate(27deg)", animation: "auroraVioletDrift 14s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", left: "-10%", top: "-6%", width: "110vw", height: "44vh",
-            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(110,231,183,0.85) 0%, rgba(52,211,153,0.45) 45%, transparent 78%)",
-            mixBlendMode: "screen", filter: "blur(35px)", transform: "rotate(11deg)", animation: "auroraMintDrift 18s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", inset: "auto 0 0 0", height: "30%", background: "linear-gradient(to bottom, transparent, var(--paper) 90%)" }} />
+          <div style={{ position: "absolute", left: "-30%", top: "-15%", width: "160vw", height: "95vh",
+            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(16,185,129,0.85) 0%, rgba(20,184,166,0.6) 40%, rgba(13,148,136,0.3) 68%, transparent 85%)",
+            mixBlendMode: "screen", filter: "blur(40px)", transform: "rotate(8deg)", animation: "auroraGreenDrift 9s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", left: "-25%", top: "-20%", width: "62vw", height: "100vh",
+            background: "radial-gradient(ellipse 42% 100% at 50% 50%, rgba(168,85,247,0.9) 0%, rgba(147,51,234,0.65) 38%, rgba(124,58,237,0.25) 64%, transparent 82%)",
+            mixBlendMode: "screen", filter: "blur(38px)", transform: "rotate(27deg)", animation: "auroraVioletDrift 11s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", left: "-10%", top: "-6%", width: "110vw", height: "55vh",
+            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(110,231,183,0.85) 0%, rgba(52,211,153,0.5) 48%, transparent 80%)",
+            mixBlendMode: "screen", filter: "blur(35px)", transform: "rotate(11deg)", animation: "auroraMintDrift 8s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", inset: "auto 0 0 0", height: "15%", background: "linear-gradient(to bottom, transparent, var(--paper) 95%)" }} />
           <style>{`
-            @keyframes auroraGreenDrift { 0%,100% { transform: rotate(8deg) translate(0,0) scale(1); } 50% { transform: rotate(11deg) translate(2vw,1vh) scale(1.05); } }
-            @keyframes auroraVioletDrift { 0%,100% { transform: rotate(27deg) translate(0,0) scale(1); } 50% { transform: rotate(23deg) translate(-2vw,2vh) scale(1.06); } }
-            @keyframes auroraMintDrift { 0%,100% { transform: rotate(11deg) translate(0,0) scale(1); } 50% { transform: rotate(15deg) translate(-1.5vw,-1.5vh) scale(1.08); } }
+            @keyframes auroraGreenDrift { 0% { transform: rotate(4deg) translate(-3vw,-2vh) scale(1); } 50% { transform: rotate(16deg) translate(5vw,3vh) scale(1.12); } 100% { transform: rotate(4deg) translate(-3vw,-2vh) scale(1); } }
+            @keyframes auroraVioletDrift { 0% { transform: rotate(33deg) translate(3vw,-2vh) scale(1.08); } 50% { transform: rotate(19deg) translate(-5vw,3vh) scale(0.96); } 100% { transform: rotate(33deg) translate(3vw,-2vh) scale(1.08); } }
+            @keyframes auroraMintDrift { 0% { transform: rotate(4deg) translate(-4vw,1vh) scale(1); } 50% { transform: rotate(20deg) translate(4vw,-2vh) scale(1.15); } 100% { transform: rotate(4deg) translate(-4vw,1vh) scale(1); } }
           `}</style>
         </div>
       ) : (
