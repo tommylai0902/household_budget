@@ -6450,16 +6450,9 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
-        {/* A label, not a button — the hidden file input is what opens the
-            camera, and wrapping it is the only way to style that. Photo →
-            flyer prices, straight to a price match. */}
-        <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
-          style={{ ...ghostBtn, padding: "8px 10px", flexShrink: 0, cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
-          {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />}
-          <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
-            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanForDeals(f); }} />
-        </label>
-        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
+        {/* Scan moved inside the add-item panel below — it's an alternative to
+            typing the fields there, not a separate header action. */}
+        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
           <Plus size={15} /> {t("addItem")}
         </button>
       </div>
@@ -6492,7 +6485,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
           adding several in a row is the normal case here. */}
       {showAddForm && (
         <GroceryItemForm key={addKey} item={NEW_GROCERY_ITEM} t={t}
-          onSave={add} onCancel={() => setShowAddForm(false)} />
+          onSave={add} onCancel={() => setShowAddForm(false)} onScan={scanForDeals} scanning={scanning} />
       )}
       {items === null ? (
         <Centered>{t("connecting")}</Centered>
@@ -6727,7 +6720,7 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
 // lone name box, which meant the brand that makes price matching land on the
 // right product could only be filled in by editing the item afterwards, a
 // step nobody takes.
-function GroceryItemForm({ item, t, onSave, onCancel }) {
+function GroceryItemForm({ item, t, onSave, onCancel, onScan, scanning }) {
   const isNew = !item.id;
   const [name, setName] = useState(item.itemName);
   const [quantity, setQuantity] = useState(String(item.quantityNeeded));
@@ -6741,6 +6734,18 @@ function GroceryItemForm({ item, t, onSave, onCancel }) {
   };
   return (
     <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Add-only — editing an existing row has no "scan to fill this in"
+          moment. A label, not a button: the hidden file input is what has to
+          be clicked to open the camera. Photo → flyer prices, straight into a
+          price match, same as the row-level scan-for-deals button. */}
+      {isNew && onScan && (
+        <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+          style={{ ...ghostBtn, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+          {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />} {t("scanBarcode")}
+          <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onScan(f); }} />
+        </label>
+      )}
       <input autoFocus value={name} onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("addGroceryItemPh")} style={input} />
       <Field label={t("quantity")} style={{ width: 90 }}>
