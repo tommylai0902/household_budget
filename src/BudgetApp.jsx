@@ -5562,7 +5562,7 @@ function HomeLedgerSwitcher({ ledgerId, ledgerName, t, onSwitch }) {
     <div ref={ref} style={{ position: "relative", zIndex: 5, alignSelf: "flex-start" }}>
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} style={{
         display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid var(--badge-teal-border)", background: "var(--badge-teal-bg)",
-        borderRadius: 99, padding: "4px 12px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--badge-teal-ink)", cursor: "pointer",
+        borderRadius: 7, padding: "4px 12px", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--badge-teal-ink)", cursor: "pointer",
       }}>
         <MapPin size={12} /> {t("viewingLedger", { name: ledgerName })}
         <ChevronDown size={12} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
@@ -5710,7 +5710,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
               <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{inventoryCount}</span>
             </div>
             {lowStockCount > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--badge-amber-bg)", border: "1px solid var(--badge-amber-border)", color: "var(--badge-amber-ink)", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--badge-amber-bg)", border: "1px solid var(--badge-amber-border)", color: "var(--badge-amber-ink)", borderRadius: 8, padding: "5px 11px", fontSize: 12, fontWeight: 800 }}>
                 {t("lowStockAlert", { n: lowStockCount })}
               </span>
             )}
@@ -5724,7 +5724,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
               <span style={{ color: SUB, fontWeight: 400 }}>{t("pendingItemsLabel")} </span>
               <span style={{ color: INK, fontWeight: 800, fontSize: 16 }}>{pendingGrocery}</span>
             </div>
-            <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--badge-sky-bg)", border: "1px solid var(--badge-sky-border)", color: "var(--badge-sky-ink)", borderRadius: 99, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
+            <span className="price-match-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--badge-sky-bg)", border: "1px solid var(--badge-sky-border)", color: "var(--badge-sky-ink)", borderRadius: 8, padding: "5px 11px", fontSize: 12, fontWeight: 800, boxShadow: dealsActive ? "0 0 10px rgba(56,189,248,0.35)" : "none" }}>
               <Info size={13} /> {dealsActive ? t("dealsActiveBadge") : t("priceMatchCheck")}
             </span>
           </div>
@@ -6143,9 +6143,11 @@ function InventoryPanel({ t, lang, onSwitchView }) {
 function StatusPill({ color, bg, border, label }) {
   // Smaller than a typical pill and no glow dot — this one has to share a row
   // with the category/location text on an inventory row, sometimes two of
-  // them at once, so it stays as compact as still reads as a pill.
+  // them at once, so it stays as compact as still reads as a pill. Rounded
+  // rectangle, not a capsule — see the app-wide chip/pill/StatusPill radius
+  // unification (chip():9, pill():8, this:6, scaled to each one's height).
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 99, background: bg, border: `1px solid ${border}`, color, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 6, background: bg, border: `1px solid ${border}`, color, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
       {label}
     </span>
   );
@@ -6183,7 +6185,7 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
               elsewhere in the row, so nothing showed they adjusted that number.
               One pill with the live quantity between them makes the
               relationship obvious at a glance. */}
-          <div style={{ display: "flex", alignItems: "center", border: `1px solid ${LINE}`, borderRadius: 99, flexShrink: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", border: `1px solid ${LINE}`, borderRadius: 9, flexShrink: 0, overflow: "hidden" }}>
             <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, border: "none", background: "none", color: INK, cursor: "pointer" }} aria-label="-">
               <Minus size={13} />
@@ -6641,7 +6643,7 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
             {hasDeal && (
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, maxWidth: "100%",
-                padding: "2px 7px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                padding: "2px 7px", borderRadius: 6, fontSize: 11, fontWeight: 700,
                 color: dealExpired ? WARN : OK_INK,
                 background: dealExpired ? `color-mix(in srgb, ${WARN} 14%, transparent)` : OK_BG,
                 border: `1px solid ${dealExpired ? `color-mix(in srgb, ${WARN} 45%, transparent)` : OK_LINE}`,
@@ -7198,23 +7200,21 @@ const swipeActionBtn = { width: 44, borderRadius: 10, border: "none", display: "
 const menuItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 10px", borderRadius: 7, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 const suggestItem = { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 12px", border: "none", background: "none", color: INK, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
 // Dashed outline sets it apart from the coloured category pills — it's an action, not a category.
-const editCatsPill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 999, border: `1px dashed ${SUB}`, background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+const editCatsPill = { display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 8, border: `1px dashed ${SUB}`, background: "none", color: SUB, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const errorBox = { fontSize: 13, color: BAD_INK, background: BAD_BG, border: `1px solid ${BAD_LINE}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 };
 const backdrop = { position: "fixed", inset: 0, zIndex: 20 };
 
+// Rounded rectangle, not a capsule — see the app-wide chip/pill radius
+// unification. selectablePill (identical shape, unused) was dropped as part
+// of the same pass.
 function pill(color) {
-  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, border: "none", fontSize: 12.5, fontWeight: 700, color: "#fff", background: color, fontFamily: "inherit", whiteSpace: "nowrap" };
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, border: "none", fontSize: 12.5, fontWeight: 700, color: "#fff", background: color, fontFamily: "inherit", whiteSpace: "nowrap" };
 }
 // Same accent-glow recipe as .accent-glow/.swipe-row:hover in index.css —
 // baked inline (rather than a className) since these return plain style
 // objects, not JSX, so every "selected" pill/chip in the app halos the same
 // way as a focused input or an open swipe row.
 const ACCENT_GLOW = "0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14)";
-function selectablePill(color, active) {
-  // Only ever called with TEAL as `color` — ACCENT_INK is that colour's
-  // matching text, not a generic "white on any fill" assumption.
-  return { padding: "6px 11px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: active ? ACCENT_INK : color, background: active ? color : "transparent", border: `1.5px solid ${color}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit" };
-}
 // Unified selectable chip: neutral grey when off, brand green when on. Category
 // and member tags share it, so the form reads as one system rather than a row of
 // clashing coloured outlines.
@@ -7222,7 +7222,7 @@ function chip(active) {
   // Unselected used to be a flat light-gray fill that needed no border to read
   // as a pill; now that it's CARD (white in light mode, dark in night mode) a
   // border keeps it visible against the page background in both themes.
-  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
 }
 // A chip that opens a themed popover instead of a native <select> — same menu
 // pattern LedgerSwitcher/HeaderMenu already use (CARD surface, active row in
@@ -7262,8 +7262,4 @@ function FilterDropdown({ icon: Icon, options, value, onChange }) {
 // One grey track, the active half lifts to green — a proper segmented control.
 function segItem(active) {
   return { flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", color: active ? ACCENT_INK : SUB, background: active ? TEAL : "transparent" };
-}
-function splitBadge(split) {
-  const shared = split === "shared";
-  return { display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", borderRadius: 99, fontSize: 11, fontWeight: 700, color: shared ? TEAL : SUB, background: shared ? OK_BG : MUTED_BG };
 }
