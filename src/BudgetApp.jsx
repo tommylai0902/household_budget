@@ -6010,25 +6010,24 @@ function InventoryPanel({ t, lang, onSwitchView }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="inventory" onSwitch={onSwitchView} t={t} />
-        {/* A label, not a button — the file input is what has to be clicked to
-            open the camera, and wrapping it is the only way to style that. */}
-        <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
-          style={{ ...ghostBtn, padding: "8px 10px", flexShrink: 0, cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
-          {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />}
-          <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
-            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
-        </label>
-        {/* Hidden once the list is long enough that search stays open anyway —
-            a toggle that can't turn anything off is just a dead control. */}
-        {!alwaysSearch && (
-          <button onClick={toggleSearch} aria-label={t("searchInventoryPh")} aria-expanded={searchOpen}
-            style={{ ...ghostBtn, padding: "8px 10px", flexShrink: 0, color: searchOpen ? TEAL : INK }}>
-            <Search size={15} />
+        {/* Camera and "Add item" share one pill with a hairline divider — two
+            ways into the same add-an-item action rather than two unrelated
+            buttons competing for space in the header. */}
+        <div style={{ ...ghostBtn, padding: 0, marginLeft: "auto", flexShrink: 0, overflow: "hidden" }}>
+          {/* A label, not a button — the file input is what has to be clicked to
+              open the camera, and wrapping it is the only way to style that. */}
+          <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+            style={{ display: "flex", alignItems: "center", padding: "8px 10px", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+            {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />}
+            <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
+          </label>
+          <span aria-hidden="true" style={{ width: 1, alignSelf: "stretch", background: LINE }} />
+          <button onClick={() => setShowAddForm((s) => !s)}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", border: "none", background: "none", color: INK, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <Plus size={15} /> {t("addItem")}
           </button>
-        )}
-        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
-          <Plus size={15} /> {t("addItem")}
-        </button>
+        </div>
       </div>
       {error && <div style={errorBox}>{error}</div>}
       {showAddForm && (
@@ -6076,10 +6075,17 @@ function InventoryPanel({ t, lang, onSwitchView }) {
         <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
           placeholder={t("searchInventoryPh")} style={input} />
       )}
-      {/* Both filters are the same shape: a chip that opens a themed popover
-          (FilterDropdown) rather than a native <select> — see its own comment
-          for why. */}
+      {/* Search joins the two filter chips on one row — all three narrow the
+          same list, so they read as one control group. Hidden once the list is
+          long enough that search stays open anyway; a toggle that can't turn
+          anything off is just a dead control. */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        {!alwaysSearch && (
+          <button onClick={toggleSearch} aria-label={t("searchInventoryPh")} aria-expanded={searchOpen}
+            style={chip(searchOpen)}>
+            <Search size={13} />
+          </button>
+        )}
         <FilterDropdown icon={Filter} value={filter} onChange={setFilter}
           options={[
             { value: "all", label: t("showAll") },
