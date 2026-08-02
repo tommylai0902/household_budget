@@ -6071,10 +6071,6 @@ function InventoryPanel({ t, lang, onSwitchView }) {
           </div>
         </div>
       )}
-      {searchOpen && (
-        <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("searchInventoryPh")} style={input} />
-      )}
       {/* Search joins the two filter chips on one row — all three narrow the
           same list, so they read as one control group. Hidden once the list is
           long enough that search stays open anyway; a toggle that can't turn
@@ -6097,6 +6093,12 @@ function InventoryPanel({ t, lang, onSwitchView }) {
             options={[{ value: "", label: t("allLocations") }, ...locations.map((l) => ({ value: l.id, label: l.name }))]} />
         )}
       </div>
+      {/* Directly under its own toggle, not above the row — it should expand
+          from the control that opened it. */}
+      {searchOpen && (
+        <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("searchInventoryPh")} style={input} />
+      )}
       {items === null ? (
         <Centered>{t("connecting")}</Centered>
       ) : visible.length === 0 ? (
