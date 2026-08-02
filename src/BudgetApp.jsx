@@ -1623,11 +1623,18 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 // The picker's three card surfaces (ledger rows, the "view all" toggle,
 // NewLedgerFlow's template strip) all sit directly over the dark-mode aurora,
 // so the app-wide --glass-* tokens (tuned for cards over a flat background)
-// read as barely-there against it — stronger border + blur + an extra sheen
-// layer specifically here, rather than pushing the shared tokens this far
-// for every glass card app-wide.
+// read as barely-there against it — stronger border here, plus a fill dark
+// enough that the (near-white) text on top keeps its contrast.
+// First pass instead stacked more blur (28px) and more white sheen on top of
+// the shared token's fill, which reportedly read as a grey haze muddying the
+// text: blurring several different aurora hues together dulls them toward
+// grey, and doubling up the white wash lightened the fill further, both
+// working directly against contrast. This version goes the other way —
+// darker, more opaque fill (own colour, not layered on --glass-bg) and only
+// a modest blur bump — so the card itself stays legible and the border does
+// the work of reading as "glass" against the aurora.
 const pickerGlass = (theme) => theme === "dark"
-  ? { background: "linear-gradient(rgba(255,255,255,.08), rgba(255,255,255,.08)), var(--glass-bg)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", border: "1px solid rgba(255,255,255,0.26)" }
+  ? { background: "linear-gradient(rgba(255,255,255,.04), rgba(255,255,255,.04)), rgba(10,20,26,0.62)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.26)" }
   : { background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--glass-border)" };
 function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, onNotification, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
