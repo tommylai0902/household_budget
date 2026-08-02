@@ -5992,22 +5992,6 @@ function InventoryPanel({ t, lang, onSwitchView }) {
     // they answer a different question and you want both at once.
     .filter((it) => !placeFilter || it.locationId === placeFilter);
 
-  // What each status chip would show if you tapped it, so the chips report
-  // rather than just switch — "Low stock 0" answers the question without a tap.
-  // Counted against the *other* filters (search, location) but not against the
-  // status filter itself, which is what makes them comparable to each other.
-  const counts = useMemo(() => {
-    const base = (items || [])
-      .filter((it) => it.name.toLowerCase().includes(query.toLowerCase()))
-      .filter((it) => !placeFilter || it.locationId === placeFilter);
-    return {
-      all: base.length,
-      low: base.filter((it) => isLow(it)).length,
-      expiring: base.filter((it) => isExpiring(it.expiryDate) || isExpired(it.expiryDate)).length,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, query, placeFilter]);
-
   // Search hides behind an icon: a household inventory is usually short enough
   // to read, so a permanent full-width bar cost a row for nothing. It opens on
   // demand, stays open while there's a query to see, and opens itself once the
@@ -6092,29 +6076,19 @@ function InventoryPanel({ t, lang, onSwitchView }) {
         <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
           placeholder={t("searchInventoryPh")} style={input} />
       )}
-      {/* Both filters are the same shape now: a chip that opens a picker. Status
-          used to be three always-visible chips, which crowded the row and spent
-          two of them saying "0". Folded into one, the counts move into the
-          options — you see them on open, and the chip itself shows whichever is
-          selected. Native <select> under the chip skin so a phone gets the
-          system picker rather than anything hand-rolled here. */}
+      {/* Both filters are the same shape: a chip that opens a themed popover
+          (FilterDropdown) rather than a native <select> — see its own comment
+          for why. */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ ...chip(filter !== "all"), paddingRight: 8, cursor: "pointer" }}>
-          <Filter size={13} style={{ flexShrink: 0 }} />
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} style={chipSelect}>
-            <option value="all">{`${t("showAll")}  ${counts.all}`}</option>
-            <option value="low">{`${t("lowStock")}  ${counts.low}`}</option>
-            <option value="expiring">{`${t("expiringSoon")}  ${counts.expiring}`}</option>
-          </select>
-        </label>
+        <FilterDropdown icon={Filter} value={filter} onChange={setFilter}
+          options={[
+            { value: "all", label: t("showAll") },
+            { value: "low", label: t("lowStock") },
+            { value: "expiring", label: t("expiringSoon") },
+          ]} />
         {locations.length > 0 && (
-          <label style={{ ...chip(!!placeFilter), paddingRight: 8, cursor: "pointer" }}>
-            <MapPin size={13} style={{ flexShrink: 0 }} />
-            <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} style={chipSelect}>
-              <option value="">{t("allLocations")}</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </label>
+          <FilterDropdown icon={MapPin} value={placeFilter} onChange={setPlaceFilter}
+            options={[{ value: "", label: t("allLocations") }, ...locations.map((l) => ({ value: l.id, label: l.name }))]} />
         )}
       </div>
       {items === null ? (
@@ -7217,15 +7191,46 @@ function selectablePill(color, active) {
 // Unified selectable chip: neutral grey when off, brand green when on. Category
 // and member tags share it, so the form reads as one system rather than a row of
 // clashing coloured outlines.
-// A native <select> stripped bare so it reads as part of the chip wrapping it —
-// the chip supplies the pill, the border and the colour, this just supplies the
-// picker. Colour/font inherit so the active (teal) state carries through.
-const chipSelect = { border: "none", background: "none", color: "inherit", font: "inherit", cursor: "pointer", outline: "none", padding: 0 };
 function chip(active) {
   // Unselected used to be a flat light-gray fill that needed no border to read
   // as a pill; now that it's CARD (white in light mode, dark in night mode) a
   // border keeps it visible against the page background in both themes.
   return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
+}
+// A chip that opens a themed popover instead of a native <select> — same menu
+// pattern LedgerSwitcher/HeaderMenu already use (CARD surface, active row in
+// OK_BG/OK_INK with a check mark), because a native select's option list is
+// drawn by the OS, not this page: color-scheme:dark gets it partway on some
+// browsers, but the hover highlight is always the system accent colour and
+// can't be styled at all — which is exactly the mismatch this replaces.
+function FilterDropdown({ icon: Icon, options, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useCloseOnOutside(open, () => setOpen(false));
+  const current = options.find((o) => o.value === value) || options[0];
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
+        style={{ ...chip(current.value !== options[0].value), paddingRight: 8 }}>
+        <Icon size={13} style={{ flexShrink: 0 }} />
+        {current.label}
+        <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.7, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 170, zIndex: 60 }}>
+          {options.map((o) => {
+            const active = o.value === value;
+            return (
+              <button key={o.value} role="menuitem" onClick={() => { onChange(o.value); setOpen(false); }}
+                style={{ ...menuItem, background: active ? OK_BG : "none", color: active ? OK_INK : INK }}>
+                <span style={{ flex: 1 }}>{o.label}</span>
+                {active && <Check size={14} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 // One grey track, the active half lifts to green — a proper segmented control.
 function segItem(active) {
