@@ -2845,12 +2845,14 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.16), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.10), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       )}
       <style>{`
-        .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; transition:background .12s ease; }
+        .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; }
         .exp-main { grid-column:1; grid-row:1; min-width:0; }
         .exp-meta { grid-column:1 / -1; grid-row:2; min-width:0; }
         .exp-total { grid-column:2; grid-row:1; align-self:center; }
-        .exp-row:hover { background: ${MUTED_BG}; }
-        .exp-row:focus-visible { background: ${MUTED_BG}; box-shadow: inset 3px 0 0 ${TEAL}; }
+        /* .swipe-row supplies the hover/focus glow (same glass-card treatment
+           as the ledger picker/Inventory/Grocery rows) — this row has no
+           swipe gesture of its own, just borrows that class for the glow. */
+        .exp-row:focus-visible { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
         @media (max-width: 560px) {
           .ledger-switcher { flex-basis:100%; }
           .ledger-controls { width:100%; justify-content:flex-end; margin-left:0 !important; }
@@ -2920,24 +2922,31 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
 
             <button onClick={() => setEditing("new")} className="btn-glow" style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
 
-            {/* List */}
-            <div style={{ marginTop: 14, background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 14, overflow: "hidden" }}>
-              {visibleRows.length === 0 ? (
-                <div style={{ padding: "40px 20px", textAlign: "center", color: SUB }}>
-                  <Receipt size={26} style={{ opacity: 0.4 }} />
-                  <p style={{ margin: "10px 0 0" }}>
-                    {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: periodLabel })}
-                  </p>
-                </div>
-              ) : (
-                visibleRows.map((e, i) => {
+            {/* List — one glass card per expense (matching Inventory Hub/Smart
+                Grocery's row style) instead of a single bordered block with
+                hairline dividers between rows. */}
+            {visibleRows.length === 0 ? (
+              <div style={{ marginTop: 14, padding: "40px 20px", textAlign: "center", color: SUB }}>
+                <Receipt size={26} style={{ opacity: 0.4 }} />
+                <p style={{ margin: "10px 0 0" }}>
+                  {selectedDay ? t("emptyStateDay", { date: shortDate(selectedDay, lang) }) : t("emptyState", { month: periodLabel })}
+                </p>
+              </div>
+            ) : (
+              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                {visibleRows.map((e) => {
                   const cat = catById(e.categoryId);
                   const payer = memberById(members, e.paidById);
                   return (
-                    <div key={e.id} className="exp-row" role="button" tabIndex={0}
+                    <div key={e.id} className="exp-row swipe-row" role="button" tabIndex={0}
                       onClick={() => setDetail(e)}
                       onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
-                      style={{ padding: "12px 14px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer", outline: "none" }}>
+                      style={{
+                        padding: "12px 14px", cursor: "pointer", outline: "none",
+                        background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
+                        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+                        borderRadius: 12,
+                      }}>
                       <div className="exp-main">
                         <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.description}</div>
                       </div>
@@ -2981,9 +2990,9 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
 
             <p style={{ fontSize: 12, color: SUB, marginTop: 14, textAlign: "center" }}>{t("stepFooter")}</p>
           </>
