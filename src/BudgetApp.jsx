@@ -6177,29 +6177,10 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
-          {(low || expired || expiring) && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
-              {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
-              {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-          {/* No wrap: the quantity used to live here too, competing with the
-              category/location for width and wrapping the row unpredictably.
-              It now lives in the stepper below instead of being shown twice —
-              this line just truncates if the two run long together. */}
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-            {/* Location earns the pin icon; a category is just a word. Both are
-                optional, and an unfiled item simply shows neither. */}
-            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}><Tag size={11} /> {categoryName}</span>}
-            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}><MapPin size={11} /> {locationName}</span>}
-          </div>
           {/* The old separate −/+ icon buttons sat apart from the "1 box" text
-              across the row, so nothing showed they adjusted that number. One
-              pill with the live quantity between them makes the relationship
-              obvious at a glance. */}
+              elsewhere in the row, so nothing showed they adjusted that number.
+              One pill with the live quantity between them makes the
+              relationship obvious at a glance. */}
           <div style={{ display: "flex", alignItems: "center", border: `1px solid ${LINE}`, borderRadius: 99, flexShrink: 0, overflow: "hidden" }}>
             <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, border: "none", background: "none", color: INK, cursor: "pointer" }} aria-label="-">
@@ -6211,7 +6192,12 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
               <Plus size={13} />
             </button>
           </div>
-          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={iconBtn} aria-label={t("addToGroceryList")}>
+          {/* Same 28px as the more-actions button beside it — iconBtn's default
+              34px only reads as "matched" against another 34px button, and once
+              the row picked up the stepper pill this was the only one left
+              still at the old size. */}
+          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }}
+            style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }} aria-label={t("addToGroceryList")}>
             <ShoppingCart size={14} />
           </button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
@@ -6219,6 +6205,19 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
             <MoreHorizontal size={15} />
           </button>
         </div>
+        {/* Warnings and category/location share one line under the actions —
+            wraps rather than truncates when both are present, since a pill
+            cutting off mid-label reads worse than the row growing a line. */}
+        {(low || expired || expiring || categoryName || locationName) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+            {/* Location earns the pin icon; a category is just a word. */}
+            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: SUB, flexShrink: 0 }}><Tag size={11} /> {categoryName}</span>}
+            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: SUB, flexShrink: 0 }}><MapPin size={11} /> {locationName}</span>}
+            {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
+            {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
+            {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
+          </div>
+        )}
       </div>
     </div>
   );
