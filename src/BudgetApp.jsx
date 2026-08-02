@@ -6210,17 +6210,20 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
         {/* Warnings and category/location share one line under the actions —
             wraps rather than truncates when both are present, since a pill
             cutting off mid-label reads worse than the row growing a line.
-            Tightened gap/text size so that stays the exception, not the norm:
-            with two warning pills plus category and location this was
-            wrapping by default rather than only on genuinely long names. */}
+            Category/location anchors the left edge, warnings the right —
+            two groups, not one long cluster reading left to right. */}
         {(low || expired || expiring || categoryName || locationName) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginTop: 6 }}>
-            {/* Location earns the pin icon; a category is just a word. */}
-            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><Tag size={10} /> {categoryName}</span>}
-            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><MapPin size={10} /> {locationName}</span>}
-            {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
-            {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
-            {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+              {/* Location earns the pin icon; a category is just a word. */}
+              {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><Tag size={10} /> {categoryName}</span>}
+              {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><MapPin size={10} /> {locationName}</span>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+              {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
+              {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
+              {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
+            </div>
           </div>
         )}
       </div>
