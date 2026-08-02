@@ -5981,13 +5981,46 @@ function InventoryPanel({ t, lang, onSwitchView }) {
   const isExpired = (d) => !!d && d < today;
   const isLow = (it) => it.minQuantity != null && it.quantity <= it.minQuantity;
 
+  const matchesStatus = (it, f) =>
+    f === "all" || (f === "low" && isLow(it)) || (f === "expiring" && (isExpiring(it.expiryDate) || isExpired(it.expiryDate)));
+
   const visible = (items || [])
     .filter((it) => it.name.toLowerCase().includes(query.toLowerCase()))
-    .filter((it) => filter === "all" || (filter === "low" && isLow(it)) || (filter === "expiring" && (isExpiring(it.expiryDate) || isExpired(it.expiryDate))))
+    .filter((it) => matchesStatus(it, filter))
     // "What's in the freezer" is the question a location is for, so it filters
     // rather than only labelling. Kept separate from the status chips above —
     // they answer a different question and you want both at once.
     .filter((it) => !placeFilter || it.locationId === placeFilter);
+
+  // What each status chip would show if you tapped it, so the chips report
+  // rather than just switch — "Low stock 0" answers the question without a tap.
+  // Counted against the *other* filters (search, location) but not against the
+  // status filter itself, which is what makes them comparable to each other.
+  const counts = useMemo(() => {
+    const base = (items || [])
+      .filter((it) => it.name.toLowerCase().includes(query.toLowerCase()))
+      .filter((it) => !placeFilter || it.locationId === placeFilter);
+    return {
+      all: base.length,
+      low: base.filter((it) => isLow(it)).length,
+      expiring: base.filter((it) => isExpiring(it.expiryDate) || isExpired(it.expiryDate)).length,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, query, placeFilter]);
+
+  // Search hides behind an icon: a household inventory is usually short enough
+  // to read, so a permanent full-width bar cost a row for nothing. It opens on
+  // demand, stays open while there's a query to see, and opens itself once the
+  // list is long enough that scanning it stops being realistic.
+  const [showSearch, setShowSearch] = useState(false);
+  const searchRef = useRef(null);
+  const alwaysSearch = (items?.length || 0) > 15;
+  const searchOpen = showSearch || alwaysSearch || !!query;
+  const toggleSearch = () => {
+    if (searchOpen) { setShowSearch(false); setQuery(""); return; } // closing clears, or it'd filter invisibly
+    setShowSearch(true);
+    setTimeout(() => searchRef.current?.focus(), 0);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -6001,6 +6034,14 @@ function InventoryPanel({ t, lang, onSwitchView }) {
           <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
             onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
         </label>
+        {/* Hidden once the list is long enough that search stays open anyway —
+            a toggle that can't turn anything off is just a dead control. */}
+        {!alwaysSearch && (
+          <button onClick={toggleSearch} aria-label={t("searchInventoryPh")} aria-expanded={searchOpen}
+            style={{ ...ghostBtn, padding: "8px 10px", flexShrink: 0, color: searchOpen ? TEAL : INK }}>
+            <Search size={15} />
+          </button>
+        )}
         <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", flexShrink: 0 }}>
           <Plus size={15} /> {t("addItem")}
         </button>
@@ -6047,19 +6088,38 @@ function InventoryPanel({ t, lang, onSwitchView }) {
           </div>
         </div>
       )}
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchInventoryPh")} style={input} />
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {[["all", t("showAll")], ["low", t("lowStock")], ["expiring", t("expiringSoon")]].map(([k, label]) => (
-          <button key={k} onClick={() => setFilter(k)} style={chip(filter === k)}>{label}</button>
-        ))}
-      </div>
-      {/* Only worth showing once there's somewhere to filter by. */}
-      {locations.length > 0 && (
-        <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} style={input}>
-          <option value="">{t("allLocations")}</option>
-          {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
+      {searchOpen && (
+        <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("searchInventoryPh")} style={input} />
       )}
+      {/* One row for everything that narrows the list. Location used to be a
+          full-width <select> on its own line, which read as a different kind of
+          control than the status chips even though it does the same job. */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        {[["all", t("showAll")], ["low", t("lowStock")], ["expiring", t("expiringSoon")]].map(([k, label]) => {
+          const n = counts[k];
+          const active = filter === k;
+          return (
+            <button key={k} onClick={() => setFilter(k)}
+              style={{ ...chip(active), ...(active || n ? null : { color: SUB }) }}>
+              {label}
+              <span style={{ opacity: active ? 0.75 : 0.55, fontVariantNumeric: "tabular-nums" }}>{n}</span>
+            </button>
+          );
+        })}
+        {/* Still a native <select> under the chip skin: on a phone that opens the
+            system picker, which beats any menu this could hand-roll. */}
+        {locations.length > 0 && (
+          <label style={{ ...chip(!!placeFilter), paddingRight: 8, cursor: "pointer" }}>
+            <MapPin size={13} style={{ flexShrink: 0 }} />
+            <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)}
+              style={{ border: "none", background: "none", color: "inherit", font: "inherit", cursor: "pointer", outline: "none", padding: 0 }}>
+              <option value="">{t("allLocations")}</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
       {items === null ? (
         <Centered>{t("connecting")}</Centered>
       ) : visible.length === 0 ? (
