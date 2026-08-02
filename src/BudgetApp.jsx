@@ -6186,15 +6186,31 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span>{it.quantity} {it.unit}</span>
+          {/* No wrap: the quantity used to live here too, competing with the
+              category/location for width and wrapping the row unpredictably.
+              It now lives in the stepper below instead of being shown twice —
+              this line just truncates if the two run long together. */}
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: SUB, display: "flex", alignItems: "center", gap: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
             {/* Location earns the pin icon; a category is just a word. Both are
                 optional, and an unfiled item simply shows neither. */}
-            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Tag size={11} /> {categoryName}</span>}
-            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><MapPin size={11} /> {locationName}</span>}
+            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}><Tag size={11} /> {categoryName}</span>}
+            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}><MapPin size={11} /> {locationName}</span>}
           </div>
-          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }} style={iconBtn} aria-label="-"><Minus size={14} /></button>
-          <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }} style={iconBtn} aria-label="+"><Plus size={14} /></button>
+          {/* The old separate −/+ icon buttons sat apart from the "1 box" text
+              across the row, so nothing showed they adjusted that number. One
+              pill with the live quantity between them makes the relationship
+              obvious at a glance. */}
+          <div style={{ display: "flex", alignItems: "center", border: `1px solid ${LINE}`, borderRadius: 99, flexShrink: 0, overflow: "hidden" }}>
+            <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, border: "none", background: "none", color: INK, cursor: "pointer" }} aria-label="-">
+              <Minus size={13} />
+            </button>
+            <span style={{ fontSize: 12, fontWeight: 700, padding: "0 3px", minWidth: 26, textAlign: "center", whiteSpace: "nowrap" }}>{it.quantity} {it.unit}</span>
+            <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, 1); }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, border: "none", background: "none", color: INK, cursor: "pointer" }} aria-label="+">
+              <Plus size={13} />
+            </button>
+          </div>
           <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAddToGrocery(it); }} style={iconBtn} aria-label={t("addToGroceryList")}>
             <ShoppingCart size={14} />
           </button>
