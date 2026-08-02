@@ -6141,9 +6141,11 @@ function InventoryPanel({ t, lang, onSwitchView }) {
 // Glowing dot + label, same halo recipe as the ledger row's status dot —
 // used for the Low stock / Expiring soon / Expired badges on an inventory row.
 function StatusPill({ color, bg, border, label }) {
+  // Smaller than a typical pill and no glow dot — this one has to share a row
+  // with the category/location text on an inventory row, sometimes two of
+  // them at once, so it stays as compact as still reads as a pill.
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 99, background: bg, border: `1px solid ${border}`, color, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
-      <span style={{ width: 6, height: 6, borderRadius: 99, background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />
+    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 99, background: bg, border: `1px solid ${border}`, color, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
       {label}
     </span>
   );
@@ -6207,12 +6209,15 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
         </div>
         {/* Warnings and category/location share one line under the actions —
             wraps rather than truncates when both are present, since a pill
-            cutting off mid-label reads worse than the row growing a line. */}
+            cutting off mid-label reads worse than the row growing a line.
+            Tightened gap/text size so that stays the exception, not the norm:
+            with two warning pills plus category and location this was
+            wrapping by default rather than only on genuinely long names. */}
         {(low || expired || expiring || categoryName || locationName) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginTop: 6 }}>
             {/* Location earns the pin icon; a category is just a word. */}
-            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: SUB, flexShrink: 0 }}><Tag size={11} /> {categoryName}</span>}
-            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: SUB, flexShrink: 0 }}><MapPin size={11} /> {locationName}</span>}
+            {categoryName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><Tag size={10} /> {categoryName}</span>}
+            {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><MapPin size={10} /> {locationName}</span>}
             {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
             {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
             {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
