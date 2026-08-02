@@ -164,7 +164,7 @@ const STRINGS = {
     lastConfirmed: "Last confirmed {date}",
     storeNotePh: "Conditions, e.g. identical size, local competitors only",
     includeNonGrocery: "All Stores", typeSupermarkets: "Supermarkets", typeHardware: "Hardware & home",
-    priceMatchMode: "Price Match Mode", pickShoppingStore: "Which store are you shopping at?",
+    priceMatchMode: "Price Match Mode", priceMatchBtn: "Price Match", pickShoppingStore: "Which store are you shopping at?",
     noMatchStores: "No stores marked as yours yet.", changeStore: "Change store",
     pmWillMatch: "Show a competitor's flyer at the till and they'll match it.",
     pmWontMatch: "This store doesn't price match — these are cheaper elsewhere.",
@@ -379,7 +379,7 @@ const STRINGS = {
     lastConfirmed: "上次確認：{date}",
     storeNotePh: "條件，例如：同款同容量、只限本地對手",
     includeNonGrocery: "所有舖頭", typeSupermarkets: "超市", typeHardware: "五金/傢俬",
-    priceMatchMode: "格價模式", pickShoppingStore: "你而家喺邊間買嘢？",
+    priceMatchMode: "格價模式", priceMatchBtn: "格價", pickShoppingStore: "你而家喺邊間買嘢？",
     noMatchStores: "仲未設定過自己嘅超市。", changeStore: "換間舖",
     pmWillMatch: "喺收銀處攞對手嘅海報出嚟，佢哋就會 match 個價。",
     pmWontMatch: "呢間唔 match 價——以下係其他舖平啲嘅價。",
@@ -592,7 +592,7 @@ const STRINGS = {
     lastConfirmed: "上次确认：{date}",
     storeNotePh: "条件，例如：同款同规格、仅限本地竞争对手",
     includeNonGrocery: "所有店铺", typeSupermarkets: "超市", typeHardware: "五金/家具",
-    priceMatchMode: "比价模式", pickShoppingStore: "你现在在哪家店购物？",
+    priceMatchMode: "比价模式", priceMatchBtn: "比价", pickShoppingStore: "你现在在哪家店购物？",
     noMatchStores: "还没有设定自己的超市。", changeStore: "更换商店",
     pmWillMatch: "在收银台出示对手的传单，他们就会比价。",
     pmWontMatch: "这家不比价——以下是其他店更便宜的价格。",
@@ -803,7 +803,7 @@ const STRINGS = {
     lastConfirmed: "Confirmé le {date}",
     storeNotePh: "Conditions, p. ex. format identique, concurrents locaux seulement",
     includeNonGrocery: "Tous les magasins", typeSupermarkets: "Supermarchés", typeHardware: "Quincaillerie & maison",
-    priceMatchMode: "Mode ajustement de prix", pickShoppingStore: "Dans quel magasin êtes-vous ?",
+    priceMatchMode: "Mode ajustement de prix", priceMatchBtn: "Ajustement de prix", pickShoppingStore: "Dans quel magasin êtes-vous ?",
     noMatchStores: "Aucun magasin marqué comme le vôtre.", changeStore: "Changer de magasin",
     pmWillMatch: "Montrez la circulaire d'un concurrent à la caisse et ils ajusteront le prix.",
     pmWontMatch: "Ce magasin n'ajuste pas les prix — voici où c'est moins cher.",
@@ -1015,7 +1015,7 @@ const STRINGS = {
     lastConfirmed: "Confirmado el {date}",
     storeNotePh: "Condiciones, p. ej. mismo formato, solo competidores locales",
     includeNonGrocery: "Todas las tiendas", typeSupermarkets: "Supermercados", typeHardware: "Ferretería y hogar",
-    priceMatchMode: "Modo igualar precios", pickShoppingStore: "¿En qué tienda estás comprando?",
+    priceMatchMode: "Modo igualar precios", priceMatchBtn: "Igualar precios", pickShoppingStore: "¿En qué tienda estás comprando?",
     noMatchStores: "Aún no has marcado ninguna tienda como tuya.", changeStore: "Cambiar de tienda",
     pmWillMatch: "Muestra el folleto de un competidor en caja y te igualarán el precio.",
     pmWontMatch: "Esta tienda no iguala precios — aquí está dónde sale más barato.",
@@ -6457,30 +6457,41 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
         </button>
       </div>
       {error && <div style={errorBox}>{error}</div>}
-      {/* Saved household-wide on blur, not per keystroke — the cron reads it
-          from there to know which region's flyers to pull. */}
-      <input ref={postalRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
-        onBlur={() => db.updateHouseholdPostalCode(postalCode.trim()).catch((e) => setError(e.message || String(e)))}
-        placeholder={t("postalCodePh")} style={{ ...input, borderColor: hasPostal ? undefined : WARN }} />
+      {/* Postal code and the two store actions used to be two rows — the code
+          field full-width above, the buttons below it. They all scope the
+          same region/shop context, so they're one row now: the code field
+          matched down to the buttons' own 34px/radius-8 (its full-width,
+          40px-tall style was built to stand alone, not to sit beside them).
+          The buttons stay gated on hasPostal exactly as before — only the
+          layout changed, not when each piece appears. */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <MapPin size={13} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: SUB, pointerEvents: "none" }} />
+          {/* Saved household-wide on blur, not per keystroke — the cron reads
+              it from there to know which region's flyers to pull. */}
+          <input ref={postalRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
+            onBlur={() => db.updateHouseholdPostalCode(postalCode.trim()).catch((e) => setError(e.message || String(e)))}
+            placeholder={t("postalCodePh")}
+            style={{ ...input, width: 104, height: 34, borderRadius: 8, fontSize: 13, padding: "0 6px 0 25px", borderColor: hasPostal ? undefined : WARN }} />
+        </div>
+        {hasPostal && (
+          <>
+            <button onClick={() => setShowStores(true)} style={ghostBtn}>
+              <Store size={14} /> {t("storeSetup")}
+            </button>
+            {/* Only offered once there's a list to check and a shop to check it
+                against — an empty report helps nobody. */}
+            {pending.length > 0 && storePolicies.some((s) => s.isLocal) && (
+              <button onClick={() => setShowPriceMatch(true)} style={ghostBtn}>
+                <Sparkles size={14} /> {t("priceMatchBtn")}
+              </button>
+            )}
+          </>
+        )}
+      </div>
       {/* Stated up front rather than only on a failed tap — price matching is
           the point of this screen and it can't work without a region. */}
       {!hasPostal && <div style={{ fontSize: 12, color: WARN, marginTop: -4 }}>{t("postalCodeRequired")}</div>}
-      {/* Sits with the postal code because that's what scopes it — the store
-          list is derived from the region's flyers. Hidden until there is one. */}
-      {hasPostal && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: -4 }}>
-          <button onClick={() => setShowStores(true)} style={ghostBtn}>
-            <Store size={14} /> {t("storeSetup")}
-          </button>
-          {/* Only offered once there's a list to check and a shop to check it
-              against — an empty report helps nobody. */}
-          {pending.length > 0 && storePolicies.some((s) => s.isLocal) && (
-            <button onClick={() => setShowPriceMatch(true)} style={ghostBtn}>
-              <Sparkles size={14} /> {t("priceMatchMode")}
-            </button>
-          )}
-        </div>
-      )}
       {/* Stays open after each add — the toast comment below spells out why
           adding several in a row is the normal case here. */}
       {showAddForm && (
