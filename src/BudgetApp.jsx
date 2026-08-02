@@ -4,7 +4,7 @@ import {
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
   Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, ExternalLink,
-  Archive, ArchiveRestore,
+  Archive, ArchiveRestore, Filter,
 } from "lucide-react";
 
 // Each starter template gets its own mark in the ledger list.
@@ -6092,28 +6092,25 @@ function InventoryPanel({ t, lang, onSwitchView }) {
         <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
           placeholder={t("searchInventoryPh")} style={input} />
       )}
-      {/* One row for everything that narrows the list. Location used to be a
-          full-width <select> on its own line, which read as a different kind of
-          control than the status chips even though it does the same job. */}
+      {/* Both filters are the same shape now: a chip that opens a picker. Status
+          used to be three always-visible chips, which crowded the row and spent
+          two of them saying "0". Folded into one, the counts move into the
+          options — you see them on open, and the chip itself shows whichever is
+          selected. Native <select> under the chip skin so a phone gets the
+          system picker rather than anything hand-rolled here. */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-        {[["all", t("showAll")], ["low", t("lowStock")], ["expiring", t("expiringSoon")]].map(([k, label]) => {
-          const n = counts[k];
-          const active = filter === k;
-          return (
-            <button key={k} onClick={() => setFilter(k)}
-              style={{ ...chip(active), ...(active || n ? null : { color: SUB }) }}>
-              {label}
-              <span style={{ opacity: active ? 0.75 : 0.55, fontVariantNumeric: "tabular-nums" }}>{n}</span>
-            </button>
-          );
-        })}
-        {/* Still a native <select> under the chip skin: on a phone that opens the
-            system picker, which beats any menu this could hand-roll. */}
+        <label style={{ ...chip(filter !== "all"), paddingRight: 8, cursor: "pointer" }}>
+          <Filter size={13} style={{ flexShrink: 0 }} />
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} style={chipSelect}>
+            <option value="all">{`${t("showAll")}  ${counts.all}`}</option>
+            <option value="low">{`${t("lowStock")}  ${counts.low}`}</option>
+            <option value="expiring">{`${t("expiringSoon")}  ${counts.expiring}`}</option>
+          </select>
+        </label>
         {locations.length > 0 && (
           <label style={{ ...chip(!!placeFilter), paddingRight: 8, cursor: "pointer" }}>
             <MapPin size={13} style={{ flexShrink: 0 }} />
-            <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)}
-              style={{ border: "none", background: "none", color: "inherit", font: "inherit", cursor: "pointer", outline: "none", padding: 0 }}>
+            <select value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)} style={chipSelect}>
               <option value="">{t("allLocations")}</option>
               {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
@@ -7220,6 +7217,10 @@ function selectablePill(color, active) {
 // Unified selectable chip: neutral grey when off, brand green when on. Category
 // and member tags share it, so the form reads as one system rather than a row of
 // clashing coloured outlines.
+// A native <select> stripped bare so it reads as part of the chip wrapping it —
+// the chip supplies the pill, the border and the colour, this just supplies the
+// picker. Colour/font inherit so the active (teal) state carries through.
+const chipSelect = { border: "none", background: "none", color: "inherit", font: "inherit", cursor: "pointer", outline: "none", padding: 0 };
 function chip(active) {
   // Unselected used to be a flat light-gray fill that needed no border to read
   // as a pill; now that it's CARD (white in light mode, dark in night mode) a
