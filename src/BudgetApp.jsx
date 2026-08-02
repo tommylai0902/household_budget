@@ -1620,22 +1620,6 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
 }
 
 /* ========================= Ledger picker ========================== */
-// The picker's three card surfaces (ledger rows, the "view all" toggle,
-// NewLedgerFlow's template strip) all sit directly over the dark-mode aurora,
-// so the app-wide --glass-* tokens (tuned for cards over a flat background)
-// read as barely-there against it — stronger border here, plus a fill dark
-// enough that the (near-white) text on top keeps its contrast.
-// First pass instead stacked more blur (28px) and more white sheen on top of
-// the shared token's fill, which reportedly read as a grey haze muddying the
-// text: blurring several different aurora hues together dulls them toward
-// grey, and doubling up the white wash lightened the fill further, both
-// working directly against contrast. This version goes the other way —
-// darker, more opaque fill (own colour, not layered on --glass-bg) and only
-// a modest blur bump — so the card itself stays legible and the border does
-// the work of reading as "glass" against the aurora.
-const pickerGlass = (theme) => theme === "dark"
-  ? { background: "linear-gradient(rgba(255,255,255,.04), rgba(255,255,255,.04)), rgba(10,20,26,0.62)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.26)" }
-  : { background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--glass-border)" };
 function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeAccent, onOpen, onHome, onNavigate, onNotification, inviteMsg, onDismissInvite, currentUserId }) {
   const [ledgers, setLedgers] = useState(null); // null = still loading
   // Transaction count per ledger, fetched once here (rather than per-row)
@@ -1750,42 +1734,26 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
       {/* Dark-mode-only aurora — like the Kid Ledger's own fixed bright
           palette elsewhere in this file, this is a deliberate decorative
           exception to the single user-pickable --accent that drives every
-          other glow in the app. A wide emerald field with a narrower violet
-          band crossing through it (screen blend, so the overlap brightens
-          instead of washing to grey) and a mint highlight for variation —
-          verified by rendering this exact markup standalone and comparing
-          screenshots/computed styles against the source spec rather than
-          just reading the CSS, because two earlier passes each *looked*
-          right in code but weren't: too much blur + too-low alpha desaturated
-          everything to a smear (fixed with moderate 35-40px blur and 0.8-0.9
-          core alpha), and the drift keyframes' translate/rotate deltas were
-          too small to read as motion at a glance (bumped to ±5-8vw/deg over
-          8-11s, confirmed by diffing getComputedStyle(...).transform a few
-          seconds apart — screenshots alone couldn't show this, the capture
-          freezes animations to a fixed frame for a deterministic image).
-          Fixed positioning covers the full viewport height and only fades to
-          the page's own dark background in the bottom 15%, so content lower
-          on the page (e.g. "Create ledger" once the picker scrolls) still
-          sits over colour instead of flat black. Colours only read right
-          against a near-black canvas, and the spec gave no light-mode
-          version, so light mode keeps the original single-glow treatment
-          below rather than guessing one. */}
+          other glow in the app. Its three colours (violet/teal/emerald)
+          only read right against a near-black canvas, and the source spec
+          gave no light-mode version, so light mode keeps the original
+          single-glow treatment below rather than guessing one. */}
       {theme === "dark" ? (
         <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          <div style={{ position: "absolute", left: "-30%", top: "-15%", width: "160vw", height: "95vh",
-            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(16,185,129,0.85) 0%, rgba(20,184,166,0.6) 40%, rgba(13,148,136,0.3) 68%, transparent 85%)",
-            mixBlendMode: "screen", filter: "blur(40px)", transform: "rotate(8deg)", animation: "auroraGreenDrift 9s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", left: "-25%", top: "-20%", width: "62vw", height: "100vh",
-            background: "radial-gradient(ellipse 42% 100% at 50% 50%, rgba(168,85,247,0.9) 0%, rgba(147,51,234,0.65) 38%, rgba(124,58,237,0.25) 64%, transparent 82%)",
-            mixBlendMode: "screen", filter: "blur(38px)", transform: "rotate(27deg)", animation: "auroraVioletDrift 11s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", left: "-10%", top: "-6%", width: "110vw", height: "55vh",
-            background: "radial-gradient(ellipse 50% 100% at 50% 50%, rgba(110,231,183,0.85) 0%, rgba(52,211,153,0.5) 48%, transparent 80%)",
-            mixBlendMode: "screen", filter: "blur(35px)", transform: "rotate(11deg)", animation: "auroraMintDrift 8s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", inset: "auto 0 0 0", height: "15%", background: "linear-gradient(to bottom, transparent, var(--paper) 95%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 85% 0%, rgba(13,148,136,0.15), transparent 60%)" }} />
+          <div style={{ position: "absolute", top: 180, left: -120, width: 420, height: 420, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(147,51,234,0.65), rgba(124,58,237,0.35) 55%, transparent 72%)",
+            filter: "blur(50px)", transform: "rotate(-25deg)", animation: "auroraPurpleWave 14s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", top: -30, right: -90, width: 380, height: 380, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(20,184,166,0.70), rgba(13,148,136,0.40) 55%, transparent 72%)",
+            filter: "blur(45px)", animation: "auroraTealCurtain 12s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", bottom: -80, left: -40, width: 320, height: 320, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(16,185,129,0.50), transparent 68%)",
+            filter: "blur(55px)", animation: "auroraEmeraldGlow 16s ease-in-out infinite" }} />
           <style>{`
-            @keyframes auroraGreenDrift { 0% { transform: rotate(4deg) translate(-3vw,-2vh) scale(1); } 50% { transform: rotate(16deg) translate(5vw,3vh) scale(1.12); } 100% { transform: rotate(4deg) translate(-3vw,-2vh) scale(1); } }
-            @keyframes auroraVioletDrift { 0% { transform: rotate(33deg) translate(3vw,-2vh) scale(1.08); } 50% { transform: rotate(19deg) translate(-5vw,3vh) scale(0.96); } 100% { transform: rotate(33deg) translate(3vw,-2vh) scale(1.08); } }
-            @keyframes auroraMintDrift { 0% { transform: rotate(4deg) translate(-4vw,1vh) scale(1); } 50% { transform: rotate(20deg) translate(4vw,-2vh) scale(1.15); } 100% { transform: rotate(4deg) translate(-4vw,1vh) scale(1); } }
+            @keyframes auroraPurpleWave { 0%,100% { transform: translate(0,0) rotate(-25deg) scale(1); opacity: .70; } 50% { transform: translate(-35px,25px) rotate(-18deg) scale(1.18); opacity: .85; } }
+            @keyframes auroraTealCurtain { 0%,100% { transform: translate(0,0) scale(1); opacity: .75; } 50% { transform: translate(25px,-30px) scale(1.2); opacity: .95; } }
+            @keyframes auroraEmeraldGlow { 0%,100% { transform: translate(0,0) scale(1); opacity: .50; } 50% { transform: translate(-20px,-20px) scale(1.25); opacity: .75; } }
           `}</style>
         </div>
       ) : (
@@ -1864,7 +1832,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                   </button>
                 </div>
               ) : (
-                <LedgerRow l={l} stats={statsById[l.id]} t={t} lang={lang} theme={theme} onOpen={onOpen} onRename={startRename} onDelete={remove} />
+                <LedgerRow l={l} stats={statsById[l.id]} t={t} lang={lang} onOpen={onOpen} onRename={startRename} onDelete={remove} />
               )}
             </div>
             );
@@ -1872,7 +1840,8 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           {rankedLedgers.length > 3 && (
             <button onClick={() => setShowAll((s) => !s)} className="swipe-row" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              ...pickerGlass(theme), boxShadow: "0 8px 32px var(--glass-shadow)",
+              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
               borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
               fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
             }}>
@@ -1882,7 +1851,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           )}
         </div>
 
-        <NewLedgerFlow t={t} busy={busy} onCreate={create} theme={theme} />
+        <NewLedgerFlow t={t} busy={busy} onCreate={create} />
       </div>
       {confirmDelete && <ConfirmDialog t={t} message={t("deleteLedgerConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />}
       {/* Not the danger tone — nothing is destroyed, so it shouldn't wear the
@@ -1907,7 +1876,7 @@ const NEW_LEDGER_TEMPLATE_ORDER = ["household", "personal", "travel", "kid", "bl
 // MemberManager edits post-creation (display-name+colour tags for splitting),
 // not the email/role invite system — that one requires a ledger id to already
 // exist, so it stays a post-creation action.
-function NewLedgerFlow({ t, busy, onCreate, theme }) {
+function NewLedgerFlow({ t, busy, onCreate }) {
   const [template, setTemplate] = useState(null);
   const [templateConfirmed, setTemplateConfirmed] = useState(false);
   const [members, setMembers] = useState([]);
@@ -2052,8 +2021,8 @@ function NewLedgerFlow({ t, busy, onCreate, theme }) {
             <button key={k} onClick={() => pickTemplate(k)} className="swipe-row" style={{
               position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
               padding: "13px 16px 13px 13px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
-              ...pickerGlass(theme),
-              border: active ? `1.5px solid ${TEAL}` : pickerGlass(theme).border,
+              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: `1.5px solid ${active ? TEAL : "var(--glass-border)"}`,
               boxShadow: active ? ACCENT_GLOW : "0 8px 32px var(--glass-shadow)",
             }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: active ? TEAL : MUTED_BG }}>
@@ -2221,7 +2190,7 @@ function useSwipeReveal(actionsWidth) {
 // each row; now they live under it, revealed by dragging the row left. Mice
 // without a drag gesture get a hover-revealed "more" button as a click
 // fallback (CSS-only, see .swipe-more-btn in index.css).
-function LedgerRow({ l, stats, t, lang, theme, onOpen, onRename, onDelete }) {
+function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
   const accent = ledgerAccent(l.template);
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(LEDGER_ROW_ACTIONS_WIDTH);
   const handleRowClick = () => onTapOrClose(() => onOpen(l));
@@ -2243,11 +2212,11 @@ function LedgerRow({ l, stats, t, lang, theme, onOpen, onRename, onDelete }) {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
         style={{
           position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
-          // Same frosted glass treatment as the Bento home cards, but boosted
-          // (see pickerGlass) since this one sits directly over the aurora.
-          // The template accent stays in the eyebrow/icon/dot only, plus the
-          // hover glow.
-          ...pickerGlass(theme), boxShadow: "0 8px 32px var(--glass-shadow)",
+          // Same frosted glass treatment as the Bento home cards: translucent
+          // surface + backdrop blur, neutral translucent border. The template
+          // accent stays in the eyebrow/icon/dot only, plus the hover glow.
+          background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
           borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
