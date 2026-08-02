@@ -6010,28 +6010,23 @@ function InventoryPanel({ t, lang, onSwitchView }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="inventory" onSwitch={onSwitchView} t={t} />
-        {/* Camera and "Add item" share one pill with a hairline divider — two
-            ways into the same add-an-item action rather than two unrelated
-            buttons competing for space in the header. */}
-        <div style={{ ...ghostBtn, padding: 0, marginLeft: "auto", flexShrink: 0, overflow: "hidden" }}>
-          {/* A label, not a button — the file input is what has to be clicked to
-              open the camera, and wrapping it is the only way to style that. */}
-          <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
-            style={{ display: "flex", alignItems: "center", padding: "8px 10px", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
-            {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />}
-            <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
-          </label>
-          <span aria-hidden="true" style={{ width: 1, alignSelf: "stretch", background: LINE }} />
-          <button onClick={() => setShowAddForm((s) => !s)}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", border: "none", background: "none", color: INK, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            <Plus size={15} /> {t("addItem")}
-          </button>
-        </div>
+        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
+          <Plus size={15} /> {t("addItem")}
+        </button>
       </div>
       {error && <div style={errorBox}>{error}</div>}
       {showAddForm && (
         <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* A label, not a button — the file input is what has to be clicked to
+              open the camera, and wrapping it is the only way to style that.
+              Lives inside the panel, not the header: it's an alternative to
+              typing the fields below, not a separate action. */}
+          <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+            style={{ ...ghostBtn, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+            {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />} {t("scanBarcode")}
+            <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
+          </label>
           <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder={t("itemNamePh")} style={input} />
           <div style={{ display: "flex", gap: 8 }}>
@@ -6074,8 +6069,9 @@ function InventoryPanel({ t, lang, onSwitchView }) {
       {/* Search joins the two filter chips on one row — all three narrow the
           same list, so they read as one control group. Hidden once the list is
           long enough that search stays open anyway; a toggle that can't turn
-          anything off is just a dead control. */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          anything off is just a dead control. Right-aligned to sit under the
+          "Add item" button above, rather than the left edge. */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
         {!alwaysSearch && (
           <button onClick={toggleSearch} aria-label={t("searchInventoryPh")} aria-expanded={searchOpen}
             style={chip(searchOpen)}>
