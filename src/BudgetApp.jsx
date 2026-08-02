@@ -2855,7 +2855,6 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         .exp-row:focus-visible { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
         @media (max-width: 560px) {
           .ledger-switcher { flex-basis:100%; }
-          .ledger-controls { width:100%; justify-content:flex-end; margin-left:0 !important; }
           .exp-row { padding:14px !important; }
         }
         .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
@@ -2877,19 +2876,29 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
             same ledger, but those entries operate on transactions/
             categories/splits, which don't mean anything from either. */}
         {viewState === "ledger" ? (
-          <div className="ledger-header" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-            <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
-            {/* minWidth keeps the title from shrinking to a stub, so on a narrow
-                screen the controls wrap to their own line; marginLeft:auto then
-                holds them against the right edge instead of falling back left. */}
-            <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
+          <div className="ledger-header" style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+            {/* Back button and the bell/menu share the top row — they're both
+                navigation, not page content, so they read as one header line
+                rather than bell/menu drifting down to sit with the month. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+                {headerControls}
+              </div>
+            </div>
+            {/* Month and Add expense scope the page below them, so they get
+                their own row — Add expense shrunk to a chip beside the month
+                instead of the full-width button it used to be under the
+                calendar, since this is the more-used path once a ledger is
+                already open (the calendar's own days still open the form too). */}
+            <div className="ledger-controls" style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end" }}>
               {/* A period ledger has nothing to switch between — one fixed
                   trip, not a recurring monthly cycle — so this is a label,
                   not a picker. */}
               {isPeriodLedger ? (
                 <span style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{periodLabel}</span>
               ) : (
-                // Same 34px/radius-8 box as the bell/menu buttons beside it —
+                // Same 34px/radius-8 box as the bell/menu buttons above —
                 // selectStyle's own height/radius (built for a full-width
                 // Report picker) read taller and rounder next to them.
                 <select value={month} onChange={(e) => { setMonth(e.target.value); setSelectedDay(null); }} aria-label={t("selectMonth")}
@@ -2899,7 +2908,9 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                   ))}
                 </select>
               )}
-              {headerControls}
+              <button onClick={() => setEditing("new")} className="btn-glow" style={chip(true)}>
+                <Plus size={14} /> {t("addExpense")}
+              </button>
             </div>
           </div>
         ) : (
@@ -2917,10 +2928,10 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
 
         {viewState === "ledger" && (
           <>
+            {/* Add expense moved up into the header chip beside the month —
+                no full-width button needed here any more. */}
             <MonthCalendar month={month} expenses={expenses} lang={lang} selectedDay={selectedDay} onSelectDay={setSelectedDay} t={t}
               total={summary.total} totalBudget={totalBudget} onCheckSettleUp={() => setShowSettlement(true)} />
-
-            <button onClick={() => setEditing("new")} className="btn-glow" style={{ ...addBtn, marginTop: 14 }}><Plus size={18} /> {t("addExpense")}</button>
 
             {/* List — one glass card per expense (matching Inventory Hub/Smart
                 Grocery's row style) instead of a single bordered block with
@@ -2978,7 +2989,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                                 neutral metadata row. */}
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: SUB }}>
                               {e.split === "shared" ? <Users size={11} /> : <User size={11} />}
-                              {e.split === "shared" ? t("splitWaysShort", { n: (e.sharedWith || []).length }) : t("personal")}
+                              {e.split === "shared" ? t("split") : t("personal")}
                             </span>
                           </>
                         )}
