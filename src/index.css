@@ -79,8 +79,12 @@ html, body {
   /* Tuned lighter/more translucent per the Aurora spec — cards over the
      picker's new animated background need to actually let it glow through,
      and a neutral white border reads as "glass edge" rather than tinting
-     every card's outline with whatever accent colour is picked. */
-  --glass-bg: rgba(14, 26, 32, 0.45); --glass-border: rgba(255, 255, 255, 0.12);
+     every card's outline with whatever accent colour is picked. A flat white
+     wash is layered on top of the teal fill (not blended into one rgba) so
+     it reads as a highlight catching the glass rather than just a lighter
+     tint — the layering itself is what sells "glass floating over the
+     aurora" on the picker; it's subtle enough (6%) to be a no-op elsewhere. */
+  --glass-bg: linear-gradient(rgba(255,255,255,.06), rgba(255,255,255,.06)), rgba(14, 26, 32, 0.45); --glass-border: rgba(255, 255, 255, 0.12);
   --glass-shadow: rgba(0, 0, 0, 0.3);
   --badge-teal-bg: rgba(var(--accent-rgb), 0.15); --badge-teal-border: rgba(var(--accent-rgb), 0.3); --badge-teal-ink: var(--accent);
   --badge-amber-bg: rgba(245, 158, 11, 0.15); --badge-amber-border: rgba(245, 158, 11, 0.3); --badge-amber-ink: #FCD34D;
