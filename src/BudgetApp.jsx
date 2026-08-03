@@ -6363,16 +6363,26 @@ function InventoryPanel({ t, lang, onSwitchView }) {
   );
 }
 
-// Glowing dot + label, same halo recipe as the ledger row's status dot —
-// used for the Low stock / Expiring soon / Expired badges on an inventory row.
-function StatusPill({ color, bg, border, label }) {
+// Tinted label — used for the Low stock / Expiring soon / Expired badges on
+// an inventory row.
+function StatusPill({ tone, label }) {
   // Smaller than a typical pill and no glow dot — this one has to share a row
   // with the category/location text on an inventory row, sometimes two of
   // them at once, so it stays as compact as still reads as a pill. Rounded
   // rectangle, not a capsule — see the app-wide chip/pill/StatusPill radius
   // unification (chip():9, pill():8, this:6, scaled to each one's height).
+  //
+  // Fill and border are derived from the one tone rather than passed in:
+  // callers used to hand over their own bg/border trio, and the solid
+  // --bad-* tokens next to a color-mix'd amber made two pills on the same
+  // row look like different components.
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 6, background: bg, border: `1px solid ${border}`, color, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
+    <span style={{
+      display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 6,
+      background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${tone} 45%, transparent)`,
+      color: tone, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
+    }}>
       {label}
     </span>
   );
@@ -6410,7 +6420,10 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
               elsewhere in the row, so nothing showed they adjusted that number.
               One pill with the live quantity between them makes the
               relationship obvious at a glance. */}
-          <div style={{ display: "flex", alignItems: "center", border: `1px solid ${LINE}`, borderRadius: 9, flexShrink: 0, overflow: "hidden" }}>
+          {/* --glass-border, not LINE: this pill is the one control here with
+              no fill of its own, so its border is all there is to see — and
+              LINE is near-black against the transparent card. */}
+          <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--glass-border)", borderRadius: 9, flexShrink: 0, overflow: "hidden" }}>
             <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, border: "none", background: "none", color: INK, cursor: "pointer" }} aria-label="-">
               <Minus size={13} />
@@ -6447,9 +6460,9 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
               {locationName && <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, color: SUB, flexShrink: 0 }}><MapPin size={10} /> {locationName}</span>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-              {low && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("lowStock")} />}
-              {expired && <StatusPill color={BAD_INK} bg={BAD_BG} border={BAD_LINE} label={t("expired")} />}
-              {expiring && <StatusPill color={WARN} bg={`color-mix(in srgb, ${WARN} 14%, transparent)`} border={`color-mix(in srgb, ${WARN} 45%, transparent)`} label={t("expiringSoon")} />}
+              {low && <StatusPill tone={BAD_INK} label={t("lowStock")} />}
+              {expired && <StatusPill tone={BAD_INK} label={t("expired")} />}
+              {expiring && <StatusPill tone={WARN} label={t("expiringSoon")} />}
             </div>
           </div>
         )}
