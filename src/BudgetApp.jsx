@@ -1680,7 +1680,7 @@ function Login({ lang, changeLang, t, theme, hasInvite }) {
       {theme === "dark" ? <CosmicBackground /> : (
         <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(var(--accent-rgb),0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(var(--accent-rgb),0.12), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
       )}
-      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 16, padding: 22 }}>
+      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{
             fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 800,
@@ -1997,8 +1997,8 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           {rankedLedgers.length > 3 && (
             <button onClick={() => setShowAll((s) => !s)} className="swipe-row" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-              border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
+              background: "var(--glass-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
               borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
               fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
             }}>
@@ -2178,9 +2178,9 @@ function NewLedgerFlow({ t, busy, onCreate }) {
             <button key={k} onClick={() => pickTemplate(k)} className="swipe-row" style={{
               position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
               padding: "13px 16px 13px 13px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
-              background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              background: "var(--glass-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
               border: `1.5px solid ${active ? TEAL : "var(--glass-border)"}`,
-              boxShadow: active ? ACCENT_GLOW : "0 8px 32px var(--glass-shadow)",
+              boxShadow: active ? ACCENT_GLOW : "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
             }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: active ? TEAL : MUTED_BG }}>
                 <Icon size={18} style={{ color: active ? ACCENT_INK : SUB }} />
@@ -2381,22 +2381,21 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: TEAL, minWidth: 0 }}>
             <Icon size={13} style={{ flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(ledgerLabelKey(l.template))}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <ChevronRight size={16} style={{ color: SUB }} />
             <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
-              aria-label={t("moreActions")} style={{ ...iconBtn, width: 30, height: 26, border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.06)" }}>
+              aria-label={t("moreActions")} style={{ ...iconBtn, width: 32, height: 28, borderRadius: 10, border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.06)" }}>
               <MoreHorizontal size={14} />
             </button>
           </div>
         </div>
         <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: -0.3, color: INK, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
-        {stats && <div style={{ borderTop: "1px solid var(--glass-border)", margin: "12px 0 10px" }} />}
         {stats && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--glass-border)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
             {/* Mint status dot with its own halo, same tone as the card glow. */}
             <span style={{ width: 6, height: 6, borderRadius: 99, background: TEAL, boxShadow: "0 0 8px rgba(var(--accent-rgb),0.8)", flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -3043,7 +3042,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         /* .swipe-row supplies the hover/focus glow (same glass-card treatment
            as the ledger picker/Inventory/Grocery rows) — this row has no
            swipe gesture of its own, just borrows that class for the glow. */
-        .exp-row:focus-visible { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 8px 32px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
+        .exp-row:focus-visible { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
         @media (max-width: 560px) {
           .ledger-switcher { flex-basis:100%; }
           .exp-row { padding:14px !important; }
@@ -3146,7 +3145,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                       style={{
                         padding: "12px 14px", cursor: "pointer", outline: "none",
                         background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-                        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+                        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
                         borderRadius: 12,
                       }}>
                       <div className="exp-main">
@@ -3319,7 +3318,7 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
   const SPEND_TINT = `color-mix(in srgb, ${WARN} 12%, transparent)`;
 
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 14, padding: 14, marginTop: 14 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 14, padding: 14, marginTop: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
         {weekdayLabels.map((w, i) => (
           <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase" }}>{w}</div>
@@ -5708,7 +5707,7 @@ const HOME_AMBER = "#FBBF24";
 const HOME_SKY = "#38BDF8";
 const glassCard = {
   background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 20, padding: 20,
-  backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+  backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
@@ -5851,9 +5850,9 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
         .bento-glass:hover { transform: translateY(-2px); }
         .bento-glass-ledger:hover, .bento-glass-inventory:hover, .bento-glass-grocery:hover {
           border-color: rgba(var(--accent-rgb),0.75) !important;
-          box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
+          box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
         }
-        .bento-glass-budget:hover { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 10px 34px var(--glass-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
+        .bento-glass-budget:hover { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
         .bento-glass-ledger:hover .ledger-corner-glow { box-shadow: 0 0 12px rgba(var(--accent-rgb),0.4); }
         .price-match-pill { cursor: pointer; transition: background .18s ease; }
         .bento-glass-grocery:hover .price-match-pill { background: rgba(56,189,248,0.2) !important; }
@@ -5867,7 +5866,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           a side-effect of whatever was opened last elsewhere in the app. */}
       <HomeLedgerSwitcher ledgerId={ledgerId} ledgerName={ledgerName} t={t} onSwitch={onSwitchLedger} />
 
-      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 20, padding: 20, width: "100%" }}>
+      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 20, padding: 20, width: "100%" }}>
         {budget > 0 ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, letterSpacing: 0.3, marginBottom: 12, color: INK }}>
@@ -6231,7 +6230,7 @@ function InventoryPanel({ t, lang, onSwitchView }) {
       </div>
       {error && <div style={errorBox}>{error}</div>}
       {showAddForm && (
-        <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           {/* A label, not a button — the file input is what has to be clicked to
               open the camera, and wrapping it is the only way to style that.
               Lives inside the panel, not the header: it's an alternative to
@@ -6390,7 +6389,7 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
         style={{
           position: "relative", zIndex: 1,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
           borderRadius: 12, padding: 12,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -6470,7 +6469,7 @@ function InventoryItemForm({ item, t, categories = [], locations = [], onManage,
     setSaving(false);
   };
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
         onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("itemNamePh")} style={input} />
       <div style={{ display: "flex", gap: 8 }}>
@@ -6836,7 +6835,7 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
         style={{
           position: "relative", zIndex: 1,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
           borderRadius: 12, padding: 12, cursor: hasDeal ? "pointer" : "default", opacity: done ? 0.55 : 1,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease, opacity .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -6955,7 +6954,7 @@ function GroceryItemForm({ item, t, onSave, onCancel, onScan, scanning }) {
     setSaving(false);
   };
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Add-only — editing an existing row has no "scan to fill this in"
           moment. A label, not a button: the hidden file input is what has to
           be clicked to open the camera. Photo → flyer prices, straight into a
@@ -7346,7 +7345,7 @@ function Toast({ message, onDone }) {
       display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "calc(100% - 32px)",
       background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
       backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-      boxShadow: "0 10px 34px var(--glass-shadow), 0 0 24px rgba(var(--accent-rgb),0.18)",
+      boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 24px rgba(var(--accent-rgb),0.18)",
       borderRadius: 99, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: INK,
       animation: "toast-in .18s ease", pointerEvents: "none",
     }}>
