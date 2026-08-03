@@ -1418,7 +1418,7 @@ export default function App() {
   };
 
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
-  if (!session) return <Login lang={lang} changeLang={changeLang} t={t} hasInvite={!!inviteToken} />;
+  if (!session) return <Login lang={lang} changeLang={changeLang} t={t} theme={theme} hasInvite={!!inviteToken} />;
   if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
   // Picker's Home menu entry / header nav — jumps into a ledger's Bento
   // dashboard. Prefers the last-used ledger, but the cache is per-device: on a
@@ -1452,8 +1452,64 @@ function Centered({ children }) {
   );
 }
 
+// A calm, minimal starfield for the two "first impression" screens (sign-in,
+// ledger picker) in dark mode — replaces the earlier, much brighter aurora
+// treatment there: deep navy/black gradient, two barely-there nebula blobs,
+// a sparse field of stars (mostly static, a handful genuinely independently
+// twinkling), and one faint streak that crosses the screen every so often.
+// Deliberately understated — "calm rather than dramatic" was the brief.
+function CosmicBackground() {
+  // Generated once per mount, not per render — a starfield that reshuffled
+  // itself on every state change would be the opposite of calm. The static
+  // majority uses the classic single-element box-shadow-per-star trick
+  // (cheap even at 60+ dots); only a small twinkling subset gets its own
+  // element, since that's the only way to animate each one independently.
+  const dust = useMemo(() => {
+    const layer = (count, size) => Array.from({ length: count },
+      () => `${Math.random() * 100}vw ${Math.random() * 100}vh ${(Math.random() * 0.4 + 0.25).toFixed(2)}px rgba(255,255,255,${(Math.random() * 0.5 + 0.3).toFixed(2)})`
+    ).join(", ");
+    return { small: layer(45, 1), large: layer(14, 2) };
+  }, []);
+  const twinkle = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+    id: i, top: Math.random() * 100, left: Math.random() * 100,
+    size: Math.random() * 1.4 + 1, duration: Math.random() * 4 + 3, delay: Math.random() * 8,
+  })), []);
+
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0, background: "linear-gradient(180deg, #05060a 0%, #0a0e1a 55%, #0d1224 100%)" }}>
+      {/* Indigo upper-left, violet lower-right — depth, not a visible glow. */}
+      <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "70%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%)", filter: "blur(60px)", animation: "nebulaDrift 55s ease-in-out infinite" }} />
+      <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: "65%", height: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)", filter: "blur(65px)", animation: "nebulaDrift 70s ease-in-out infinite reverse" }} />
+      <div style={{ position: "absolute", inset: 0, boxShadow: dust.small }} />
+      <div style={{ position: "absolute", inset: 0, boxShadow: dust.large }} />
+      {twinkle.map((s) => (
+        <div key={s.id} style={{
+          position: "absolute", top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size, borderRadius: "50%",
+          background: "#fff", animation: `starTwinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
+        }} />
+      ))}
+      {/* One faint streak, rare rather than clockwork: visible for roughly
+          1s out of every 24s cycle. */}
+      <div style={{
+        position: "absolute", top: "18%", left: "8%", width: 90, height: 1.5,
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.75))",
+        transformOrigin: "left center", animation: "shootingStar 24s linear 5s infinite",
+      }} />
+      <style>{`
+        @keyframes starTwinkle { 0%, 100% { opacity: .25; } 50% { opacity: .9; } }
+        @keyframes nebulaDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%,-2%) scale(1.04); } }
+        @keyframes shootingStar {
+          0%, 92%, 100% { opacity: 0; transform: translate(0,0) rotate(28deg); }
+          93% { opacity: 1; }
+          97% { opacity: 0; transform: translate(240px,130px) rotate(28deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ============================ Login =============================== */
-function Login({ lang, changeLang, t, hasInvite }) {
+function Login({ lang, changeLang, t, theme, hasInvite }) {
   // Arriving via an invite link almost always means a new person — start them on
   // sign-up rather than making them find the toggle themselves.
   const [mode, setMode] = useState(hasInvite ? "signup" : "signin");
@@ -1498,9 +1554,12 @@ function Login({ lang, changeLang, t, hasInvite }) {
 
   return (
     <div style={{ position: "relative", overflow: "hidden", background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
-      {/* Same ambient glow as the Bento home, so the very first screen already
-          reads as the same app rather than a plain, un-styled login form. */}
-      <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(var(--accent-rgb),0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(var(--accent-rgb),0.12), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
+      {/* Dark mode gets the calm starfield (the app's first impression); light
+          mode keeps the original single accent glow — the starfield's navy/
+          black canvas has no light-mode equivalent and wasn't asked for one. */}
+      {theme === "dark" ? <CosmicBackground /> : (
+        <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(var(--accent-rgb),0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(var(--accent-rgb),0.12), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
+      )}
       <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 8px 32px var(--glass-shadow)", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{
@@ -1731,7 +1790,12 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
 
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.11), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      {/* Dark mode gets the calm starfield (same component as the sign-in
+          screen); light mode keeps the original single accent glow — the
+          starfield's navy/black canvas has no light-mode equivalent. */}
+      {theme === "dark" ? <CosmicBackground /> : (
+        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.11), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+      )}
       <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
         {/* Same header block as the Bento home now: brand centered, bell/menu
             on the right — same string in every language, like the eyebrow on
