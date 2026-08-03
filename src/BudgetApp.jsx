@@ -1452,27 +1452,36 @@ function Centered({ children }) {
   );
 }
 
-// A calm, minimal starfield for the two "first impression" screens (sign-in,
-// ledger picker) in dark mode — replaces the earlier, much brighter aurora
-// treatment there: deep navy/black gradient, two barely-there nebula blobs,
-// a sparse field of stars (mostly static, a handful genuinely independently
-// twinkling), and one faint streak that crosses the screen every so often.
-// Deliberately understated — "calm rather than dramatic" was the brief.
+// A dense Milky Way-style starfield for the two "first impression" screens
+// (sign-in, ledger picker) in dark mode — replaces the earlier, much
+// brighter animated aurora there: deep navy/black gradient, two barely-there
+// nebula blobs, a thick scattered field of stars in a range of sizes (mostly
+// static, a couple dozen genuinely independently twinkling), and one faint
+// streak that crosses the screen every so often.
 function CosmicBackground() {
   // Generated once per mount, not per render — a starfield that reshuffled
-  // itself on every state change would be the opposite of calm. The static
-  // majority uses the classic single-element box-shadow-per-star trick
-  // (cheap even at 60+ dots); only a small twinkling subset gets its own
-  // element, since that's the only way to animate each one independently.
+  // itself on every state change would be distracting rather than calm. The
+  // static majority uses the classic single-element box-shadow-per-star
+  // trick (cheap even at hundreds of dots); the spread value (box-shadow's
+  // 4th number) is what gives each dot in the *same* layer its own size,
+  // rather than needing a separate element per size. Only the smaller
+  // twinkling subset gets its own element, since that's the only way to
+  // animate each one independently.
   const dust = useMemo(() => {
-    const layer = (count, size) => Array.from({ length: count },
-      () => `${Math.random() * 100}vw ${Math.random() * 100}vh ${(Math.random() * 0.4 + 0.25).toFixed(2)}px rgba(255,255,255,${(Math.random() * 0.5 + 0.3).toFixed(2)})`
-    ).join(", ");
-    return { small: layer(45, 1), large: layer(14, 2) };
+    const layer = (count, minSpread, maxSpread, minOp, maxOp) => Array.from({ length: count }, () => {
+      const spread = (Math.random() * (maxSpread - minSpread) + minSpread).toFixed(2);
+      const op = (Math.random() * (maxOp - minOp) + minOp).toFixed(2);
+      return `${(Math.random() * 100).toFixed(2)}vw ${(Math.random() * 100).toFixed(2)}vh 0 ${spread}px rgba(255,255,255,${op})`;
+    }).join(", ");
+    return {
+      haze: layer(420, 0, 0.55, 0.2, 0.45), // faint dense background dust
+      small: layer(190, 0.45, 1.1, 0.4, 0.7),
+      large: layer(55, 1, 2, 0.6, 1), // a few standout bright ones
+    };
   }, []);
-  const twinkle = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+  const twinkle = useMemo(() => Array.from({ length: 26 }, (_, i) => ({
     id: i, top: Math.random() * 100, left: Math.random() * 100,
-    size: Math.random() * 1.4 + 1, duration: Math.random() * 4 + 3, delay: Math.random() * 8,
+    size: Math.random() * 2.4 + 0.8, duration: Math.random() * 3 + 2, delay: Math.random() * 8,
   })), []);
 
   return (
@@ -1480,6 +1489,7 @@ function CosmicBackground() {
       {/* Indigo upper-left, violet lower-right — depth, not a visible glow. */}
       <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "70%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%)", filter: "blur(60px)", animation: "nebulaDrift 55s ease-in-out infinite" }} />
       <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: "65%", height: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)", filter: "blur(65px)", animation: "nebulaDrift 70s ease-in-out infinite reverse" }} />
+      <div style={{ position: "absolute", inset: 0, boxShadow: dust.haze }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: dust.small }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: dust.large }} />
       {twinkle.map((s) => (
@@ -1488,20 +1498,25 @@ function CosmicBackground() {
           background: "#fff", animation: `starTwinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
         }} />
       ))}
-      {/* One faint streak, rare rather than clockwork: visible for roughly
-          1s out of every 24s cycle. */}
+      {/* One streak, once a minute rather than clockwork-frequent (~1.2s
+          visible out of every 60s) — a bright glowing head with a long
+          fading tail, per the reference photo. Kept in the top strip with a
+          flat, mostly-horizontal path: both screens it renders on (sign-in,
+          ledger picker) fill most of the rest of the viewport with opaque
+          cards, which would otherwise clip a streak crossing the middle. */}
       <div style={{
-        position: "absolute", top: "18%", left: "8%", width: 90, height: 1.5,
-        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.75))",
-        transformOrigin: "left center", animation: "shootingStar 24s linear 5s infinite",
+        position: "absolute", top: "4%", left: "5%", width: 150, height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
+        borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
+        transformOrigin: "left center", animation: "shootingStar 60s linear 5s infinite",
       }} />
       <style>{`
-        @keyframes starTwinkle { 0%, 100% { opacity: .25; } 50% { opacity: .9; } }
+        @keyframes starTwinkle { 0%, 100% { opacity: .1; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.25); } }
         @keyframes nebulaDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%,-2%) scale(1.04); } }
         @keyframes shootingStar {
-          0%, 92%, 100% { opacity: 0; transform: translate(0,0) rotate(28deg); }
-          93% { opacity: 1; }
-          97% { opacity: 0; transform: translate(240px,130px) rotate(28deg); }
+          0%, 95%, 100% { opacity: 0; transform: translate(0,0) rotate(11deg); }
+          96% { opacity: 1; }
+          98% { opacity: 0; transform: translate(300px,60px) rotate(11deg); }
         }
       `}</style>
     </div>
