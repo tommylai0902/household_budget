@@ -6240,8 +6240,8 @@ function InventoryPanel({ t, lang, onSwitchView }) {
               open the camera, and wrapping it is the only way to style that.
               Lives inside the panel, not the header: it's an alternative to
               typing the fields below, not a separate action. */}
-          <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
-            style={{ ...ghostBtn, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+          <label className={scanning ? "" : "press-fx btn-glow"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+            style={{ ...addBtn, marginTop: 0, cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
             {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />} {t("scanBarcode")}
             <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scanProduct(f); }} />
@@ -6965,8 +6965,8 @@ function GroceryItemForm({ item, t, onSave, onCancel, onScan, scanning }) {
           be clicked to open the camera. Photo → flyer prices, straight into a
           price match, same as the row-level scan-for-deals button. */}
       {isNew && onScan && (
-        <label className={scanning ? "" : "press-fx"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
-          style={{ ...ghostBtn, width: "100%", justifyContent: "center", cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
+        <label className={scanning ? "" : "press-fx btn-glow"} title={t("scanBarcode")} aria-label={t("scanBarcode")}
+          style={{ ...addBtn, marginTop: 0, cursor: scanning ? "wait" : "pointer", opacity: scanning ? 0.6 : 1 }}>
           {scanning ? <Loader2 size={15} className="spin" /> : <Camera size={15} />} {t("scanBarcode")}
           <input type="file" accept="image/*" capture="environment" disabled={scanning} style={{ display: "none" }}
             onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onScan(f); }} />
