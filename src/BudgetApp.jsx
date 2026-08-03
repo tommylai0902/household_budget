@@ -1554,7 +1554,14 @@ function CosmicBackground() {
   }, []);
 
   return (
-    <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0, background: "linear-gradient(180deg, #05060a 0%, #0a0e1a 55%, #0d1224 100%)" }}>
+    <div aria-hidden="true" style={{
+      position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0,
+      background:
+        "radial-gradient(ellipse at 85% 15%, rgba(56,189,248,0.20) 0%, rgba(14,116,144,0.10) 40%, transparent 70%), " +
+        "radial-gradient(circle at 10% 85%, rgba(15,23,42,0.8) 0%, transparent 60%), " +
+        "radial-gradient(ellipse at center, #0a1b33 0%, #030a17 65%, #01040a 100%) #020712",
+      backgroundAttachment: "fixed",
+    }}>
       {/* Indigo upper-left, violet lower-right — depth, not a visible glow. */}
       <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "70%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%)", filter: "blur(60px)", animation: "nebulaDrift 55s ease-in-out infinite" }} />
       <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: "65%", height: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)", filter: "blur(65px)", animation: "nebulaDrift 70s ease-in-out infinite reverse" }} />
