@@ -2457,16 +2457,22 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
     <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
 
-        {/* Header — same chrome as every other ledger (switcher, menu),
-            so navigation stays consistent; only the content below is the
-            gamified skin. */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-          <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
-            <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
-            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
-              accent={accent} changeAccent={changeAccent} onHome={onExit} />
+        {/* Header — same chrome as every other ledger (back chip, switcher,
+            menu), so navigation stays consistent; only the content below is
+            the gamified skin. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          {/* Back out to the picker, same chip and same row placement as the
+              normal ledger header — this screen had no way back to it at all,
+              only the menu's Home. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+              <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
+              <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
+                accent={accent} changeAccent={changeAccent} onHome={onExit} />
+            </div>
           </div>
+          <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
         </div>
 
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
