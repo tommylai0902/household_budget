@@ -1680,7 +1680,7 @@ function Login({ lang, changeLang, t, theme, hasInvite }) {
       {theme === "dark" ? <CosmicBackground /> : (
         <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(var(--accent-rgb),0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(var(--accent-rgb),0.12), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
       )}
-      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 16, padding: 22 }}>
+      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{
             fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 800,
@@ -1997,7 +1997,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           {rankedLedgers.length > 3 && (
             <button onClick={() => setShowAll((s) => !s)} className="swipe-row" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "var(--glass-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              background: "var(--glass-bg)",
               border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
               borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
               fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
@@ -2178,7 +2178,7 @@ function NewLedgerFlow({ t, busy, onCreate }) {
             <button key={k} onClick={() => pickTemplate(k)} className="swipe-row" style={{
               position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
               padding: "13px 16px 13px 13px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
-              background: "var(--glass-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              background: "var(--glass-bg)",
               border: `1.5px solid ${active ? TEAL : "var(--glass-border)"}`,
               boxShadow: active ? ACCENT_GLOW : "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
             }}>
@@ -2370,11 +2370,13 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
         style={{
           position: "relative", zIndex: 1,
-          // Same frosted glass treatment as the Bento home cards: translucent
-          // surface + backdrop blur, neutral translucent border, plus a thin
-          // inset top highlight for a touch of glass edge-lighting. The
-          // template accent stays in the eyebrow/icon/dot only.
-          background: "var(--glass-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          // Same frosted glass treatment as the Bento home cards: a
+          // near-transparent surface the starfield reads through, neutral
+          // translucent border, plus a thin inset top highlight for a touch
+          // of glass edge-lighting. No backdrop blur — it smears the point
+          // stars behind into nothing. The template accent stays in the
+          // eyebrow/icon/dot only.
+          background: "var(--glass-bg)",
           border: "1px solid var(--glass-border)",
           boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
           borderRadius: 20, padding: "18px 20px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
@@ -3145,7 +3147,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                       style={{
                         padding: "12px 14px", cursor: "pointer", outline: "none",
                         background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-                        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+                        boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
                         borderRadius: 12,
                       }}>
                       <div className="exp-main">
@@ -3318,7 +3320,7 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
   const SPEND_TINT = `color-mix(in srgb, ${WARN} 12%, transparent)`;
 
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 14, padding: 14, marginTop: 14 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 14, padding: 14, marginTop: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
         {weekdayLabels.map((w, i) => (
           <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase" }}>{w}</div>
@@ -5707,7 +5709,7 @@ const HOME_AMBER = "#FBBF24";
 const HOME_SKY = "#38BDF8";
 const glassCard = {
   background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 20, padding: 20,
-  backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+  boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
@@ -5784,7 +5786,10 @@ function HomeLedgerSwitcher({ ledgerId, ledgerName, t, onSwitch }) {
       {open && (
         <div role="menu" style={{
           position: "absolute", left: 0, top: "calc(100% + 6px)", borderRadius: 12, padding: 6, minWidth: 200, maxWidth: 300, zIndex: 60,
-          background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          // Opaque, not --glass-bg: that token is near-transparent so cards
+          // show the starfield, but a popup floating over page content needs
+          // to cover it or the rows underneath read straight through.
+          background: "var(--card)", border: "1px solid var(--glass-border)",
           boxShadow: "0 10px 30px var(--glass-shadow), 0 0 24px rgba(var(--accent-rgb),0.1)",
         }}>
           {ledgers.map((l) => {
@@ -5866,7 +5871,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           a side-effect of whatever was opened last elsewhere in the app. */}
       <HomeLedgerSwitcher ledgerId={ledgerId} ledgerName={ledgerName} t={t} onSwitch={onSwitchLedger} />
 
-      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 20, padding: 20, width: "100%" }}>
+      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 20, padding: 20, width: "100%" }}>
         {budget > 0 ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, letterSpacing: 0.3, marginBottom: 12, color: INK }}>
@@ -6230,7 +6235,7 @@ function InventoryPanel({ t, lang, onSwitchView }) {
       </div>
       {error && <div style={errorBox}>{error}</div>}
       {showAddForm && (
-        <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           {/* A label, not a button — the file input is what has to be clicked to
               open the camera, and wrapping it is the only way to style that.
               Lives inside the panel, not the header: it's an alternative to
@@ -6389,7 +6394,7 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
         style={{
           position: "relative", zIndex: 1,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+          boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
           borderRadius: 12, padding: 12,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -6469,7 +6474,7 @@ function InventoryItemForm({ item, t, categories = [], locations = [], onManage,
     setSaving(false);
   };
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
         onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("itemNamePh")} style={input} />
       <div style={{ display: "flex", gap: 8 }}>
@@ -6835,7 +6840,7 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
         style={{
           position: "relative", zIndex: 1,
           background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+          boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
           borderRadius: 12, padding: 12, cursor: hasDeal ? "pointer" : "default", opacity: done ? 0.55 : 1,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease, opacity .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -6954,7 +6959,7 @@ function GroceryItemForm({ item, t, onSave, onCancel, onScan, scanning }) {
     setSaving(false);
   };
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Add-only — editing an existing row has no "scan to fill this in"
           moment. A label, not a button: the hidden file input is what has to
           be clicked to open the camera. Photo → flyer prices, straight into a
@@ -7308,7 +7313,11 @@ function Overlay({ title, onClose, t, children }) {
     <div style={{ position: "fixed", inset: 0, background: "rgba(4,10,12,0.55)", display: "flex", justifyContent: "flex-end", zIndex: 50 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{
         position: "relative", overflow: "hidden", width: "min(440px, 100%)", height: "100%", display: "flex", flexDirection: "column",
-        background: "var(--glass-bg)", borderLeft: "1px solid var(--glass-border)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        // Deliberately NOT --glass-bg: that token is tuned near-transparent so
+        // cards let the starfield through, which for a full-height overlay
+        // means the page underneath competes with the panel's own rows. An
+        // overlay needs to actually cover what it sits on.
+        background: "var(--paper)", borderLeft: "1px solid var(--glass-border)",
         boxShadow: "-8px 0 40px rgba(0,0,0,0.25), 0 0 40px rgba(var(--accent-rgb),0.08)",
       }}>
         <div aria-hidden="true" style={{ position: "absolute", inset: "-60px -40px auto -40px", height: 220, background: "radial-gradient(circle at 30% 20%, rgba(var(--accent-rgb),0.2), transparent 60%)", filter: "blur(30px)", pointerEvents: "none" }} />
@@ -7344,7 +7353,6 @@ function Toast({ message, onDone }) {
       position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 95,
       display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "calc(100% - 32px)",
       background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
       boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 24px rgba(var(--accent-rgb),0.18)",
       borderRadius: 99, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: INK,
       animation: "toast-in .18s ease", pointerEvents: "none",

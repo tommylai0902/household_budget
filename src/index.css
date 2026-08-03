@@ -82,7 +82,10 @@ html, body {
   --ok-bg: #123833; --ok-ink: #7FD9CA; --ok-line: #1F544C; --ok-strong: #1A4B43;
   --bad-bg: #3A1D1D; --bad-ink: #F19B94; --bad-line: #5E2E2A;
   --track: #2A3137; --muted-bg: #242A2F; --danger: #F1897F; --warn: #F5A97A;
-  --glass-bg: radial-gradient(ellipse at center, rgba(12, 22, 28, 0.08) 0%, rgba(12, 22, 28, 0.28) 45%, rgba(12, 22, 28, 0.82) 100%);
+  /* A white tint, not a dark one: over the near-black starfield this reads as
+     lit frosted glass rather than a dark panel. Alphas stay tiny — even 0.2
+     white is a visible haze against #01040a. */
+  --glass-bg: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.005) 0%, rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.08) 100%);
   --glass-border: rgba(var(--accent-rgb), 0.2);
   --glass-shadow: rgba(0, 0, 0, 0.35);
   --badge-teal-bg: rgba(var(--accent-rgb), 0.15); --badge-teal-border: rgba(var(--accent-rgb), 0.3); --badge-teal-ink: var(--accent);
