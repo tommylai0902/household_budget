@@ -1468,10 +1468,15 @@ function CosmicBackground() {
   // twinkling subset gets its own element, since that's the only way to
   // animate each one independently.
   const dust = useMemo(() => {
+    // px, not vw/vh: mobile Safari resolves vh against the toolbar-collapsed
+    // "large" viewport, taller than what's actually on screen — stars would
+    // scatter past the real bottom edge and leave a dead band above it.
+    // window.innerWidth/Height is the viewport actually visible right now.
+    const w = window.innerWidth, h = window.innerHeight;
     const layer = (count, minSpread, maxSpread, minOp, maxOp) => Array.from({ length: count }, () => {
       const spread = (Math.random() * (maxSpread - minSpread) + minSpread).toFixed(2);
       const op = (Math.random() * (maxOp - minOp) + minOp).toFixed(2);
-      return `${(Math.random() * 100).toFixed(2)}vw ${(Math.random() * 100).toFixed(2)}vh 0 ${spread}px rgba(255,255,255,${op})`;
+      return `${(Math.random() * w).toFixed(1)}px ${(Math.random() * h).toFixed(1)}px 0 ${spread}px rgba(255,255,255,${op})`;
     }).join(", ");
     return {
       fine: layer(1600, 0.2, 0.5, 0.35, 0.65), // very many tiny, static — no per-star animation
