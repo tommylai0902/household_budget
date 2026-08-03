@@ -1459,92 +1459,154 @@ function Centered({ children }) {
 // static, a couple dozen genuinely independently twinkling), and one faint
 // streak that crosses the screen every so often.
 function CosmicBackground() {
-  // Canvas engine, not the box-shadow-div trick: continuous twinkle (alpha
-  // oscillation) and meteor showers with real gradient tails are cheap to
-  // animate per-frame on a canvas but would mean hundreds of individually
-  // animated DOM nodes the old way. One rAF loop owns everything; cleanup
-  // cancels it plus every pending shower timeout on unmount.
+  // Canvas engine: the base gradient, nebula haze, both star layers and the
+  // meteor are all painted per-frame on one canvas rather than as CSS/DOM
+  // layers — cheap even with hundreds of particles, and lets the nebula use
+  // a 'screen' blend so overlapping clouds brighten instead of muddying.
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    let raf, meteors = [], lastShowerTime = Date.now();
+    let raf;
     const timeouts = [];
-    const SHOWER_INTERVAL = 10000; // a fresh wave every 10s
 
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     resize();
     window.addEventListener("resize", resize);
 
-    const stars = Array.from({ length: 250 }, () => ({
+    // Soft color-blob haze, static — no drift, just depth.
+    const nebulaClouds = [
+      { x: canvas.width * 0.75, y: canvas.height * 0.25, r: 240, color: "rgba(56,189,248,0.15)" },
+      { x: canvas.width * 0.25, y: canvas.height * 0.55, r: 200, color: "rgba(168,85,247,0.09)" },
+      { x: canvas.width * 0.60, y: canvas.height * 0.75, r: 260, color: "rgba(14,116,144,0.12)" },
+    ];
+
+    // Ultra-fine dust: mostly clustered along one diagonal "stardust belt"
+    // rather than spread perfectly uniform, so the field reads as denser in
+    // a band the way a real sky does.
+    const dustParticles = Array.from({ length: 380 }, () => {
+      const clustered = Math.random() < 0.55;
+      let x, y;
+      if (clustered) {
+        const t = Math.random();
+        x = canvas.width * t + (Math.random() - 0.5) * 120;
+        y = canvas.height * t * 0.8 + (Math.random() - 0.5) * 160;
+      } else {
+        x = Math.random() * canvas.width;
+        y = Math.random() * canvas.height;
+      }
+      return {
+        x, y, radius: Math.random() * 0.75 + 0.15,
+        alpha: Math.random() * 0.7 + 0.15, twinkleSpeed: 0.002 + Math.random() * 0.008,
+        color: Math.random() > 0.4 ? "#ffffff" : Math.random() > 0.5 ? "#bae6fd" : "#e9d5ff",
+      };
+    });
+
+    const mainStars = Array.from({ length: 120 }, () => ({
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-      radius: Math.random() * 1.2 + 0.3, alpha: Math.random(),
-      twinkleSpeed: 0.005 + Math.random() * 0.015,
-      color: Math.random() > 0.8 ? "#a5f3fc" : Math.random() > 0.6 ? "#e0e7ff" : "#ffffff",
+      radius: Math.random() * 1.1 + 0.6, alpha: Math.random(),
+      speed: 0.005 + Math.random() * 0.012, color: Math.random() > 0.3 ? "#ffffff" : "#bae6fd",
     }));
 
-    const spawnShower = () => {
-      const count = Math.floor(Math.random() * 4) + 3; // 3-6 meteors, staggered
-      for (let i = 0; i < count; i++) {
-        timeouts.push(setTimeout(() => {
-          meteors.push({
-            x: Math.random() * (canvas.width * 0.8), y: Math.random() * (canvas.height * 0.3),
-            length: Math.random() * 80 + 60, speed: Math.random() * 8 + 10,
-            angle: Math.PI / 4, alpha: 1, width: Math.random() * 1.5 + 1.2,
-          });
-        }, i * 350));
-      }
+    // One meteor at a time, not a shower: it fades/exits, then waits 5s
+    // before the next one at a fresh random spot in the upper-left band.
+    const meteor = { x: 0, y: 0, length: 80, speed: 10, angle: Math.PI / 3.8, alpha: 1, active: true };
+    const resetMeteor = () => {
+      meteor.x = Math.random() * (canvas.width * 0.6);
+      meteor.y = Math.random() * (canvas.height * 0.2);
+      meteor.alpha = 1;
+      meteor.active = true;
     };
-    timeouts.push(setTimeout(spawnShower, 1500));
+    resetMeteor();
 
-    const animate = () => {
+    const drawNebula = () => {
+      nebulaClouds.forEach((cloud) => {
+        const grad = ctx.createRadialGradient(cloud.x, cloud.y, 0, cloud.x, cloud.y, cloud.r);
+        grad.addColorStop(0, cloud.color);
+        grad.addColorStop(0.5, cloud.color.replace(/[\d.]+\)$/, "0.05)"));
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cloud.x, cloud.y, cloud.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    };
+
+    const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      stars.forEach((star) => {
-        star.alpha += star.twinkleSpeed;
-        if (star.alpha > 1 || star.alpha < 0.1) star.twinkleSpeed = -star.twinkleSpeed;
+      const bgGrad = ctx.createRadialGradient(
+        canvas.width * 0.85, canvas.height * 0.15, 10,
+        canvas.width * 0.5, canvas.height * 0.5, canvas.height
+      );
+      bgGrad.addColorStop(0, "#0a1d36");
+      bgGrad.addColorStop(0.5, "#030b18");
+      bgGrad.addColorStop(1, "#01040a");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawNebula();
+
+      dustParticles.forEach((p) => {
+        p.alpha += p.twinkleSpeed;
+        if (p.alpha > 0.85 || p.alpha < 0.1) p.twinkleSpeed = -p.twinkleSpeed;
         ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, star.alpha));
-        ctx.fillStyle = star.color;
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
+        ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
 
-      if (Date.now() - lastShowerTime > SHOWER_INTERVAL) { spawnShower(); lastShowerTime = Date.now(); }
-
-      for (let i = meteors.length - 1; i >= 0; i--) {
-        const m = meteors[i];
-        const endX = m.x + Math.cos(m.angle) * m.length;
-        const endY = m.y + Math.sin(m.angle) * m.length;
-        const gradient = ctx.createLinearGradient(m.x, m.y, endX, endY);
-        gradient.addColorStop(0, "rgba(255,255,255,0)");
-        gradient.addColorStop(0.7, "rgba(56,189,248,0.6)");
-        gradient.addColorStop(1, `rgba(255,255,255,${m.alpha})`);
+      mainStars.forEach((s) => {
+        s.alpha += s.speed;
+        if (s.alpha > 1 || s.alpha < 0.1) s.speed = -s.speed;
         ctx.save();
-        ctx.lineWidth = m.width;
-        ctx.strokeStyle = gradient;
+        ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
+        ctx.fillStyle = s.color;
         ctx.beginPath();
-        ctx.moveTo(m.x, m.y);
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      if (meteor.active) {
+        const endX = meteor.x + Math.cos(meteor.angle) * meteor.length;
+        const endY = meteor.y + Math.sin(meteor.angle) * meteor.length;
+        const grad = ctx.createLinearGradient(meteor.x, meteor.y, endX, endY);
+        grad.addColorStop(0, "rgba(255,255,255,0)");
+        grad.addColorStop(0.7, "rgba(56,189,248,0.7)");
+        grad.addColorStop(1, `rgba(255,255,255,${meteor.alpha})`);
+        ctx.save();
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(meteor.x, meteor.y);
         ctx.lineTo(endX, endY);
         ctx.stroke();
         ctx.fillStyle = "#ffffff";
         ctx.beginPath();
-        ctx.arc(endX, endY, m.width * 1.2, 0, Math.PI * 2);
+        ctx.arc(endX, endY, 1.6, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
-        m.x += Math.cos(m.angle) * m.speed;
-        m.y += Math.sin(m.angle) * m.speed;
-        m.alpha -= 0.012;
-        if (m.y > canvas.height || m.x > canvas.width || m.alpha <= 0) meteors.splice(i, 1);
+        meteor.x += Math.cos(meteor.angle) * meteor.speed;
+        meteor.y += Math.sin(meteor.angle) * meteor.speed;
+        meteor.alpha -= 0.009;
+        if (meteor.alpha <= 0 || meteor.y > canvas.height) {
+          meteor.active = false;
+          timeouts.push(setTimeout(resetMeteor, 5000));
+        }
       }
 
-      raf = requestAnimationFrame(animate);
+      raf = requestAnimationFrame(render);
     };
-    animate();
+    render();
 
     return () => {
       cancelAnimationFrame(raf);
@@ -1554,19 +1616,14 @@ function CosmicBackground() {
   }, []);
 
   return (
-    <div aria-hidden="true" style={{
-      position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0,
-      background:
-        "radial-gradient(ellipse at 85% 15%, rgba(56,189,248,0.20) 0%, rgba(14,116,144,0.10) 40%, transparent 70%), " +
-        "radial-gradient(circle at 10% 85%, rgba(15,23,42,0.8) 0%, transparent 60%), " +
-        "radial-gradient(ellipse at center, #0a1b33 0%, #030a17 65%, #01040a 100%) #020712",
-      backgroundAttachment: "fixed",
-    }}>
-      {/* Indigo upper-left, violet lower-right — depth, not a visible glow. */}
-      <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "70%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%)", filter: "blur(60px)", animation: "nebulaDrift 55s ease-in-out infinite" }} />
-      <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: "65%", height: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)", filter: "blur(65px)", animation: "nebulaDrift 70s ease-in-out infinite reverse" }} />
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0, background: "#01040a" }}>
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
-      <style>{`@keyframes nebulaDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%,-2%) scale(1.04); } }`}</style>
+      <span style={{
+        position: "absolute", top: "38%", right: "12%", color: "#fff", fontSize: 24, opacity: 0.85,
+        filter: "drop-shadow(0 0 10px rgba(255,255,255,0.9)) drop-shadow(0 0 20px rgba(56,189,248,0.6))",
+        animation: "pulseGlow 4s ease-in-out infinite alternate",
+      }}>✦</span>
+      <style>{`@keyframes pulseGlow { 0% { transform: scale(.9); opacity: .7; } 100% { transform: scale(1.1); opacity: 1; } }`}</style>
     </div>
   );
 }
