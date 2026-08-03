@@ -1474,6 +1474,7 @@ function CosmicBackground() {
       return `${(Math.random() * 100).toFixed(2)}vw ${(Math.random() * 100).toFixed(2)}vh 0 ${spread}px rgba(255,255,255,${op})`;
     }).join(", ");
     return {
+      fine: layer(1600, 0.2, 0.5, 0.35, 0.65), // very many tiny, static — no per-star animation
       haze: layer(420, 0, 0.55, 0.2, 0.45), // faint dense background dust
       small: layer(190, 0.45, 1.1, 0.4, 0.7),
       large: layer(55, 1, 2, 0.6, 1), // a few standout bright ones
@@ -1489,6 +1490,7 @@ function CosmicBackground() {
       {/* Indigo upper-left, violet lower-right — depth, not a visible glow. */}
       <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "70%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%)", filter: "blur(60px)", animation: "nebulaDrift 55s ease-in-out infinite" }} />
       <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: "65%", height: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)", filter: "blur(65px)", animation: "nebulaDrift 70s ease-in-out infinite reverse" }} />
+      <div style={{ position: "absolute", inset: 0, boxShadow: dust.fine }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: dust.haze }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: dust.small }} />
       <div style={{ position: "absolute", inset: 0, boxShadow: dust.large }} />
@@ -1498,25 +1500,47 @@ function CosmicBackground() {
           background: "#fff", animation: `starTwinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
         }} />
       ))}
-      {/* One streak, once a minute rather than clockwork-frequent (~1.2s
-          visible out of every 60s) — a bright glowing head with a long
-          fading tail, per the reference photo. Kept in the top strip with a
-          flat, mostly-horizontal path: both screens it renders on (sign-in,
-          ledger picker) fill most of the rest of the viewport with opaque
-          cards, which would otherwise clip a streak crossing the middle. */}
+      {/* Three streaks taking turns — top, middle, bottom, each its own angle
+          — one shared 90s cycle staggered 30s apart so, combined, a streak
+          appears roughly every 30s while the look rotates between variants. */}
       <div style={{
-        position: "absolute", top: "4%", left: "5%", width: 150, height: 2,
+        position: "absolute", top: "6%", left: "5%", width: 150, height: 2,
         background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
         borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
-        transformOrigin: "left center", animation: "shootingStar 60s linear 5s infinite",
+        transformOrigin: "left center", animation: "shootingStar1 90s linear 5s infinite",
+      }} />
+      <div style={{
+        position: "absolute", top: "46%", left: "10%", width: 130, height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
+        borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
+        transformOrigin: "left center", animation: "shootingStar2 90s linear 35s infinite",
+      }} />
+      <div style={{
+        position: "absolute", top: "85%", left: "8%", width: 170, height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
+        borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
+        transformOrigin: "left center", animation: "shootingStar3 90s linear 65s infinite",
       }} />
       <style>{`
         @keyframes starTwinkle { 0%, 100% { opacity: .1; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.25); } }
         @keyframes nebulaDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%,-2%) scale(1.04); } }
-        @keyframes shootingStar {
-          0%, 95%, 100% { opacity: 0; transform: translate(0,0) rotate(11deg); }
-          96% { opacity: 1; }
-          98% { opacity: 0; transform: translate(300px,60px) rotate(11deg); }
+        /* transform is set explicitly at both the fade-in and fade-out
+           offsets (not left to interpolate from a held 0%) so the entire
+           visible window is mid-flight — it must never read as parked. */
+        @keyframes shootingStar1 {
+          0%, 96%, 100% { opacity: 0; transform: translate(0,0) rotate(12deg); }
+          96.5% { opacity: 1; transform: translate(20px,4px) rotate(12deg); }
+          98.5% { opacity: 0; transform: translate(420px,85px) rotate(12deg); }
+        }
+        @keyframes shootingStar2 {
+          0%, 96%, 100% { opacity: 0; transform: translate(0,0) rotate(24deg); }
+          96.5% { opacity: 1; transform: translate(18px,8px) rotate(24deg); }
+          98.5% { opacity: 0; transform: translate(400px,170px) rotate(24deg); }
+        }
+        @keyframes shootingStar3 {
+          0%, 96%, 100% { opacity: 0; transform: translate(0,0) rotate(-8deg); }
+          96.5% { opacity: 1; transform: translate(22px,-3px) rotate(-8deg); }
+          98.5% { opacity: 0; transform: translate(460px,-65px) rotate(-8deg); }
         }
       `}</style>
     </div>
