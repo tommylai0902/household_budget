@@ -3027,10 +3027,12 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
 
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      {/* Home draws its own glow scoped to its own content — this one is for
-          every other view (ledger/inventory/grocery), so they aren't left on
-          a flat background while Home and the picker/login both glow. */}
-      {viewState !== "home" && (
+      {/* Dark mode: the same starfield as sign-in/the ledger picker, behind
+          every view (home/ledger/inventory/grocery) — not just those two
+          entry screens. Light mode keeps the original scoped accent glow,
+          which Home already draws its own version of, so it only shows for
+          the other views here. */}
+      {theme === "dark" ? <CosmicBackground /> : viewState !== "home" && (
         <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.16), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.10), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
       )}
       <style>{`
