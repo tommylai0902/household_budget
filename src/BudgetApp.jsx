@@ -1459,95 +1459,107 @@ function Centered({ children }) {
 // static, a couple dozen genuinely independently twinkling), and one faint
 // streak that crosses the screen every so often.
 function CosmicBackground() {
-  // Generated once per mount, not per render — a starfield that reshuffled
-  // itself on every state change would be distracting rather than calm. The
-  // static majority uses the classic single-element box-shadow-per-star
-  // trick (cheap even at hundreds of dots); the spread value (box-shadow's
-  // 4th number) is what gives each dot in the *same* layer its own size,
-  // rather than needing a separate element per size. Only the smaller
-  // twinkling subset gets its own element, since that's the only way to
-  // animate each one independently.
-  const dust = useMemo(() => {
-    // px, not vw/vh: mobile Safari resolves vh against the toolbar-collapsed
-    // "large" viewport, taller than what's actually on screen — stars would
-    // scatter past the real bottom edge and leave a dead band above it.
-    // window.innerWidth/Height is the viewport actually visible right now.
-    const w = window.innerWidth, h = window.innerHeight;
-    const layer = (count, minSpread, maxSpread, minOp, maxOp) => Array.from({ length: count }, () => {
-      const spread = (Math.random() * (maxSpread - minSpread) + minSpread).toFixed(2);
-      const op = (Math.random() * (maxOp - minOp) + minOp).toFixed(2);
-      return `${(Math.random() * w).toFixed(1)}px ${(Math.random() * h).toFixed(1)}px 0 ${spread}px rgba(255,255,255,${op})`;
-    }).join(", ");
-    return {
-      fine: layer(1600, 0.2, 0.5, 0.35, 0.65), // very many tiny, static — no per-star animation
-      haze: layer(420, 0, 0.55, 0.2, 0.45), // faint dense background dust
-      small: layer(190, 0.45, 1.1, 0.4, 0.7),
-      large: layer(55, 1, 2, 0.6, 1), // a few standout bright ones
+  // Canvas engine, not the box-shadow-div trick: continuous twinkle (alpha
+  // oscillation) and meteor showers with real gradient tails are cheap to
+  // animate per-frame on a canvas but would mean hundreds of individually
+  // animated DOM nodes the old way. One rAF loop owns everything; cleanup
+  // cancels it plus every pending shower timeout on unmount.
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    let raf, meteors = [], lastShowerTime = Date.now();
+    const timeouts = [];
+    const SHOWER_INTERVAL = 10000; // a fresh wave every 10s
+
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const stars = Array.from({ length: 250 }, () => ({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      radius: Math.random() * 1.2 + 0.3, alpha: Math.random(),
+      twinkleSpeed: 0.005 + Math.random() * 0.015,
+      color: Math.random() > 0.8 ? "#a5f3fc" : Math.random() > 0.6 ? "#e0e7ff" : "#ffffff",
+    }));
+
+    const spawnShower = () => {
+      const count = Math.floor(Math.random() * 4) + 3; // 3-6 meteors, staggered
+      for (let i = 0; i < count; i++) {
+        timeouts.push(setTimeout(() => {
+          meteors.push({
+            x: Math.random() * (canvas.width * 0.8), y: Math.random() * (canvas.height * 0.3),
+            length: Math.random() * 80 + 60, speed: Math.random() * 8 + 10,
+            angle: Math.PI / 4, alpha: 1, width: Math.random() * 1.5 + 1.2,
+          });
+        }, i * 350));
+      }
+    };
+    timeouts.push(setTimeout(spawnShower, 1500));
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      stars.forEach((star) => {
+        star.alpha += star.twinkleSpeed;
+        if (star.alpha > 1 || star.alpha < 0.1) star.twinkleSpeed = -star.twinkleSpeed;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, star.alpha));
+        ctx.fillStyle = star.color;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      if (Date.now() - lastShowerTime > SHOWER_INTERVAL) { spawnShower(); lastShowerTime = Date.now(); }
+
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        const endX = m.x + Math.cos(m.angle) * m.length;
+        const endY = m.y + Math.sin(m.angle) * m.length;
+        const gradient = ctx.createLinearGradient(m.x, m.y, endX, endY);
+        gradient.addColorStop(0, "rgba(255,255,255,0)");
+        gradient.addColorStop(0.7, "rgba(56,189,248,0.6)");
+        gradient.addColorStop(1, `rgba(255,255,255,${m.alpha})`);
+        ctx.save();
+        ctx.lineWidth = m.width;
+        ctx.strokeStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(endX, endY, m.width * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        m.x += Math.cos(m.angle) * m.speed;
+        m.y += Math.sin(m.angle) * m.speed;
+        m.alpha -= 0.012;
+        if (m.y > canvas.height || m.x > canvas.width || m.alpha <= 0) meteors.splice(i, 1);
+      }
+
+      raf = requestAnimationFrame(animate);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+      timeouts.forEach(clearTimeout);
     };
   }, []);
-  const twinkle = useMemo(() => Array.from({ length: 26 }, (_, i) => ({
-    id: i, top: Math.random() * 100, left: Math.random() * 100,
-    size: Math.random() * 2.4 + 0.8, duration: Math.random() * 3 + 2, delay: Math.random() * 8,
-  })), []);
 
   return (
     <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0, background: "linear-gradient(180deg, #05060a 0%, #0a0e1a 55%, #0d1224 100%)" }}>
       {/* Indigo upper-left, violet lower-right — depth, not a visible glow. */}
       <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "70%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%)", filter: "blur(60px)", animation: "nebulaDrift 55s ease-in-out infinite" }} />
       <div style={{ position: "absolute", bottom: "-15%", right: "-10%", width: "65%", height: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)", filter: "blur(65px)", animation: "nebulaDrift 70s ease-in-out infinite reverse" }} />
-      <div style={{ position: "absolute", inset: 0, boxShadow: dust.fine }} />
-      <div style={{ position: "absolute", inset: 0, boxShadow: dust.haze }} />
-      <div style={{ position: "absolute", inset: 0, boxShadow: dust.small }} />
-      <div style={{ position: "absolute", inset: 0, boxShadow: dust.large }} />
-      {twinkle.map((s) => (
-        <div key={s.id} style={{
-          position: "absolute", top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size, borderRadius: "50%",
-          background: "#fff", animation: `starTwinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
-        }} />
-      ))}
-      {/* Three streaks taking turns — top, middle, bottom, each its own angle
-          — one shared 90s cycle staggered 30s apart so, combined, a streak
-          appears roughly every 30s while the look rotates between variants. */}
-      <div style={{
-        position: "absolute", top: "6%", left: "5%", width: 150, height: 2,
-        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
-        borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
-        transformOrigin: "left center", animation: "shootingStar1 90s linear 5s infinite",
-      }} />
-      <div style={{
-        position: "absolute", top: "46%", left: "10%", width: 130, height: 2,
-        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
-        borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
-        transformOrigin: "left center", animation: "shootingStar2 90s linear 35s infinite",
-      }} />
-      <div style={{
-        position: "absolute", top: "85%", left: "8%", width: 170, height: 2,
-        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.55) 60%, #fff)",
-        borderRadius: 2, boxShadow: "0 0 8px 1.5px rgba(255,255,255,.8)",
-        transformOrigin: "left center", animation: "shootingStar3 90s linear 65s infinite",
-      }} />
-      <style>{`
-        @keyframes starTwinkle { 0%, 100% { opacity: .1; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.25); } }
-        @keyframes nebulaDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%,-2%) scale(1.04); } }
-        /* transform is set explicitly at both the fade-in and fade-out
-           offsets (not left to interpolate from a held 0%) so the entire
-           visible window is mid-flight — it must never read as parked. */
-        @keyframes shootingStar1 {
-          0%, 96%, 100% { opacity: 0; transform: translate(0,0) rotate(12deg); }
-          96.5% { opacity: 1; transform: translate(20px,4px) rotate(12deg); }
-          98.5% { opacity: 0; transform: translate(420px,85px) rotate(12deg); }
-        }
-        @keyframes shootingStar2 {
-          0%, 96%, 100% { opacity: 0; transform: translate(0,0) rotate(24deg); }
-          96.5% { opacity: 1; transform: translate(18px,8px) rotate(24deg); }
-          98.5% { opacity: 0; transform: translate(400px,170px) rotate(24deg); }
-        }
-        @keyframes shootingStar3 {
-          0%, 96%, 100% { opacity: 0; transform: translate(0,0) rotate(-8deg); }
-          96.5% { opacity: 1; transform: translate(22px,-3px) rotate(-8deg); }
-          98.5% { opacity: 0; transform: translate(460px,-65px) rotate(-8deg); }
-        }
-      `}</style>
+      <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+      <style>{`@keyframes nebulaDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3%,-2%) scale(1.04); } }`}</style>
     </div>
   );
 }
