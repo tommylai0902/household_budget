@@ -2287,12 +2287,13 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
   const accent = ledgerAccent(l.template);
   const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(LEDGER_ROW_ACTIONS_WIDTH);
   const handleRowClick = () => onTapOrClose(() => onOpen(l));
+  const Icon = ledgerIcon(l.template);
 
   return (
-    <div style={{ position: "relative", borderRadius: 12 }}>
+    <div style={{ position: "relative", borderRadius: 20 }}>
       {/* Hidden while the row is closed — the row above is translucent glass
           now, so these solid tiles would otherwise show straight through it. */}
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 12, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 20, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
         <button onClick={() => { closeRow(); onRename(l); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("renameLedger")}>
           <Pencil size={17} />
         </button>
@@ -2304,38 +2305,42 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
         {...handlers} onClick={handleRowClick}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(); } }}
         style={{
-          position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10,
+          position: "relative", zIndex: 1,
           // Same frosted glass treatment as the Bento home cards: translucent
-          // surface + backdrop blur, neutral translucent border. The template
-          // accent stays in the eyebrow/icon/dot only, plus the hover glow.
-          background: "var(--glass-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid var(--glass-border)", boxShadow: "0 8px 32px var(--glass-shadow)",
-          borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          // surface + backdrop blur, neutral translucent border, plus a thin
+          // inset top highlight for a touch of glass edge-lighting. The
+          // template accent stays in the eyebrow/icon/dot only.
+          background: "var(--glass-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid var(--glass-border)",
+          boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+          borderRadius: 20, padding: "18px 20px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL, marginBottom: 6 }}>
-            {(() => { const Icon = ledgerIcon(l.template); return <Icon size={14} style={{ flexShrink: 0 }} />; })()}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL, minWidth: 0 }}>
+            <Icon size={13} style={{ flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(ledgerLabelKey(l.template))}</span>
           </div>
-          <div style={{ fontSize: 23, fontWeight: 800, letterSpacing: -0.3, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
-          {stats && <div style={{ borderTop: "1px solid var(--glass-border)", margin: "10px 0" }} />}
-          {stats && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
-              {/* Mint status dot with its own halo, same tone as the card glow. */}
-              <span style={{ width: 7, height: 7, borderRadius: 99, background: TEAL, boxShadow: "0 0 6px rgba(var(--accent-rgb),0.9), 0 0 12px rgba(var(--accent-rgb),0.5)", flexShrink: 0 }} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {t("transactionsCount", { n: stats.count })}
-                {stats.lastUpdated && ` • ${t("updatedLine", { when: relativeUpdated(stats.lastUpdated, lang, t) })}`}
-              </span>
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <ChevronRight size={16} style={{ color: SUB }} />
+            <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
+              aria-label={t("moreActions")} style={{ ...iconBtn, width: 30, height: 26, border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.06)" }}>
+              <MoreHorizontal size={14} />
+            </button>
+          </div>
         </div>
-        <ChevronRight size={17} style={{ color: SUB, flexShrink: 0 }} />
-        <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
-          aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0, background: "var(--card)" }}>
-          <MoreHorizontal size={15} />
-        </button>
+        <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: -0.3, color: INK, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
+        {stats && <div style={{ borderTop: "1px solid var(--glass-border)", margin: "12px 0 10px" }} />}
+        {stats && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
+            {/* Mint status dot with its own halo, same tone as the card glow. */}
+            <span style={{ width: 6, height: 6, borderRadius: 99, background: TEAL, boxShadow: "0 0 8px rgba(var(--accent-rgb),0.8)", flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {t("transactionsCount", { n: stats.count })}
+              {stats.lastUpdated && ` • ${t("updatedLine", { when: relativeUpdated(stats.lastUpdated, lang, t) })}`}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
