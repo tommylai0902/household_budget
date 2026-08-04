@@ -46,6 +46,13 @@ const LINE = "var(--line)";
 const PAPER = "var(--paper)";
 const CARD = "var(--card)";
 const TEAL = "var(--accent)";
+// TEAL as a fill, ACCENT_TEXT as text or an icon. Same colour in dark mode;
+// light mode darkens it, since the accents are picked to be read as fills and
+// none of them survives as small text over the daylight backdrop.
+const ACCENT_TEXT = "var(--accent-text)";
+// Chip/icon-button fill. CARD everywhere else; light mode makes just these
+// translucent so secondary controls stop shouting over the daylight backdrop.
+const CHIP_BG = "var(--chip-bg)";
 // The accent palette now spans dark, dusty tones and light, pastel ones (see
 // ACCENT_COLORS below) — a single hardcoded "#fff" stopped being safe as the
 // text/icon colour drawn on top of it. ACCENT_INK is computed per pick (see
@@ -1419,7 +1426,7 @@ export default function App() {
 
   if (session === undefined) return <Centered>{t("connecting")}</Centered>;
   if (!session) return <Login lang={lang} changeLang={changeLang} t={t} theme={theme} hasInvite={!!inviteToken} />;
-  if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} onResult={finishInvite} />;
+  if (inviteToken) return <AcceptInvite token={inviteToken} lang={lang} changeLang={changeLang} t={t} theme={theme} onResult={finishInvite} />;
   // Picker's Home menu entry / header nav — jumps into a ledger's Bento
   // dashboard. Prefers the last-used ledger, but the cache is per-device: on a
   // browser that's never opened one it falls back to the first ledger, so Home
@@ -1445,7 +1452,7 @@ export default function App() {
 function Centered({ children }) {
   return (
     <div style={{ background: PAPER, minHeight: 420, display: "grid", placeItems: "center", color: SUB, fontFamily: "Inter, system-ui, sans-serif", gap: 10 }}>
-      <Loader2 size={22} className="spin" style={{ color: TEAL }} />
+      <Loader2 size={22} className="spin" style={{ color: ACCENT_TEXT }} />
       <div>{children}</div>
       <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
@@ -1877,7 +1884,7 @@ function Login({ lang, changeLang, t, theme, hasInvite }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{
             fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 800,
-            background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, white), var(--accent), color-mix(in srgb, var(--accent) 65%, white))",
+            background: "linear-gradient(90deg, color-mix(in srgb, var(--accent-text) 60%, var(--brand-sheen)), var(--accent-text), color-mix(in srgb, var(--accent-text) 65%, var(--brand-sheen)))",
             WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
           }}>{t("eyebrow")}</div>
           <LangToggle lang={lang} changeLang={changeLang} t={t} />
@@ -1913,7 +1920,7 @@ function Login({ lang, changeLang, t, theme, hasInvite }) {
           {busy ? <Loader2 size={17} className="spin" /> : <Check size={17} />} {signup ? t("signUpBtn") : t("signInBtn")}
         </button>
 
-        <button onClick={swap} style={{ display: "block", width: "100%", marginTop: 12, padding: 4, border: "none", background: "none", color: TEAL, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+        <button onClick={swap} style={{ display: "block", width: "100%", marginTop: 12, padding: 4, border: "none", background: "none", color: ACCENT_TEXT, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
           {signup ? t("toSignIn") : t("toSignUp")}
         </button>
         <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -1927,7 +1934,7 @@ function Login({ lang, changeLang, t, theme, hasInvite }) {
 // explicit choice rather than an automatic side effect of logging in. Previews
 // the ledger/role first; if the preview RPC isn't available it degrades to a
 // generic prompt, so the accept still works before migration 010 is applied.
-function AcceptInvite({ token, lang, changeLang, t, onResult }) {
+function AcceptInvite({ token, lang, changeLang, t, theme, onResult }) {
   const [preview, setPreview] = useState(null); // null=loading; {status, ledgerName?, role?}
   const [busy, setBusy] = useState(false);
 
@@ -1951,10 +1958,11 @@ function AcceptInvite({ token, lang, changeLang, t, onResult }) {
     : null;
 
   return (
-    <div style={{ background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
-      <div style={{ width: "min(380px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
+    <div style={{ position: "relative", background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
+      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
+      <div style={{ position: "relative", zIndex: 1, width: "min(380px, 100%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: TEAL, fontWeight: 700 }}>{t("inviteTitle")}</div>
+          <div style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: ACCENT_TEXT, fontWeight: 700 }}>{t("inviteTitle")}</div>
           <LangToggle lang={lang} changeLang={changeLang} t={t} />
         </div>
 
@@ -2148,7 +2156,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
                     <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") saveRename(l); if (e.key === "Escape") cancelRename(); }}
                       style={{ ...input, flex: 1, fontWeight: 700 }} />
-                    <button onClick={() => saveRename(l)} style={{ ...iconBtn, color: TEAL }} aria-label={t("saveChanges")}><Check size={16} /></button>
+                    <button onClick={() => saveRename(l)} style={{ ...iconBtn, color: ACCENT_TEXT }} aria-label={t("saveChanges")}><Check size={16} /></button>
                     <button onClick={cancelRename} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
                   </div>
                   {/* Icon is editable here too, otherwise ledgers made before this
@@ -2190,7 +2198,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
               background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))",
               border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)",
               borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
-              fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
+              fontSize: 14, fontWeight: 800, color: ACCENT_TEXT, width: "100%",
             }}>
               {showAll ? t("showLess") : t("viewAllLedgers", { n: rankedLedgers.length })}
               <ChevronDown size={16} style={{ flexShrink: 0, transform: showAll ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
@@ -2345,10 +2353,10 @@ function NewLedgerFlow({ t, busy, onCreate }) {
           new one reads as a peer of the list rather than a footnote under it. */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Plus size={22} strokeWidth={2.75} style={{ color: TEAL, flexShrink: 0 }} />
+          <Plus size={22} strokeWidth={2.75} style={{ color: ACCENT_TEXT, flexShrink: 0 }} />
           <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.3, color: INK }}>{t("createLedger")}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: TEAL }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: ACCENT_TEXT }}>
           <Sparkles size={12} style={{ flexShrink: 0 }} /> {t("startWith")}
         </div>
       </div>
@@ -2379,7 +2387,7 @@ function NewLedgerFlow({ t, busy, onCreate }) {
                 <div style={{ fontSize: 14, fontWeight: 800, color: INK }}>{t(ledgerLabelKey(k))}</div>
                 <div style={{ fontSize: 11.5, color: SUB, marginTop: 2, lineHeight: 1.3 }}>{t(ledgerDescKey(k))}</div>
               </div>
-              <Sparkles size={12} style={{ position: "absolute", top: 10, right: 10, color: active ? TEAL : SUB, opacity: active ? 0.9 : 0.35 }} />
+              <Sparkles size={12} style={{ position: "absolute", top: 10, right: 10, color: active ? ACCENT_TEXT : SUB, opacity: active ? 0.9 : 0.35 }} />
             </button>
           );
         })}
@@ -2573,7 +2581,7 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: TEAL, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: ACCENT_TEXT, minWidth: 0 }}>
             <Icon size={13} style={{ flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(ledgerLabelKey(l.template))}</span>
           </div>
@@ -2644,8 +2652,11 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
   const reached = goal && balance >= goal.targetAmount;
 
   return (
-    <div style={{ background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+    <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+      {/* The gamified palette below stays fixed, but the backdrop is the app's
+          — this was the one full page still sitting on flat paper. */}
+      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
 
         {/* Header — same chrome as every other ledger (back chip, switcher,
             menu), so navigation stays consistent; only the content below is
@@ -2896,7 +2907,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
         </h1>
         {/* Caret hugs the title (title is flex:0 1 auto so it doesn't stretch and
             shove the arrow to the far edge) — a clear "this opens" cue. */}
-        <ChevronDown size={20} strokeWidth={2.5} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+        <ChevronDown size={20} strokeWidth={2.5} style={{ color: ACCENT_TEXT, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, maxWidth: 320, zIndex: 60 }}>
@@ -2913,7 +2924,7 @@ function LedgerSwitcher({ ledger, onSwitch, onCreateNew, t }) {
             );
           })}
           <div style={{ borderTop: `1px solid ${LINE}`, margin: "4px 0" }} />
-          <button role="menuitem" onClick={() => { setOpen(false); onCreateNew(); }} style={{ ...menuItem, color: TEAL }}>
+          <button role="menuitem" onClick={() => { setOpen(false); onCreateNew(); }} style={{ ...menuItem, color: ACCENT_TEXT }}>
             <Plus size={15} /> {t("createLedger")}
           </button>
         </div>
@@ -3559,7 +3570,7 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
       {selectedDay && (
         <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
           <span style={{ color: SUB }}>{shortDate(selectedDay, lang)}</span>
-          <button onClick={() => onSelectDay(null)} style={{ ...categoryLink, color: TEAL }}>{t("showAll")}</button>
+          <button onClick={() => onSelectDay(null)} style={{ ...categoryLink, color: ACCENT_TEXT }}>{t("showAll")}</button>
         </div>
       )}
       {/* One bar: two compact stats, then Settle up + chevron flush right.
@@ -3607,7 +3618,7 @@ function SettlementDetails({ members, summary, t, onClose }) {
                 <div><div style={{ fontSize: 11, color: SUB, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{t("paidThisMonth")}</div><div style={{ fontWeight: 800, marginTop: 3 }}>{money(summary.paid.get(member.id) || 0)}</div></div>
                 <div><div style={{ fontSize: 11, color: SUB, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{t("sharedShare")}</div><div style={{ fontWeight: 800, marginTop: 3 }}>{money(summary.sharedShare.get(member.id) || 0)}</div></div>
               </div>
-              {(receiving || paying) && <div style={{ marginTop: 12, borderTop: `1px solid ${LINE}`, paddingTop: 10, fontSize: 13, fontWeight: 700, color: receiving ? TEAL : WARN }}>{receiving ? t("shouldReceive") : t("shouldPay")}: {money(Math.abs(balance))}</div>}
+              {(receiving || paying) && <div style={{ marginTop: 12, borderTop: `1px solid ${LINE}`, paddingTop: 10, fontSize: 13, fontWeight: 700, color: receiving ? ACCENT_TEXT : WARN }}>{receiving ? t("shouldReceive") : t("shouldPay")}: {money(Math.abs(balance))}</div>}
             </div>
           );
         })}
@@ -4036,7 +4047,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
         <Field label={
           <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             {t("csvDefaultOwner")}
-            <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("manageMembers")}</button>
+            <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: ACCENT_TEXT }}>{t("manageMembers")}</button>
           </span>
         }>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -4093,7 +4104,7 @@ function BatchImportModal({ ledger, features, categories, members, lang, t, init
         </>
       )}
       {result && (
-        <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? DANGER : TEAL }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: result.fail ? DANGER : ACCENT_TEXT }}>
           {t("csvResult", { ok: result.ok, total: result.total })}{result.fail ? t("csvResultFail", { fail: result.fail }) : ""}
         </div>
       )}
@@ -4114,7 +4125,7 @@ function ExpenseDetail({ expense, categories, members, lang, t, onReassign, onEd
     <Overlay title={expense.description} onClose={onClose} t={t}>
       <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "14px 16px" }}>
         <div style={{ fontSize: 28, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{money(amt)}</div>
-        <div style={{ fontSize: 13, color: shared ? TEAL : SUB, fontWeight: 600, marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: shared ? ACCENT_TEXT : SUB, fontWeight: 600, marginTop: 2 }}>
           {shared ? t("sharedLine", { n: sharers.length, amount: money(share) }) : t("personalLine")}
         </div>
       </div>
@@ -4645,7 +4656,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
       <Field label={
         <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           {t("category")}
-          <button onClick={onEditCategories} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("editCategories")}</button>
+          <button onClick={onEditCategories} style={{ ...categoryLink, fontSize: 12, color: ACCENT_TEXT }}>{t("editCategories")}</button>
         </span>
       }>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -4698,7 +4709,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
           <Field label={
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
               {t("whoPaid")}
-              <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("manageMembers")}</button>
+              <button onClick={onEditMembers} style={{ ...categoryLink, fontSize: 12, color: ACCENT_TEXT }}>{t("manageMembers")}</button>
             </span>
           }>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -5112,7 +5123,7 @@ function MonthlyReport({ month, months, expenses, categories, lang, t, onMonthCh
                 : row.current === 0 && row.compare > 0 ? t("compareGoneLabel")
                 : delta === 0 ? t("compareUnchanged")
                 : `${delta > 0 ? "+" : "-"}${money(Math.abs(delta))} (${delta > 0 ? "+" : "-"}${Math.round(Math.abs(delta) / row.compare * 100)}%)`;
-              const deltaColor = delta > 0 ? DANGER : delta < 0 ? TEAL : SUB;
+              const deltaColor = delta > 0 ? DANGER : delta < 0 ? ACCENT_TEXT : SUB;
               return (
                 <div key={row.id} title={`${row.name}: ${money(row.current)} vs ${money(row.compare)}`}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -5354,7 +5365,7 @@ function NotificationBell({ t, lang, onNavigate }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "12px 14px", borderBottom: `1px solid ${LINE}`, position: "sticky", top: 0, background: CARD }}>
             <span style={{ fontWeight: 800, fontSize: 14 }}>{t("notifications")}</span>
             {unread.length > 0 && (
-              <button onClick={markAllRead} style={{ ...categoryLink, fontSize: 12, color: TEAL, flexShrink: 0 }}>{t("markAllRead")}</button>
+              <button onClick={markAllRead} style={{ ...categoryLink, fontSize: 12, color: ACCENT_TEXT, flexShrink: 0 }}>{t("markAllRead")}</button>
             )}
           </div>
           {items.length === 0 ? (
@@ -5376,7 +5387,7 @@ function NotificationBell({ t, lang, onNavigate }) {
                   <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{shortDate(n.remindAt, lang)}</div>
                 </button>
                 <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
-                  {!n.read && <button onClick={() => markRead(n.id)} style={{ ...categoryLink, fontSize: 12, color: TEAL }}>{t("markAsRead")}</button>}
+                  {!n.read && <button onClick={() => markRead(n.id)} style={{ ...categoryLink, fontSize: 12, color: ACCENT_TEXT }}>{t("markAsRead")}</button>}
                   <button onClick={() => dismiss(n.id)} style={{ ...categoryLink, fontSize: 12, color: SUB }}>{t("dismiss")}</button>
                 </div>
               </div>
@@ -5449,7 +5460,7 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
             <div style={menuItem}>
               <Coins size={15} /> <span style={{ flex: 1 }}>{t("currency")}</span>
               <select value={currency} onChange={(e) => onChangeCurrency(e.target.value)} onClick={(e) => e.stopPropagation()}
-                style={{ border: "none", background: "none", fontSize: 13, fontWeight: 700, color: TEAL, cursor: "pointer" }}>
+                style={{ border: "none", background: "none", fontSize: 13, fontWeight: 700, color: ACCENT_TEXT, cursor: "pointer" }}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -5877,7 +5888,7 @@ function ArchivedLedgersPanel({ t, onClose }) {
                 style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 12, display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
                 <Icon size={16} style={{ color: SUB, flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: TEAL, flexShrink: 0 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: ACCENT_TEXT, flexShrink: 0 }}>
                   <ArchiveRestore size={14} /> {t("restoreLedger")}
                 </span>
               </button>
@@ -5920,7 +5931,7 @@ function BrandHeader({ left, right }) {
       <div style={{ minWidth: 0, whiteSpace: "nowrap" }}>{left}</div>
       <div style={{
         fontSize: 24, fontWeight: 800, letterSpacing: -0.4, whiteSpace: "nowrap",
-        background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, white), var(--accent), color-mix(in srgb, var(--accent) 65%, white))",
+        background: "linear-gradient(90deg, color-mix(in srgb, var(--accent-text) 60%, var(--brand-sheen)), var(--accent-text), color-mix(in srgb, var(--accent-text) 65%, var(--brand-sheen)))",
         WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
       }}>Monira</div>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>{right}</div>
@@ -6087,7 +6098,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           </>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: SUB }}>
-            <PiggyBank size={16} style={{ color: TEAL }} /> {t("noBudgetSetPrompt")}
+            <PiggyBank size={16} style={{ color: ACCENT_TEXT }} /> {t("noBudgetSetPrompt")}
           </div>
         )}
       </button>
@@ -6216,7 +6227,7 @@ function LabelSelect({ label, value, labels, placeholder, manageLabel, onChange,
     <Field label={
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ flex: 1 }}>{label}</span>
-        <button onClick={onManage} style={{ ...categoryLink, color: TEAL, fontSize: 12 }}>{manageLabel}</button>
+        <button onClick={onManage} style={{ ...categoryLink, color: ACCENT_TEXT, fontSize: 12 }}>{manageLabel}</button>
       </span>
     }>
       <select value={value || ""} onChange={(e) => onChange(e.target.value)} style={input}>
@@ -6258,9 +6269,9 @@ function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
         // color must be explicit: iOS Safari paints unstyled <button> text in
         // its own system blue, which is what made this title blue on iPhone.
         style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: 0, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: INK }}>
-        {!hideIcon && <ActiveIcon size={18} style={{ color: TEAL, flexShrink: 0 }} />}
+        {!hideIcon && <ActiveIcon size={18} style={{ color: ACCENT_TEXT, flexShrink: 0 }} />}
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label || t(active.shortLabelKey || active.labelKey)}</h2>
-        <ChevronDown size={16} style={{ color: TEAL, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+        <ChevronDown size={16} style={{ color: ACCENT_TEXT, flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
       </button>
       {open && (
         <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 220, zIndex: 60 }}>
@@ -7279,12 +7290,12 @@ function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSe
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <Store size={16} style={{ color: TEAL, flexShrink: 0 }} />
+            <Store size={16} style={{ color: ACCENT_TEXT, flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 800 }}>{t("shoppingAt", { store: localStore.merchant })}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 12, color: SUB }}>{t("pmListCount", { n: matchStores.length })}</span>
-            <button onClick={onSetUpStores} style={{ ...categoryLink, color: TEAL, fontSize: 12 }}>{t("storeSetup")}</button>
+            <button onClick={onSetUpStores} style={{ ...categoryLink, color: ACCENT_TEXT, fontSize: 12 }}>{t("storeSetup")}</button>
           </div>
 
           {matchStores.length === 0 ? (
@@ -7516,20 +7527,22 @@ function StoreSetupPanel({ postalCode, t, lang, onClose }) {
 // overflow:hidden on the panel) so it doesn't scroll away with the content.
 function Overlay({ title, onClose, t, children }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(4,10,12,0.55)", display: "flex", justifyContent: "flex-end", zIndex: 50 }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, background: "var(--overlay-scrim)", display: "flex", justifyContent: "flex-end", zIndex: 50 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{
         position: "relative", overflow: "hidden", width: "min(440px, 100%)", height: "100%", display: "flex", flexDirection: "column",
         // Deliberately NOT --glass-bg: that token is tuned near-transparent so
         // cards let the starfield through, which for a full-height overlay
-        // means the page underneath competes with the panel's own rows. An
-        // overlay needs to actually cover what it sits on.
-        background: "var(--paper)", borderLeft: "1px solid var(--hairline)",
+        // means the page underneath competes with the panel's own rows.
+        // --overlay-bg is the middle setting: light mode frosts it (a blur
+        // does the covering that opacity used to), dark mode stays opaque.
+        background: "var(--overlay-bg)", backdropFilter: "blur(var(--overlay-blur))",
+        borderLeft: "1px solid var(--hairline)",
         boxShadow: "-8px 0 40px rgba(0,0,0,0.25), 0 0 40px rgba(var(--accent-rgb),0.08)",
       }}>
         <div aria-hidden="true" style={{ position: "absolute", inset: "-60px -40px auto -40px", height: 220, background: "radial-gradient(circle at 30% 20%, rgba(var(--accent-rgb),0.2), transparent 60%)", filter: "blur(30px)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1, overflowY: "auto", padding: "18px 18px 32px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <Tag size={18} style={{ color: TEAL }} />
+            <Tag size={18} style={{ color: ACCENT_TEXT }} />
             <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</h2>
             <button onClick={onClose} style={{ ...iconBtn, marginLeft: "auto", flexShrink: 0 }} aria-label={t("close")}><X size={18} /></button>
           </div>
@@ -7563,7 +7576,7 @@ function Toast({ message, onDone }) {
       borderRadius: 99, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: INK,
       animation: "toast-in .18s ease", pointerEvents: "none",
     }}>
-      <Check size={16} style={{ color: TEAL, flexShrink: 0 }} />
+      <Check size={16} style={{ color: ACCENT_TEXT, flexShrink: 0 }} />
       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{message}</span>
     </div>
   );
@@ -7631,10 +7644,10 @@ const dateInput = { ...input, WebkitAppearance: "none", appearance: "none" };
 // value — leaving the page clipped/squeezed at the top until you scroll.
 const selectStyle = { ...input, width: "auto", padding: "8px 10px", cursor: "pointer", fontWeight: 600, fontSize: 16 };
 const addBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", marginTop: 12, padding: "13px 16px", borderRadius: 11, border: "none", background: TEAL, color: ACCENT_INK, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
-const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 9, border: `1px solid ${LINE}`, background: CHIP_BG, color: INK, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid ${BAD_LINE}`, background: CARD, color: DANGER, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
-const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: SUB, cursor: "pointer" };
+const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: CHIP_BG, color: SUB, cursor: "pointer" };
 // Rounded rather than square-edged: flush square tiles butted right up
 // against the card's own rounded corners read as a harsh, bolted-on block
 // next to the rest of the app's soft glass aesthetic. A shared radius plus a
@@ -7666,7 +7679,7 @@ function chip(active) {
   // Unselected used to be a flat light-gray fill that needed no border to read
   // as a pill; now that it's CARD (white in light mode, dark in night mode) a
   // border keeps it visible against the page background in both themes.
-  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CARD };
+  return { display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${LINE}`, boxShadow: active ? ACCENT_GLOW : "none", fontFamily: "inherit", color: active ? ACCENT_INK : INK, background: active ? TEAL : CHIP_BG };
 }
 // A chip that opens a themed popover instead of a native <select> — same menu
 // pattern LedgerSwitcher/HeaderMenu already use (CARD surface, active row in
