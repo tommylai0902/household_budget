@@ -1732,6 +1732,16 @@ function DaylightBackground() {
     };
   }, []);
 
+  // Every decorative element below is sized against viewport WIDTH, capped
+  // at the value that reads well on desktop. Fixed px alone doesn't work
+  // here: a 620px glow is ~63% of a 976px desktop pane but ~165% of a 375px
+  // phone, so on mobile it swamped the whole top in yellow. Offsets are
+  // expressed as a fraction of each element's own size so the framing stays
+  // identical as they scale.
+  const sunSize = "min(620px, 63vw)";
+  const ringSize = "min(500px, 51vw)";
+  const bokehSize = "min(90px, 14vw)";
+
   return (
     <div aria-hidden="true" style={{
       position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0,
@@ -1741,13 +1751,15 @@ function DaylightBackground() {
           warmth reaches the top-right corner of the first card (the SPENT
           bar) rather than staying a self-contained corner blob. */}
       <div style={{
-        position: "absolute", top: "-100px", right: "-100px", width: 620, height: 620, borderRadius: "50%",
+        position: "absolute", top: `calc(${sunSize} * -0.16)`, right: `calc(${sunSize} * -0.16)`,
+        width: sunSize, height: sunSize, borderRadius: "50%",
         background: "radial-gradient(circle, rgba(254,240,138,0.9) 0%, rgba(249,115,22,0.4) 45%, rgba(0,0,0,0) 75%)",
         filter: "blur(40px)",
       }} />
       {/* Lens-flare ring, top left. */}
       <div style={{
-        position: "absolute", top: "-180px", left: "-120px", width: 500, height: 500, borderRadius: "50%",
+        position: "absolute", top: `calc(${ringSize} * -0.36)`, left: `calc(${ringSize} * -0.24)`,
+        width: ringSize, height: ringSize, borderRadius: "50%",
         border: "1.5px solid rgba(255,255,255,0.35)",
         boxShadow: "0 0 30px rgba(255,255,255,0.25), inset 0 0 20px rgba(255,255,255,0.15)",
       }} />
@@ -1759,13 +1771,14 @@ function DaylightBackground() {
           this same position:fixed wrapper, so there's no isolation boundary
           in the way. */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-        {/* Rainbow split — saturation pushed up (magenta/orange/gold/teal/
-            purple) with saturate() alongside brightness() so those hues
-            read as colour instead of just glow. */}
+        {/* Rainbow split — deliberately softer than the earlier pass: alphas
+            roughly halved and blur nearly tripled, so it reads as a diffuse
+            wash of colour behind the cards rather than a hard saturated
+            band competing with the content on top of it. */}
         <div style={{
-          position: "absolute", top: "43%", left: "-25%", width: "150%", height: 28, transform: "rotate(-38deg)", transformOrigin: "center",
-          background: "linear-gradient(90deg, rgba(236,72,153,0) 0%, rgba(236,72,153,0.7) 18%, rgba(249,115,22,0.8) 35%, rgba(250,204,21,0.9) 50%, rgba(45,212,191,0.8) 68%, rgba(168,85,247,0.7) 85%, rgba(168,85,247,0) 100%)",
-          filter: "blur(7px) saturate(1.8) brightness(1.15)", mixBlendMode: "screen",
+          position: "absolute", top: "43%", left: "-25%", width: "150%", height: "clamp(16px, 2.9vw, 28px)", transform: "rotate(-38deg)", transformOrigin: "center",
+          background: "linear-gradient(90deg, rgba(236,72,153,0) 0%, rgba(236,72,153,0.32) 18%, rgba(249,115,22,0.38) 35%, rgba(250,204,21,0.42) 50%, rgba(45,212,191,0.38) 68%, rgba(168,85,247,0.32) 85%, rgba(168,85,247,0) 100%)",
+          filter: "blur(20px) saturate(1.15) brightness(1.02)", mixBlendMode: "screen",
         }} />
         {/* Faint parallel ghost ray, off the main beam's axis — the
             secondary reflection a real anamorphic lens throws alongside its
@@ -1791,7 +1804,7 @@ function DaylightBackground() {
           { top: "88%", left: "4%" },
         ].map((b, i) => (
           <div key={i} style={{
-            position: "absolute", top: b.top, left: b.left, width: 90, height: 90, borderRadius: "50%",
+            position: "absolute", top: b.top, left: b.left, width: bokehSize, height: bokehSize, borderRadius: "50%",
             background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(186,230,253,0.08) 60%, rgba(0,0,0,0) 80%)",
             border: "1px solid rgba(255,255,255,0.35)",
             boxShadow: "inset 0 0 10px rgba(244,114,182,0.25), 0 0 12px rgba(56,189,248,0.2)",
