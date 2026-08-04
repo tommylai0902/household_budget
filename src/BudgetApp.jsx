@@ -2678,7 +2678,7 @@ const kidSoftBtn = (bg, line, ink) => ({
 // as a bundled asset rather than redrawn — swap src/assets/kid-pig.svg to
 // change it. Background rect stripped from the source file so it sits
 // transparent on the card.
-function PiggyMascot({ size = 96 }) {
+function PiggyMascot({ size = 140 }) {
   return <img src={kidPigMascot} width={size} height={size} style={{ flexShrink: 0 }} alt="" />;
 }
 
