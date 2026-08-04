@@ -193,7 +193,7 @@ const STRINGS = {
     labelDeleteHint: "Deleting one only unfiles its items — the items themselves stay.",
     brandLabel: "Brand", brandPh: "e.g. Neilson",
     brandHint: "Optional — narrows the flyer search to the exact product.",
-    backToDashboard: "Back to Dashboard",
+    backToDashboard: "Back",
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     navDropdownLabel: "Ledgers",
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
@@ -272,12 +272,12 @@ const STRINGS = {
     updatedToday: "Today", updatedYesterday: "Yesterday", updatedLine: "Updated {when}",
     currency: "Currency",
     tripDates: "Trip dates", tripStartDate: "Trip start date", tripEndDate: "Trip end date",
-    vaultTitle: "Treasure Vault", earnedMoney: "Earned Money", boughtSomething: "Bought Something",
+    vaultTitle: "Treasure Vault", earnedMoney: "Earned Money", boughtSomething: "Spent Money",
     kidAdd: "Add it!", noGoalYet: "No goal yet — tap to set one!",
     setGoalTitle: "Set a wishlist goal", goalNameLabel: "What are you saving for?",
     goalNamePh: "e.g. Lego Star Wars", goalAmountLabel: "Target amount", saveGoal: "Save goal",
     goalReached: "🎉 Goal reached!", recentActivity: "Recent Activity",
-    noKidActivity: "Nothing yet — earn or spend to see it here!",
+    noKidActivity: "No adventures yet!", kidEmptyCta: "Let's earn some coins!",
     cancellationReminder: "Cancellation Reminder", remindMeToCancel: "Remind me to cancel",
     cancellationReminderTitle: "Cancel {name} before it renews",
     upcomingChargeTitle: "Upcoming charge for {name} in {days} days",
@@ -409,7 +409,7 @@ const STRINGS = {
     brandLabel: "牌子", brandPh: "例如 Neilson",
     brandHint: "選填——填咗可以喺海報度搵得準啲。",
     moreActions: "更多操作",
-    backToDashboard: "返去主頁",
+    backToDashboard: "返回",
     ledgerCard: "帳簿同交易", totalMonthSpent: "本月總支出", lastEntry: "最新一筆",
     navDropdownLabel: "帳簿",
     inventoryCardTitle: "存貨中心", trackedItemsLabel: "追蹤中：", lowStockAlert: "{n} 樣嘢存貨唔夠！",
@@ -484,12 +484,12 @@ const STRINGS = {
     restoreLedger: "還原", restoreConfirm: '將「{name}」放返落帳簿清單？',
     currency: "貨幣",
     tripDates: "旅程日期", tripStartDate: "旅程開始日", tripEndDate: "旅程結束日",
-    vaultTitle: "寶藏庫", earnedMoney: "賺咗錢", boughtSomething: "買咗嘢",
+    vaultTitle: "寶藏庫", earnedMoney: "賺咗錢", boughtSomething: "使咗錢",
     kidAdd: "加落去！", noGoalYet: "仲未有目標 — 撳呢度設定一個！",
     setGoalTitle: "設定願望清單目標", goalNameLabel: "你想儲錢買咩？",
     goalNamePh: "例如：Lego Star Wars", goalAmountLabel: "目標金額", saveGoal: "儲存目標",
     goalReached: "🎉 達成目標喇！", recentActivity: "最近活動",
-    noKidActivity: "仲未有記錄 — 賺錢或者買嘢就會喺度顯示！",
+    noKidActivity: "仲未有冒險！", kidEmptyCta: "去賺啲金幣啦！",
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "續約前記得取消{name}",
     upcomingChargeTitle: "{name} {days} 日後扣款",
@@ -622,7 +622,7 @@ const STRINGS = {
     brandLabel: "品牌", brandPh: "例如 Neilson",
     brandHint: "选填——填了可以更准确地找到传单商品。",
     moreActions: "更多操作",
-    backToDashboard: "返回主页",
+    backToDashboard: "返回",
     ledgerCard: "账本与交易", totalMonthSpent: "本月总支出", lastEntry: "最新一笔",
     navDropdownLabel: "账本",
     inventoryCardTitle: "库存中心", trackedItemsLabel: "追踪中：", lowStockAlert: "{n} 件商品库存不足！",
@@ -697,12 +697,12 @@ const STRINGS = {
     restoreLedger: "恢复", restoreConfirm: "将「{name}」放回账本列表？",
     currency: "货币",
     tripDates: "旅程日期", tripStartDate: "旅程开始日", tripEndDate: "旅程结束日",
-    vaultTitle: "宝藏库", earnedMoney: "赚到钱", boughtSomething: "买了东西",
+    vaultTitle: "宝藏库", earnedMoney: "赚到钱", boughtSomething: "花了钱",
     kidAdd: "记一笔！", noGoalYet: "还没有目标 — 点这里设置一个！",
     setGoalTitle: "设置心愿清单目标", goalNameLabel: "你想攒钱买什么？",
     goalNamePh: "例如：乐高星球大战", goalAmountLabel: "目标金额", saveGoal: "保存目标",
     goalReached: "🎉 达成目标啦！", recentActivity: "最近活动",
-    noKidActivity: "还没有记录 — 赚钱或买东西后会显示在这里！",
+    noKidActivity: "还没有冒险！", kidEmptyCta: "去赚点金币吧！",
     cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
     cancellationReminderTitle: "续约前记得取消{name}",
     upcomingChargeTitle: "{name} 将在 {days} 天后扣款",
@@ -833,7 +833,7 @@ const STRINGS = {
     brandLabel: "Marque", brandPh: "p. ex. Neilson",
     brandHint: "Facultatif — précise la recherche dans les circulaires.",
     moreActions: "Plus d'actions",
-    backToDashboard: "Retour au tableau de bord",
+    backToDashboard: "Retour",
     ledgerCard: "Registre et transactions", totalMonthSpent: "Dépenses totales du mois", lastEntry: "Dernière entrée",
     navDropdownLabel: "Registres",
     inventoryCardTitle: "Centre d'inventaire", trackedItemsLabel: "Articles suivis :", lowStockAlert: "{n} article(s) en stock faible !",
@@ -909,12 +909,12 @@ const STRINGS = {
     restoreLedger: "Restaurer", restoreConfirm: "Remettre « {name} » dans votre liste de registres ?",
     currency: "Devise",
     tripDates: "Dates du voyage", tripStartDate: "Date de début du voyage", tripEndDate: "Date de fin du voyage",
-    vaultTitle: "Coffre au trésor", earnedMoney: "Argent gagné", boughtSomething: "Achat",
+    vaultTitle: "Coffre au trésor", earnedMoney: "Argent gagné", boughtSomething: "Argent dépensé",
     kidAdd: "Ajouter !", noGoalYet: "Pas encore d'objectif — touche ici pour en fixer un !",
     setGoalTitle: "Fixer un objectif", goalNameLabel: "Pour quoi économises-tu ?",
     goalNamePh: "ex. Lego Star Wars", goalAmountLabel: "Montant visé", saveGoal: "Enregistrer l'objectif",
     goalReached: "🎉 Objectif atteint !", recentActivity: "Activité récente",
-    noKidActivity: "Rien pour l'instant — gagne ou dépense pour voir ça ici !",
+    noKidActivity: "Pas encore d'aventures !", kidEmptyCta: "Gagnons des pièces !",
     cancellationReminder: "Rappel d'annulation", remindMeToCancel: "Me rappeler d'annuler",
     cancellationReminderTitle: "Annuler {name} avant le renouvellement",
     upcomingChargeTitle: "Prélèvement de {name} dans {days} jours",
@@ -1045,7 +1045,7 @@ const STRINGS = {
     brandLabel: "Marca", brandPh: "p. ej. Neilson",
     brandHint: "Opcional — afina la búsqueda en los folletos.",
     moreActions: "Más acciones",
-    backToDashboard: "Volver al panel",
+    backToDashboard: "Volver",
     ledgerCard: "Registro y transacciones", totalMonthSpent: "Gasto total del mes", lastEntry: "Última entrada",
     navDropdownLabel: "Libros",
     inventoryCardTitle: "Centro de inventario", trackedItemsLabel: "Artículos registrados:", lowStockAlert: "¡{n} artículo(s) con poco stock!",
@@ -1121,12 +1121,12 @@ const STRINGS = {
     restoreLedger: "Restaurar", restoreConfirm: '¿Devolver "{name}" a tu lista de libros?',
     currency: "Moneda",
     tripDates: "Fechas del viaje", tripStartDate: "Fecha de inicio del viaje", tripEndDate: "Fecha de fin del viaje",
-    vaultTitle: "Cofre del tesoro", earnedMoney: "Dinero ganado", boughtSomething: "Compra",
+    vaultTitle: "Cofre del tesoro", earnedMoney: "Dinero ganado", boughtSomething: "Dinero gastado",
     kidAdd: "¡Añadir!", noGoalYet: "Aún no hay meta — ¡toca aquí para poner una!",
     setGoalTitle: "Establecer una meta", goalNameLabel: "¿Para qué estás ahorrando?",
     goalNamePh: "p. ej. Lego Star Wars", goalAmountLabel: "Monto objetivo", saveGoal: "Guardar meta",
     goalReached: "🎉 ¡Meta alcanzada!", recentActivity: "Actividad reciente",
-    noKidActivity: "Nada todavía — ¡gana o gasta para verlo aquí!",
+    noKidActivity: "¡Aún no hay aventuras!", kidEmptyCta: "¡Vamos a ganar monedas!",
     cancellationReminder: "Recordatorio de cancelación", remindMeToCancel: "Recuérdame cancelar",
     cancellationReminderTitle: "Cancela {name} antes de que se renueve",
     upcomingChargeTitle: "Cargo próximo de {name} en {days} días",
@@ -2633,9 +2633,158 @@ const kidActionBtn = (color) => ({
   boxShadow: `0 8px 20px ${color}55`,
 });
 
-function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAddExpense, onSaveGoal, error,
-  lang, changeLang, t, theme, changeTheme, accent, changeAccent, onExit, onSwitchLedger, onNotification }) {
+// Soft-pastel skin for the dashboard itself. The saturated KID_* above stay
+// for KidActionModal, where a solid fill is what a primary CTA wants; these
+// are backgrounds carrying dark text, which is a different job.
+const KID_BG = "#F8F6FF";
+const KID_INK = "#2D1B4E";
+const KID_INK_SOFT = "#5C3E9B";
+const KID_LILAC = "#E8E0FF";
+const KID_LILAC_LINE = "#D6C7FF";
+const KID_VIOLET = "#8B5CF6";
+const KID_MINT = "#E0F7FA"; const KID_MINT_LINE = "#B2EBF2";
+const KID_TEAL = "#00838F";
+const KID_PEACH = "#FFE0B2"; const KID_PEACH_LINE = "#FFCC80";
+const KID_CORAL = "#E65100";
+const KID_HAIRLINE = "#EFEAF8";
+// Rounded faces if the device has one (Apple ships SF Rounded as ui-rounded);
+// Quicksand/Nunito are named so they're picked up if ever self-hosted, but
+// nothing here loads a webfont. Elsewhere this falls back to the system sans.
+const KID_FONT = '"Quicksand", "Nunito", ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+const KID_SOFT_SHADOW = "0 4px 12px rgba(0,0,0,0.03)";
+const KID_ROW_ACTIONS_WIDTH = 92; // same two 44px tiles as every other swipe row
+
+const kidSoftBtn = (bg, line, ink) => ({
+  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+  padding: "18px 12px", borderRadius: 22, background: bg, border: `1px solid ${line}`, color: ink,
+  textAlign: "center", cursor: "pointer", fontFamily: "inherit", boxShadow: KID_SOFT_SHADOW,
+});
+
+// The vault mascot: a piggy bank asleep with its swim goggles pushed up onto
+// its forehead. Inline SVG rather than an image file — it's flat vector art,
+// so this stays crisp at any size and costs no asset or request.
+function PiggyMascot({ size = 96 }) {
+  const PINK = "#F0A49C", PINK_DEEP = "#DE8B84", NAVY = "#3A4A63", LENS = "#C3DAF2";
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} style={{ flexShrink: 0 }} aria-hidden="true">
+      {/* zZ */}
+      <g fill={NAVY} fontFamily={KID_FONT} fontWeight="800">
+        <text x="72" y="20" fontSize="15">z</text>
+        <text x="83" y="11" fontSize="11">z</text>
+      </g>
+      {/* Ear, behind the head */}
+      <path d="M60 34 C58 22 66 18 72 22 C77 25 76 33 72 38 Z" fill={PINK_DEEP} />
+      {/* Body */}
+      <ellipse cx="50" cy="58" rx="34" ry="27" fill={PINK} />
+      {/* Legs */}
+      <rect x="28" y="80" width="13" height="9" rx="4" fill={PINK_DEEP} />
+      <rect x="57" y="80" width="13" height="9" rx="4" fill={PINK_DEEP} />
+      {/* Curly tail */}
+      <path d="M83 54 C90 52 92 45 87 43 C83 41 81 45 84 47" fill="none" stroke={PINK_DEEP} strokeWidth="4" strokeLinecap="round" />
+      {/* Snout */}
+      <ellipse cx="19" cy="61" rx="11" ry="9" fill={PINK_DEEP} />
+      <ellipse cx="15.5" cy="61" rx="2" ry="3" fill={NAVY} opacity="0.55" />
+      <ellipse cx="22.5" cy="61" rx="2" ry="3" fill={NAVY} opacity="0.55" />
+      {/* Closed, contented eye */}
+      <path d="M34 55 C37 60 43 60 46 55" fill="none" stroke={NAVY} strokeWidth="3" strokeLinecap="round" />
+      {/* Goggles, pushed up onto the forehead: strap first, then the lenses */}
+      <path d="M16 44 C30 33 62 30 80 41" fill="none" stroke={NAVY} strokeWidth="7" strokeLinecap="round" />
+      <g stroke={NAVY} strokeWidth="3">
+        <ellipse cx="33" cy="40" rx="14" ry="12" fill={LENS} />
+        <ellipse cx="56" cy="37" rx="14" ry="12" fill={LENS} />
+      </g>
+      <path d="M27 36 C29 32 34 31 37 33" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+      <path d="M50 33 C52 29 57 28 60 30" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+    </svg>
+  );
+}
+
+// Empty-state mascot: a bear asleep on a pillow under a blanket. Same reason
+// as PiggyMascot for drawing it rather than shipping a PNG.
+function SleepyBear({ width = 150 }) {
+  const FUR = "#A97244", FUR_DEEP = "#8D5C34", MUZZLE = "#EFE0C9",
+    PILLOW = "#F8F2E9", BLANKET = "#EFE4D6", BLANKET_DEEP = "#E2D4C2",
+    NOSE = "#5B3A21", SPARK = "#C6C0E6";
+  const spark = (x, y, r) => `M${x} ${y - r} Q${x + r * 0.22} ${y - r * 0.22} ${x + r} ${y} Q${x + r * 0.22} ${y + r * 0.22} ${x} ${y + r} Q${x - r * 0.22} ${y + r * 0.22} ${x - r} ${y} Q${x - r * 0.22} ${y - r * 0.22} ${x} ${y - r} Z`;
+  return (
+    <svg viewBox="0 0 170 115" width={width} style={{ flexShrink: 0, maxWidth: "100%" }} aria-hidden="true">
+      <g fill={SPARK}>
+        <path d={spark(28, 34, 8)} />
+        <path d={spark(14, 62, 5)} />
+        <path d={spark(150, 40, 6)} />
+        <path d={spark(140, 78, 4)} />
+      </g>
+      {/* Pillow */}
+      <path d="M24 76 C24 64 38 60 52 62 C66 64 72 72 70 82 C68 92 52 96 38 94 C28 92 24 86 24 76 Z" fill={PILLOW} />
+      {/* Body under the blanket */}
+      <ellipse cx="104" cy="76" rx="46" ry="24" fill={FUR} />
+      <path d="M70 62 C86 52 122 52 142 64 C152 70 152 88 140 94 C118 104 84 102 70 92 Z" fill={BLANKET} />
+      <path d="M70 92 C84 100 118 102 140 94 C143 92 145 89 146 86 C120 96 90 95 70 86 Z" fill={BLANKET_DEEP} />
+      {/* Ears */}
+      <circle cx="52" cy="36" r="12" fill={FUR} />
+      <circle cx="52" cy="36" r="6" fill={FUR_DEEP} />
+      <circle cx="90" cy="34" r="10" fill={FUR} />
+      <circle cx="90" cy="34" r="5" fill={FUR_DEEP} />
+      {/* Head */}
+      <ellipse cx="70" cy="58" rx="30" ry="27" fill={FUR} />
+      {/* Muzzle */}
+      <ellipse cx="74" cy="70" rx="19" ry="14" fill={MUZZLE} />
+      <ellipse cx="74" cy="62" rx="5" ry="4" fill={NOSE} />
+      <path d="M74 66 L74 70 M74 70 C73 74 69 74 68 71 M74 70 C75 74 79 74 80 71" fill="none" stroke={NOSE} strokeWidth="2" strokeLinecap="round" />
+      {/* Closed eyes */}
+      <g fill="none" stroke={NOSE} strokeWidth="2.6" strokeLinecap="round">
+        <path d="M52 56 C55 61 60 61 63 56" />
+        <path d="M86 54 C89 59 94 59 96 54" />
+      </g>
+    </svg>
+  );
+}
+
+// Same swipe-to-reveal Edit/Delete as the ledger picker and inventory rows,
+// via the same hook. Skips the shared `.swipe-row` class on purpose: its hover
+// glow is keyed to the app accent, and this screen doesn't follow that.
+function KidActivityRow({ e, cat, lang, t, first, onEdit, onDelete }) {
+  const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(KID_ROW_ACTIONS_WIDTH);
+  const earn = e.kind === "earn";
+  return (
+    <div style={{ position: "relative", borderTop: first ? "none" : `1px solid ${KID_HAIRLINE}` }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 16, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
+        <button onClick={() => { closeRow(); onEdit(); }} style={{ ...swipeActionBtn, background: KID_VIOLET, color: "#fff" }} aria-label={t("editItem")}>
+          <Pencil size={17} />
+        </button>
+        <button onClick={() => { closeRow(); onDelete(); }} style={{ ...swipeActionBtn, background: "#DC2626", color: "#fff" }} aria-label={t("deleteItem")}>
+          <Trash2 size={17} />
+        </button>
+      </div>
+      <div {...handlers} onClick={() => onTapOrClose(() => {})}
+        style={{
+          position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 12,
+          background: "#fff", borderRadius: 16, padding: "12px 6px",
+          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease",
+          touchAction: "pan-y", userSelect: "none",
+        }}>
+        <span style={{ fontSize: 26 }} aria-hidden="true">{categoryIcon(cat)}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: KID_INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.description}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: KID_INK_SOFT }}>{shortDate(e.date, lang)}</div>
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 16, color: earn ? KID_TEAL : KID_CORAL, flexShrink: 0 }}>
+          {earn ? "+" : "-"}{money(Math.abs(Number(e.amount) || 0))}
+        </div>
+        <button className="swipe-more-btn" onClick={(ev) => { ev.stopPropagation(); toggle(); }}
+          aria-label={t("moreActions")} style={moreBtn}>
+          <MoreVertical size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAddExpense, onDeleteExpense, onSaveGoal, error,
+  lang, changeLang, t, theme, changeTheme, accent, changeAccent, onExit, onNotification }) {
   const [actionKind, setActionKind] = useState(null); // null | "earn" | "spend"
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [editingGoal, setEditingGoal] = useState(false);
 
   // All-time, not month-scoped — a vault is a running total, not a monthly one.
@@ -2652,103 +2801,141 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
   const reached = goal && balance >= goal.targetAmount;
 
   return (
-    <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      {/* The gamified palette below stays fixed, but the backdrop is the app's
-          — this was the one full page still sitting on flat paper. */}
-      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
+    <div style={{ background: KID_BG, color: KID_INK, fontFamily: KID_FONT, minHeight: "100%", padding: "20px 16px 40px" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
 
-        {/* Header — same chrome as every other ledger (back chip, switcher,
-            menu), so navigation stays consistent; only the content below is
-            the gamified skin. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-          {/* Back out to the picker, same chip and same row placement as the
-              normal ledger header — this screen had no way back to it at all,
-              only the menu's Home. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={onExit} style={ghostBtn}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
-              <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
-              <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
-                accent={accent} changeAccent={changeAccent} onHome={onExit} />
-            </div>
+        {/* Back pill / ledger switcher / bell + menu. The switcher keeps its
+            own chrome: it's shared with the grown-up ledgers, and it already
+            renders as the white name pill this design asks for. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={onExit} style={{
+            display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 20,
+            background: "#fff", border: `1px solid ${KID_HAIRLINE}`, color: KID_INK,
+            fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", boxShadow: KID_SOFT_SHADOW, flexShrink: 0,
+          }}><ArrowLeft size={15} /> {t("backToDashboard")}</button>
+          {/* A label, not the switcher the other ledgers get — switching from
+              here goes through Back or the menu's Home. */}
+          <div style={{ minWidth: 0, flex: 1, display: "flex", justifyContent: "center" }}>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, maxWidth: "100%",
+              padding: "7px 14px", borderRadius: 20, background: "#fff",
+              border: `1px solid ${KID_HAIRLINE}`, boxShadow: KID_SOFT_SHADOW,
+            }}>
+              <span style={{ fontSize: 16 }} aria-hidden="true">🐱</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: KID_INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ledger.name}</span>
+            </span>
           </div>
-          <LedgerSwitcher ledger={ledger} onSwitch={onSwitchLedger} onCreateNew={onExit} t={t} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
+            <HeaderMenu t={t} lang={lang} changeLang={changeLang} theme={theme} changeTheme={changeTheme}
+              accent={accent} changeAccent={changeAccent} onHome={onExit} />
+          </div>
         </div>
 
         {error && <div style={errorBox}>{t("loadErr", { msg: error })}</div>}
 
-        {/* Vault banner */}
-        <div style={{ background: `linear-gradient(135deg, ${KID_PURPLE}, ${KID_PURPLE_DARK})`, borderRadius: 24, padding: "24px 22px", boxShadow: `0 12px 30px ${KID_PURPLE}59`, color: "#fff" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", opacity: 0.85 }}>{t("vaultTitle")}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-            <span style={{ fontSize: 40 }} aria-hidden="true">🪙</span>
-            <span style={{ fontSize: 44, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{money(balance)}</span>
+        {/* Treasure vault */}
+        <div style={{
+          background: KID_LILAC, border: `1px solid ${KID_LILAC_LINE}`, borderRadius: 28, padding: "24px 20px",
+          display: "flex", flexDirection: "column", gap: 18, boxShadow: "0 8px 20px rgba(139, 92, 246, 0.08)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", color: KID_INK_SOFT, marginBottom: 4 }}>{t("vaultTitle")}</div>
+              <div style={{ fontSize: 44, fontWeight: 900, letterSpacing: -1, lineHeight: 1, color: KID_INK, fontVariantNumeric: "tabular-nums" }}>{money(balance)}</div>
+            </div>
+            <PiggyMascot />
           </div>
 
-          {/* Wishlist goal progress — tap it to set/edit the goal, since there's
-              no other entry point for something this small a feature needs. */}
+          {/* Tap anywhere on the goal to set or edit it — still the only entry
+              point for something this small a feature needs. */}
           <div role="button" tabIndex={0} onClick={() => setEditingGoal(true)}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditingGoal(true); } }}
-            style={{ marginTop: 18, background: "rgba(255,255,255,0.16)", borderRadius: 16, padding: 14, cursor: "pointer" }}>
+            style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: 8 }}>
             {goal ? (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, fontWeight: 700 }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🎯 {goal.name}</span>
-                  <span style={{ flexShrink: 0 }}>{money(raised)} / {money(goal.targetAmount)}</span>
+                <div style={{ height: 14, background: "#fff", borderRadius: 20, padding: 2, boxSizing: "border-box" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: KID_VIOLET, borderRadius: 20, transition: "width .3s ease" }} />
                 </div>
-                <div style={{ marginTop: 8, height: 14, borderRadius: 99, background: "rgba(255,255,255,0.25)", overflow: "hidden" }}>
-                  <div style={{ width: `${pct}%`, height: "100%", background: KID_YELLOW, borderRadius: 99, transition: "width .3s ease" }} />
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, fontWeight: 800 }}>
+                  <span style={{ color: KID_INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    🎯 {goal.name} ({money(raised)} / {money(goal.targetAmount)})
+                  </span>
+                  <span style={{ color: KID_INK_SOFT, flexShrink: 0 }}>{reached ? t("goalReached") : `${pct}%`}</span>
                 </div>
-                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, opacity: 0.9 }}>{reached ? t("goalReached") : `${pct}%`}</div>
               </>
             ) : (
-              <div style={{ fontSize: 13, fontWeight: 700, textAlign: "center" }}>🎯 {t("noGoalYet")}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, textAlign: "center", color: KID_INK_SOFT }}>🎯 {t("noGoalYet")}</div>
             )}
           </div>
         </div>
 
-        {/* Big emoji action buttons */}
-        <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
-          <button onClick={() => setActionKind("earn")} style={kidActionBtn(KID_GREEN)}>
-            <span style={{ fontSize: 22 }} aria-hidden="true">➕</span>{t("earnedMoney")}
+        {/* Quick actions */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <button onClick={() => setActionKind("earn")} style={kidSoftBtn(KID_MINT, KID_MINT_LINE, KID_TEAL)}>
+            <span style={{ fontSize: 18 }} aria-hidden="true">🪙</span>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>+ {t("earnedMoney")}</span>
           </button>
-          <button onClick={() => setActionKind("spend")} style={kidActionBtn(KID_ORANGE)}>
-            <span style={{ fontSize: 22 }} aria-hidden="true">➖</span>{t("boughtSomething")}
+          <button onClick={() => setActionKind("spend")} style={kidSoftBtn(KID_PEACH, KID_PEACH_LINE, KID_CORAL)}>
+            <span style={{ fontSize: 18 }} aria-hidden="true">🛍️</span>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>- {t("boughtSomething")}</span>
           </button>
         </div>
 
-        {/* Simplified activity list */}
-        <div style={{ marginTop: 22 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{t("recentActivity")}</div>
-          {recent.length === 0 ? (
-            <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13, fontWeight: 600 }}>{t("noKidActivity")}</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recent.map((e) => {
-                const cat = categories.find((c) => c.id === e.categoryId);
-                const earn = e.kind === "earn";
-                return (
-                  <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, borderRadius: 18, padding: "12px 14px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}>
-                    <span style={{ fontSize: 26 }} aria-hidden="true">{categoryIcon(cat)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.description}</div>
-                      <div style={{ fontSize: 12, color: SUB }}>{shortDate(e.date, lang)}</div>
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: earn ? KID_GREEN : KID_ORANGE, flexShrink: 0 }}>
-                      {earn ? "+" : "-"}{money(Math.abs(Number(e.amount) || 0))}
-                    </div>
+        {/* Recent activity */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: KID_INK, margin: "0 4px" }}>{t("recentActivity")}</h3>
+          <div style={{
+            background: "#fff", border: `1px solid ${KID_HAIRLINE}`, borderRadius: 28,
+            padding: recent.length === 0 ? "28px 20px" : "14px", boxShadow: "0 6px 16px rgba(0,0,0,0.02)",
+            // Rows live inside this card rather than being cards themselves,
+            // so a swiped row would otherwise slide out past its left edge.
+            overflow: "hidden",
+          }}>
+            {/* Bear left, thought bubble right. The bubble stays an ordinary
+                rounded box rather than a drawn cloud outline, so it grows with
+                whatever the translation is; the two trailing dots are what make
+                it read as a thought rather than a label. */}
+            {recent.length === 0 ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, flexWrap: "wrap" }}>
+                <SleepyBear />
+                <div style={{ position: "relative", flex: "1 1 150px", minWidth: 130 }}>
+                  <span aria-hidden="true" style={{ position: "absolute", left: -6, bottom: 12, width: 9, height: 9, borderRadius: "50%", background: KID_BG, border: `1.5px solid #E2D9F3` }} />
+                  <span aria-hidden="true" style={{ position: "absolute", left: -16, bottom: 4, width: 6, height: 6, borderRadius: "50%", background: KID_BG, border: `1.5px solid #E2D9F3` }} />
+                  <div style={{
+                    background: KID_BG, border: `1.5px solid #E2D9F3`, borderRadius: 20, padding: "12px 14px",
+                    fontSize: 12, fontWeight: 700, color: "#4C3378", textAlign: "center", lineHeight: 1.5,
+                  }}>
+                    <div>{t("noKidActivity")}</div>
+                    <div>{t("kidEmptyCta")}</div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {recent.map((e, i) => (
+                  <KidActivityRow key={e.id} e={e} cat={categories.find((c) => c.id === e.categoryId)}
+                    lang={lang} t={t} first={i === 0}
+                    onEdit={() => setEditingEntry(e)} onDelete={() => setConfirmDelete(e)} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {actionKind && (
         <KidActionModal kind={actionKind} categories={categories} members={members} t={t}
           onSave={onAddExpense} onClose={() => setActionKind(null)} />
+      )}
+      {editingEntry && (
+        <KidActionModal kind={editingEntry.kind} initial={editingEntry} categories={categories} members={members} t={t}
+          onSave={onAddExpense} onClose={() => setEditingEntry(null)} />
+      )}
+      {confirmDelete && (
+        <ConfirmDialog t={t} message={t("deleteConfirm", { name: confirmDelete.description })}
+          onConfirm={() => { onDeleteExpense(confirmDelete.id); setConfirmDelete(null); }}
+          onCancel={() => setConfirmDelete(null)} />
       )}
       {editingGoal && (
         <KidGoalEditor goal={goal} t={t} onSave={onSaveGoal} onClose={() => setEditingGoal(false)} />
@@ -2762,9 +2949,9 @@ function KidLedgerDashboard({ ledger, categories, expenses, members, goal, onAdd
 // big buttons opened this, not from the category — Chores and Allowance read
 // as "earn" reasons, Snacks/Toys/Games/Gifts as "spend" ones, but the tile
 // grid itself is the same seeded category list either way (db.TEMPLATES.kid).
-function KidActionModal({ kind, categories, members, t, onSave, onClose }) {
-  const [categoryId, setCategoryId] = useState(null);
-  const [amount, setAmount] = useState("");
+function KidActionModal({ kind, initial, categories, members, t, onSave, onClose }) {
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? null);
+  const [amount, setAmount] = useState(initial ? String(Math.abs(Number(initial.amount) || 0)) : "");
   const [busy, setBusy] = useState(false);
   const amt = Number(amount) || 0;
   const valid = categoryId && amt > 0 && !busy;
@@ -2776,7 +2963,10 @@ function KidActionModal({ kind, categories, members, t, onSave, onClose }) {
     // No separate description field — kid-friendly means tap, type an amount,
     // done. The category name doubles as the activity list's entry title.
     await onSave({
-      description: catName(cat), amount: amt, categoryId, date: todayISO(), note: "",
+      // Editing keeps the entry's own id and date; only what the two fields
+      // here can change is rewritten.
+      ...(initial ? { id: initial.id, date: initial.date } : { date: todayISO() }),
+      description: catName(cat), amount: amt, categoryId, note: "",
       paidById: members[0]?.id || null, split: "personal", sharedWith: [], kind,
     });
     setBusy(false);
@@ -2810,7 +3000,7 @@ function KidActionModal({ kind, categories, members, t, onSave, onClose }) {
           </Field>
           <button onClick={save} disabled={!valid} className="btn-glow"
             style={{ ...addBtn, background: kind === "earn" ? KID_GREEN : KID_ORANGE, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
-            {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {t("kidAdd")}
+            {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {initial ? t("saveChanges") : t("kidAdd")}
           </button>
         </div>
       )}
@@ -3203,9 +3393,9 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
   if (ledger.template === "kid") {
     return (
       <KidLedgerDashboard ledger={ledger} categories={categories} expenses={expenses} members={members}
-        goal={goal} onAddExpense={upsertExpense} onSaveGoal={saveGoal} error={error}
+        goal={goal} onAddExpense={upsertExpense} onDeleteExpense={removeExpense} onSaveGoal={saveGoal} error={error}
         lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme}
-        accent={accent} changeAccent={changeAccent} onExit={onExit} onSwitchLedger={onSwitchLedger}
+        accent={accent} changeAccent={changeAccent} onExit={onExit}
         onNotification={onNotification} />
     );
   }
@@ -3304,7 +3494,9 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                   ))}
                 </select>
               )}
-              <button onClick={() => setEditing("new")} className="btn-glow" style={chip(true)}>
+              {/* Matched to the month select's explicit 34px: chip()'s height
+                  comes out of its padding and lands ~2px short of it. */}
+              <button onClick={() => setEditing("new")} className="btn-glow" style={{ ...chip(true), height: 34 }}>
                 <Plus size={14} /> {t("addExpense")}
               </button>
             </div>
