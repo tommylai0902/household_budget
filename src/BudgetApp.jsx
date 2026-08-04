@@ -1781,6 +1781,7 @@ function DaylightBackground() {
           { top: "52%", left: "35%" },
           { top: "68%", left: "18%" },
           { top: "34%", left: "58%" },
+          { top: "88%", left: "4%" },
         ].map((b, i) => (
           <div key={i} style={{
             position: "absolute", top: b.top, left: b.left, width: 90, height: 90, borderRadius: "50%",
@@ -1790,6 +1791,34 @@ function DaylightBackground() {
             filter: "blur(1px)", mixBlendMode: "screen",
           }} />
         ))}
+        {/* One of the ghost bubbles is a dog instead — same white edge, same
+            screen blend, so it reads as another lens artefact until you look
+            at it. Stroke/fill match the circles above; box-shadow can't
+            follow an SVG outline, so the outer glow is a drop-shadow filter. */}
+        <svg viewBox="0 0 100 100" style={{
+          position: "absolute", top: "calc(79% - 30px)", left: "calc(57% - 30px)", width: 150, height: 150,
+          transform: "rotate(20deg)",
+          filter: "blur(1px) drop-shadow(0 0 8px rgba(56,189,248,0.35))", mixBlendMode: "screen",
+        }}>
+          {/* A sitting puppy: oversized head on a small body, which is the
+              whole trick to reading as cute at this size. Ears and body come
+              first so the head overlaps them. */}
+          <g fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinecap="round">
+            <path d="M50 55 C34 55 27 72 29 83 C30 91 39 94 50 94 C61 94 70 91 71 83 C73 72 66 55 50 55 Z" />
+            <path d="M71 84 C83 85 88 75 82 68" fill="none" />
+            <ellipse cx="40" cy="90" rx="6.5" ry="5" />
+            <ellipse cx="60" cy="90" rx="6.5" ry="5" />
+            <ellipse cx="26" cy="42" rx="8.5" ry="18" transform="rotate(12 26 42)" />
+            <ellipse cx="74" cy="42" rx="8.5" ry="18" transform="rotate(-12 74 42)" />
+            <ellipse cx="50" cy="34" rx="23" ry="21" />
+            <ellipse cx="50" cy="45" rx="11" ry="8" />
+            <ellipse cx="50" cy="39" rx="3.5" ry="2.8" fill="rgba(255,255,255,0.3)" />
+            {/* Smiling eyes — arcs rather than dots, brighter than the body
+                stroke so they still read through the blur. */}
+            <path d="M37 32.5 Q41 26.5 45 32.5 M55 32.5 Q59 26.5 63 32.5"
+              fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+          </g>
+        </svg>
       </div>
     </div>
   );

@@ -55,14 +55,14 @@ html, body {
      frosted card over the page background, not the flat --card used
      everywhere else. Needs its own light/dark pair since a translucent
      white reads very differently over a pale vs near-black page. */
-  /* Light mode is the opposite problem to dark: the daylight background is
-     pale and low-contrast, so a near-transparent card would vanish into it.
-     Here the card is a near-solid frosted white that floats *above* the
-     sparkle field, rather than letting it read through. --glass-blur and
+  /* Light mode leans the other way from dark: the card is a thin white wash
+     that lets the sunrise gradient and the lens-flare beam read straight
+     through it, with --glass-blur doing the work of keeping text legible
+     over whatever it lands on. --glass-blur and
      --glass-card-shadow are per-theme for the same reason: light wants real
      frosted blur and a soft blue-tinted lift, dark wants neither (any blur
      smears the point stars behind the card into nothing). */
-  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-bg: rgba(255, 255, 255, 0.12);
   --glass-border: rgba(255, 255, 255, 0.85);
   --glass-shadow: rgba(15, 23, 42, 0.08);
   --glass-blur: 12px;
