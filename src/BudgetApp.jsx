@@ -2678,8 +2678,10 @@ const kidSoftBtn = (bg, line, ink) => ({
 // as a bundled asset rather than redrawn — swap src/assets/kid-pig.svg to
 // change it. Background rect stripped from the source file so it sits
 // transparent on the card.
-function PiggyMascot({ size = 140 }) {
-  return <img src={kidPigMascot} width={size} height={size} style={{ flexShrink: 0 }} alt="" />;
+function PiggyMascot({ size = 180 }) {
+  // Rendered bigger than the row it sits in on purpose; the negative vertical
+  // margin lets it overflow the row visually without growing the vault card.
+  return <img src={kidPigMascot} width={size} height={size} style={{ flexShrink: 0, margin: "-20px 0" }} alt="" />;
 }
 
 // Empty-state mascot: a bear asleep on a pillow under a blanket. Same reason
