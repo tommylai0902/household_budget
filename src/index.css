@@ -47,7 +47,7 @@ html, body {
 }
 :root, :root[data-theme="light"] {
   color-scheme: light;
-  --ink: #141A20; --sub: #5B6570; --line: #E4E7EB; --paper: #F6F7F9; --card: #ffffff;
+  --ink: #0F172A; --sub: #475569; --line: #E2E8F0; --paper: #F6F7F9; --card: #ffffff;
   --ok-bg: #E3F5F2; --ok-ink: #0F5E55; --ok-line: #B8E4DD; --ok-strong: #C7EBE4;
   --bad-bg: #FEF2F2; --bad-ink: #B91C1C; --bad-line: #FECACA;
   --track: #EEF2F1; --muted-bg: #F1F3F5; --danger: #DC2626; --warn: #C2410C;
@@ -55,14 +55,23 @@ html, body {
      frosted card over the page background, not the flat --card used
      everywhere else. Needs its own light/dark pair since a translucent
      white reads very differently over a pale vs near-black page. */
-  /* A gradient, not a flat fill: denser at the rim, thinnest through the
-     middle, so the backdrop-blurred page behind actually reads through the
-     centre of the card and the edges still catch light. Every glass surface
-     sets this via `background:` (never `background-color:`), so a gradient
-     value is safe here. */
-  --glass-bg: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.34) 45%, rgba(255, 255, 255, 0.80) 100%);
-  --glass-border: rgba(var(--accent-rgb), 0.18);
+  /* Light mode is the opposite problem to dark: the daylight background is
+     pale and low-contrast, so a near-transparent card would vanish into it.
+     Here the card is a near-solid frosted white that floats *above* the
+     sparkle field, rather than letting it read through. --glass-blur and
+     --glass-card-shadow are per-theme for the same reason: light wants real
+     frosted blur and a soft blue-tinted lift, dark wants neither (any blur
+     smears the point stars behind the card into nothing). */
+  --glass-bg: rgba(255, 255, 255, 0.52);
+  --glass-border: rgba(255, 255, 255, 0.85);
   --glass-shadow: rgba(15, 23, 42, 0.08);
+  --glass-blur: 12px;
+  --glass-card-shadow: 0 10px 25px -5px rgba(12, 74, 110, 0.06);
+  /* Internal rules — dividers inside a card, outlines on fill-less controls.
+     Separate from --glass-border because that one is the card's *outer*
+     highlight edge (near-white here), which would be invisible drawn on top
+     of the card's own white fill. */
+  --hairline: #E2E8F0;
   /* "Viewing: {ledger}" badge on the Bento home — solid teal-50/teal-200/
      teal-700 in light mode reads as a washed-out grey-green if you reuse the
      dark theme's translucent teal-950 fill, so it gets its own pair too. */
@@ -88,6 +97,13 @@ html, body {
   --glass-bg: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.005) 0%, rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.08) 100%);
   --glass-border: rgba(var(--accent-rgb), 0.2);
   --glass-shadow: rgba(0, 0, 0, 0.35);
+  /* 0, deliberately — any backdrop blur smears the point stars behind a card
+     into nothing, which is the whole reason the dark card is see-through. */
+  --glass-blur: 0px;
+  --glass-card-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  /* --line here is near-black, which vanishes against the transparent card —
+     the accent tint is the only thing that reads. */
+  --hairline: rgba(var(--accent-rgb), 0.2);
   --badge-teal-bg: rgba(var(--accent-rgb), 0.15); --badge-teal-border: rgba(var(--accent-rgb), 0.3); --badge-teal-ink: var(--accent);
   --badge-amber-bg: rgba(245, 158, 11, 0.15); --badge-amber-border: rgba(245, 158, 11, 0.3); --badge-amber-ink: #FCD34D;
   --badge-sky-bg: rgba(56, 189, 248, 0.15); --badge-sky-border: rgba(56, 189, 248, 0.3); --badge-sky-ink: #7DD3FC;
@@ -143,7 +159,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:f
 .swipe-row { transition: box-shadow .18s ease, border-color .18s ease; }
 .swipe-row:hover {
   border-color: rgba(var(--accent-rgb),0.75) !important;
-  box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
+  box-shadow: var(--glass-card-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
 }
 
 /* Visible tap feedback: opt-in via className="press-fx" on controls whose

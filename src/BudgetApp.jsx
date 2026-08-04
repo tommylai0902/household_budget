@@ -1628,6 +1628,171 @@ function CosmicBackground() {
   );
 }
 
+// Light mode's counterpart to CosmicBackground — a cosmic-sunrise backdrop
+// (deep blue to gold, lens-flare ring, prism-tinted star canvas). Deliberately
+// SCOPED TO THE BACKDROP ONLY: cards and text everywhere in light mode read
+// this same var(--glass-bg)/INK pair they always have, unrelated to this
+// component — that's a decision, not an oversight, confirmed explicitly
+// rather than assumed, since a white-on-white card readability problem
+// would otherwise show up on every light-mode screen, not just the three
+// this backdrop renders behind. Same overall shape as the dark one (fixed,
+// aria-hidden, pointerEvents none, cleaned up on unmount) so the two stay
+// drop-in swappable per theme.
+function DaylightBackground() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    let raf;
+
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+
+    // ~6% of stars get a 4-point cross sparkle instead of a plain dot.
+    const stars = Array.from({ length: 180 }, () => ({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      size: Math.random() * 1.8 + 0.4,
+      alpha: Math.random() * 0.8 + 0.2,
+      twinkleSpeed: Math.random() * 0.03 + 0.005,
+      isSparkle: Math.random() < 0.06,
+    }));
+
+    const drawSparkle = (x, y, size, alpha) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(-size * 5, 0); ctx.lineTo(size * 5, 0);
+      ctx.moveTo(0, -size * 5); ctx.lineTo(0, size * 5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Prism flare: a wide, heavily blurred diagonal stroke, corner to
+      // corner, tinted through green/pink/gold rather than one hue.
+      ctx.save();
+      const grad = ctx.createLinearGradient(0, canvas.height, canvas.width, 0);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.3, "rgba(167,243,208,0.15)");
+      grad.addColorStop(0.5, "rgba(244,114,182,0.2)");
+      grad.addColorStop(0.7, "rgba(253,224,71,0.25)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 120;
+      ctx.filter = "blur(40px)";
+      ctx.beginPath();
+      ctx.moveTo(-100, canvas.height + 100);
+      ctx.lineTo(canvas.width + 100, -100);
+      ctx.stroke();
+      ctx.restore();
+
+      for (const s of stars) {
+        s.alpha += Math.sin(Date.now() * s.twinkleSpeed) * 0.015;
+        const alpha = Math.max(0.1, Math.min(1, s.alpha));
+        if (s.isSparkle) {
+          drawSparkle(s.x, s.y, s.size * 1.4, alpha);
+        } else {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.shadowBlur = s.size > 1.2 ? 6 : 0;
+          ctx.shadowColor = "rgba(255,255,255,0.9)";
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      raf = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return (
+    <div aria-hidden="true" style={{
+      position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0,
+      background: "linear-gradient(180deg, #182b49 0%, #223a5e 35%, #3d587f 65%, #c88d6d 100%)",
+    }}>
+      {/* Sunrise gold glow, top right — large and diffuse enough that its
+          warmth reaches the top-right corner of the first card (the SPENT
+          bar) rather than staying a self-contained corner blob. */}
+      <div style={{
+        position: "absolute", top: "-100px", right: "-100px", width: 620, height: 620, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(254,240,138,0.9) 0%, rgba(249,115,22,0.4) 45%, rgba(0,0,0,0) 75%)",
+        filter: "blur(40px)",
+      }} />
+      {/* Lens-flare ring, top left. */}
+      <div style={{
+        position: "absolute", top: "-180px", left: "-120px", width: 500, height: 500, borderRadius: "50%",
+        border: "1.5px solid rgba(255,255,255,0.35)",
+        boxShadow: "0 0 30px rgba(255,255,255,0.25), inset 0 0 20px rgba(255,255,255,0.15)",
+      }} />
+      <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+      {/* Prismatic lens-flare beams — placed after the canvas so
+          mix-blend-mode:screen composites against the stars/gradient
+          beneath, not just this wrapper's flat CSS background. This is the
+          one place in the app screen mode actually works as advertised: an
+          earlier attempt used it on the old daylight rays where it needed
+          to blend with the page's card content OUTSIDE this wrapper's own
+          stacking context, which silently no-op'd. Everything here — the
+          gradient, the glow, the stars, these beams — lives inside this
+          same position:fixed wrapper, so there's no isolation boundary
+          in the way. */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+        {/* Rainbow split — height and blur both cut back from the first pass:
+            at 45px/blur(12px) the red/green/blue bands overlapped into a
+            soft white haze instead of a visible spectrum. Pink-to-blue
+            spectrum (not red-first) with a faint sky-blue glow flanking it,
+            rather than a hard-edged band. */}
+        <div style={{
+          position: "absolute", top: "44%", left: "-20%", width: "140%", height: 14, transform: "rotate(-37deg)", transformOrigin: "center",
+          background: "linear-gradient(90deg, rgba(244,114,182,0.4) 0%, rgba(251,146,60,0.6) 30%, rgba(254,240,138,0.85) 55%, rgba(52,211,153,0.6) 75%, rgba(96,165,250,0.5) 100%)",
+          filter: "blur(5px) brightness(1.3)", mixBlendMode: "screen",
+        }} />
+        {/* Bright white core, on the same axis, thin and almost unblurred so
+            it reads as a sharp anamorphic-lens streak rather than adding to
+            the haze. */}
+        <div style={{
+          position: "absolute", top: "44.3%", left: "-20%", width: "140%", height: 2, transform: "rotate(-37deg)", transformOrigin: "center",
+          background: "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 40%, rgba(255,255,255,1) 60%, rgba(255,255,255,0) 100%)",
+          boxShadow: "0 0 8px #ffffff",
+          filter: "blur(0.5px)", mixBlendMode: "screen",
+        }} />
+        {[
+          { top: "52%", left: "35%" },
+          { top: "68%", left: "18%" },
+          { top: "34%", left: "58%" },
+        ].map((b, i) => (
+          <div key={i} style={{
+            position: "absolute", top: b.top, left: b.left, width: 90, height: 90, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(186,230,253,0.08) 60%, rgba(0,0,0,0) 80%)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            boxShadow: "inset 0 0 10px rgba(244,114,182,0.25), 0 0 12px rgba(56,189,248,0.2)",
+            filter: "blur(1px)", mixBlendMode: "screen",
+          }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ============================ Login =============================== */
 function Login({ lang, changeLang, t, theme, hasInvite }) {
   // Arriving via an invite link almost always means a new person — start them on
@@ -1674,13 +1839,10 @@ function Login({ lang, changeLang, t, theme, hasInvite }) {
 
   return (
     <div style={{ position: "relative", overflow: "hidden", background: PAPER, minHeight: 520, display: "grid", placeItems: "center", fontFamily: "Inter, system-ui, sans-serif", padding: 20 }}>
-      {/* Dark mode gets the calm starfield (the app's first impression); light
-          mode keeps the original single accent glow — the starfield's navy/
-          black canvas has no light-mode equivalent and wasn't asked for one. */}
-      {theme === "dark" ? <CosmicBackground /> : (
-        <div aria-hidden="true" style={{ position: "absolute", inset: "-15% -10% auto -10%", height: "60%", background: "radial-gradient(circle at 25% 20%, rgba(var(--accent-rgb),0.22), transparent 60%), radial-gradient(circle at 75% 10%, rgba(var(--accent-rgb),0.12), transparent 55%)", filter: "blur(40px)", pointerEvents: "none" }} />
-      )}
-      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 16, padding: 22 }}>
+      {/* Each theme gets its own full background: the calm starfield at night,
+          the daylight haze-blue wash with drifting motes by day. */}
+      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
+      <div style={{ position: "relative", zIndex: 1, width: "min(360px, 100%)", background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{
             fontSize: 13, letterSpacing: 1, textTransform: "uppercase", fontWeight: 800,
@@ -1910,12 +2072,9 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
 
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      {/* Dark mode gets the calm starfield (same component as the sign-in
-          screen); light mode keeps the original single accent glow — the
-          starfield's navy/black canvas has no light-mode equivalent. */}
-      {theme === "dark" ? <CosmicBackground /> : (
-        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.2), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.11), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
-      )}
+      {/* Same pair as the sign-in screen — starfield at night, daylight wash
+          by day. */}
+      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
       <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto" }}>
         {/* Same header block as the Bento home now: brand centered, bell/menu
             on the right — same string in every language, like the eyebrow on
@@ -1997,8 +2156,8 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
           {rankedLedgers.length > 3 && (
             <button onClick={() => setShowAll((s) => !s)} className="swipe-row" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "var(--glass-bg)",
-              border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+              background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))",
+              border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)",
               borderRadius: 12, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit",
               fontSize: 14, fontWeight: 800, color: TEAL, width: "100%",
             }}>
@@ -2178,9 +2337,9 @@ function NewLedgerFlow({ t, busy, onCreate }) {
             <button key={k} onClick={() => pickTemplate(k)} className="swipe-row" style={{
               position: "relative", scrollSnapAlign: "start", flexShrink: 0, width: 240, textAlign: "left", display: "flex", alignItems: "center", gap: 12,
               padding: "13px 16px 13px 13px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit",
-              background: "var(--glass-bg)",
+              background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))",
               border: `1.5px solid ${active ? TEAL : "var(--glass-border)"}`,
-              boxShadow: active ? ACCENT_GLOW : "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+              boxShadow: active ? ACCENT_GLOW : "var(--glass-card-shadow)",
             }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: active ? TEAL : MUTED_BG }}>
                 <Icon size={18} style={{ color: active ? ACCENT_INK : SUB }} />
@@ -2376,9 +2535,9 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
           // of glass edge-lighting. No backdrop blur — it smears the point
           // stars behind into nothing. The template accent stays in the
           // eyebrow/icon/dot only.
-          background: "var(--glass-bg)",
+          background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))",
           border: "1px solid var(--glass-border)",
-          boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+          boxShadow: "var(--glass-card-shadow)",
           borderRadius: 20, padding: "18px 20px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -2397,7 +2556,7 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
         </div>
         <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: -0.3, color: INK, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
         {stats && (
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--glass-border)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, letterSpacing: 0.2, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", color: SUB }}>
             {/* Mint status dot with its own halo, same tone as the card glow. */}
             <span style={{ width: 6, height: 6, borderRadius: 99, background: TEAL, boxShadow: "0 0 8px rgba(var(--accent-rgb),0.8)", flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -3034,14 +3193,11 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
 
   return (
     <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
-      {/* Dark mode: the same starfield as sign-in/the ledger picker, behind
-          every view (home/ledger/inventory/grocery) — not just those two
-          entry screens. Light mode keeps the original scoped accent glow,
-          which Home already draws its own version of, so it only shows for
-          the other views here. */}
-      {theme === "dark" ? <CosmicBackground /> : viewState !== "home" && (
-        <div aria-hidden="true" style={{ position: "absolute", inset: "-40px -20px auto -20px", height: 260, background: "radial-gradient(circle at 20% 20%, rgba(var(--accent-rgb),0.16), transparent 60%), radial-gradient(circle at 80% 0%, rgba(var(--accent-rgb),0.10), transparent 55%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
-      )}
+      {/* Behind every view here (home/ledger/inventory/grocery), not just the
+          sign-in and picker entry screens. Light mode now has a real
+          background of its own, so it no longer skips home the way the old
+          scoped accent glow did. */}
+      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
       <style>{`
         .exp-row { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:12px; row-gap:7px; }
         .exp-main { grid-column:1; grid-row:1; min-width:0; }
@@ -3050,7 +3206,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         /* .swipe-row supplies the hover/focus glow (same glass-card treatment
            as the ledger picker/Inventory/Grocery rows) — this row has no
            swipe gesture of its own, just borrows that class for the glow. */
-        .exp-row:focus-visible { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
+        .exp-row:focus-visible { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: var(--glass-card-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
         @media (max-width: 560px) {
           .ledger-switcher { flex-basis:100%; }
           .exp-row { padding:14px !important; }
@@ -3152,8 +3308,8 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
                       onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setDetail(e); } }}
                       style={{
                         padding: "12px 14px", cursor: "pointer", outline: "none",
-                        background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-                        boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+                        background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)",
+                        boxShadow: "var(--glass-card-shadow)",
                         borderRadius: 12,
                       }}>
                       <div className="exp-main">
@@ -3326,7 +3482,7 @@ function MonthCalendar({ month, expenses, lang, selectedDay, onSelectDay, t, tot
   const SPEND_TINT = `color-mix(in srgb, ${WARN} 12%, transparent)`;
 
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 14, padding: 14, marginTop: 14 }}>
+    <div style={{ background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 14, padding: 14, marginTop: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
         {weekdayLabels.map((w, i) => (
           <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: SUB, textTransform: "uppercase" }}>{w}</div>
@@ -5714,8 +5870,8 @@ const HOME_CYAN = "var(--accent)";
 const HOME_AMBER = "#FBBF24";
 const HOME_SKY = "#38BDF8";
 const glassCard = {
-  background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 20, padding: 20,
-  boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+  background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", borderRadius: 20, padding: 20,
+  boxShadow: "var(--glass-card-shadow)",
   cursor: "pointer", fontFamily: "inherit", display: "block", width: "100%", textAlign: "left",
 };
 
@@ -5767,7 +5923,7 @@ function BentoCardHeader({ icon: Icon, title, corner: Corner, accent, divider = 
           </span>
         )}
       </div>
-      {divider && <div style={{ borderTop: "1px solid var(--glass-border)", margin: "10px 0" }} />}
+      {divider && <div style={{ borderTop: "1px solid var(--hairline)", margin: "10px 0" }} />}
     </>
   );
 }
@@ -5861,9 +6017,9 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
         .bento-glass:hover { transform: translateY(-2px); }
         .bento-glass-ledger:hover, .bento-glass-inventory:hover, .bento-glass-grocery:hover {
           border-color: rgba(var(--accent-rgb),0.75) !important;
-          box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
+          box-shadow: var(--glass-card-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important;
         }
-        .bento-glass-budget:hover { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: 0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
+        .bento-glass-budget:hover { border-color: rgba(var(--accent-rgb),0.75) !important; box-shadow: var(--glass-card-shadow), 0 0 16px rgba(var(--accent-rgb),0.3), 0 0 40px rgba(var(--accent-rgb),0.14) !important; }
         .bento-glass-ledger:hover .ledger-corner-glow { box-shadow: 0 0 12px rgba(var(--accent-rgb),0.4); }
         .price-match-pill { cursor: pointer; transition: background .18s ease; }
         .bento-glass-grocery:hover .price-match-pill { background: rgba(56,189,248,0.2) !important; }
@@ -5877,7 +6033,7 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
           a side-effect of whatever was opened last elsewhere in the app. */}
       <HomeLedgerSwitcher ledgerId={ledgerId} ledgerName={ledgerName} t={t} onSwitch={onSwitchLedger} />
 
-      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 20, padding: 20, width: "100%" }}>
+      <button onClick={budget > 0 ? onViewTransactions : onOpenBudget} className="bento-glass bento-glass-budget" style={{ position: "relative", zIndex: 1, textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 20, padding: 20, width: "100%" }}>
         {budget > 0 ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 6, fontSize: 14, fontWeight: 800, letterSpacing: 0.3, marginBottom: 12, color: INK }}>
@@ -6241,7 +6397,7 @@ function InventoryPanel({ t, lang, onSwitchView }) {
       </div>
       {error && <div style={errorBox}>{error}</div>}
       {showAddForm && (
-        <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           {/* A label, not a button — the file input is what has to be clicked to
               open the camera, and wrapping it is the only way to style that.
               Lives inside the panel, not the header: it's an alternative to
@@ -6409,8 +6565,8 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
       <div className="swipe-row" {...handlers} onClick={() => onTapOrClose(() => {})}
         style={{
           position: "relative", zIndex: 1,
-          background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-          boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+          background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)",
+          boxShadow: "var(--glass-card-shadow)",
           borderRadius: 12, padding: 12,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -6423,7 +6579,7 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
           {/* --glass-border, not LINE: this pill is the one control here with
               no fill of its own, so its border is all there is to see — and
               LINE is near-black against the transparent card. */}
-          <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--glass-border)", borderRadius: 9, flexShrink: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--hairline)", borderRadius: 9, flexShrink: 0, overflow: "hidden" }}>
             <button className="press-fx" onClick={(e) => { e.stopPropagation(); onAdjust(it.id, -1); }}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, border: "none", background: "none", color: INK, cursor: "pointer" }} aria-label="-">
               <Minus size={13} />
@@ -6493,7 +6649,7 @@ function InventoryItemForm({ item, t, categories = [], locations = [], onManage,
     setSaving(false);
   };
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
         onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }} placeholder={t("itemNamePh")} style={input} />
       <div style={{ display: "flex", gap: 8 }}>
@@ -6788,7 +6944,7 @@ function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
           <button onClick={() => onPick(d)} className="press-fx"
             style={{
               display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%",
-              background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 12,
+              background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", borderRadius: 12,
               padding: 10, cursor: "pointer", fontFamily: "inherit", color: INK,
             }}>
             {/* Fixed box so a missing or slow image doesn't reflow the list. */}
@@ -6858,8 +7014,8 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
         onClick={() => onTapOrClose(() => hasDeal && setOpen((o) => !o))}
         style={{
           position: "relative", zIndex: 1,
-          background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-          boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)",
+          background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)",
+          boxShadow: "var(--glass-card-shadow)",
           borderRadius: 12, padding: 12, cursor: hasDeal ? "pointer" : "default", opacity: done ? 0.55 : 1,
           transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease, opacity .2s ease", touchAction: "pan-y", userSelect: "none",
         }}>
@@ -6914,7 +7070,7 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
         {/* The proof, sized to be readable across a counter rather than as a
             thumbnail — this is meant to be turned around and shown to someone. */}
         {open && hasDeal && (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--glass-border)" }}>
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--hairline)" }}>
             {/* Right above the cutout, not just in the collapsed badge — this
                 is the moment someone's about to turn the phone around at the
                 till, and the warning needs to land before that, not after. */}
@@ -6978,7 +7134,7 @@ function GroceryItemForm({ item, t, onSave, onCancel, onScan, scanning }) {
     setSaving(false);
   };
   return (
-    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Add-only — editing an existing row has no "scan to fill this in"
           moment. A label, not a button: the hidden file input is what has to
           be clicked to open the camera. Photo → flyer prices, straight into a
@@ -7112,7 +7268,7 @@ function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSe
               <div style={{ fontSize: 13, fontWeight: 700 }}>{t("pmSummary", { n: matchable.length, total: report.length })}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {matchable.map((r, i) => (
-                  <div key={i} style={{ background: "var(--glass-bg)", border: `1px solid ${OK_LINE}`, borderRadius: 12, padding: 10, display: "flex", gap: 12, alignItems: "center" }}>
+                  <div key={i} style={{ background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: `1px solid ${OK_LINE}`, borderRadius: 12, padding: 10, display: "flex", gap: 12, alignItems: "center" }}>
                     <div style={{ width: 66, height: 66, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: MUTED_BG, display: "grid", placeItems: "center" }}>
                       {r.imageUrl ? <img src={r.imageUrl} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <Tag size={18} style={{ color: SUB }} />}
                     </div>
@@ -7336,7 +7492,7 @@ function Overlay({ title, onClose, t, children }) {
         // cards let the starfield through, which for a full-height overlay
         // means the page underneath competes with the panel's own rows. An
         // overlay needs to actually cover what it sits on.
-        background: "var(--paper)", borderLeft: "1px solid var(--glass-border)",
+        background: "var(--paper)", borderLeft: "1px solid var(--hairline)",
         boxShadow: "-8px 0 40px rgba(0,0,0,0.25), 0 0 40px rgba(var(--accent-rgb),0.08)",
       }}>
         <div aria-hidden="true" style={{ position: "absolute", inset: "-60px -40px auto -40px", height: 220, background: "radial-gradient(circle at 30% 20%, rgba(var(--accent-rgb),0.2), transparent 60%)", filter: "blur(30px)", pointerEvents: "none" }} />
@@ -7371,8 +7527,8 @@ function Toast({ message, onDone }) {
     <div role="status" style={{
       position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 95,
       display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "calc(100% - 32px)",
-      background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
-      boxShadow: "0 10px 30px var(--glass-shadow), inset 0 1px 1px rgba(255,255,255,0.15), 0 0 24px rgba(var(--accent-rgb),0.18)",
+      background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)",
+      boxShadow: "var(--glass-card-shadow), 0 0 24px rgba(var(--accent-rgb),0.18)",
       borderRadius: 99, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: INK,
       animation: "toast-in .18s ease", pointerEvents: "none",
     }}>
