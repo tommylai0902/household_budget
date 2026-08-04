@@ -1745,34 +1745,36 @@ function DaylightBackground() {
         boxShadow: "0 0 30px rgba(255,255,255,0.25), inset 0 0 20px rgba(255,255,255,0.15)",
       }} />
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
-      {/* Prismatic lens-flare beams — placed after the canvas so
+      {/* Prismatic lens-flare beam — placed after the canvas so
           mix-blend-mode:screen composites against the stars/gradient
-          beneath, not just this wrapper's flat CSS background. This is the
-          one place in the app screen mode actually works as advertised: an
-          earlier attempt used it on the old daylight rays where it needed
-          to blend with the page's card content OUTSIDE this wrapper's own
-          stacking context, which silently no-op'd. Everything here — the
-          gradient, the glow, the stars, these beams — lives inside this
-          same position:fixed wrapper, so there's no isolation boundary
+          beneath, not just this wrapper's flat CSS background. Everything
+          here — the gradient, the glow, the stars, this beam — lives inside
+          this same position:fixed wrapper, so there's no isolation boundary
           in the way. */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-        {/* Rainbow split — height and blur both cut back from the first pass:
-            at 45px/blur(12px) the red/green/blue bands overlapped into a
-            soft white haze instead of a visible spectrum. Pink-to-blue
-            spectrum (not red-first) with a faint sky-blue glow flanking it,
-            rather than a hard-edged band. */}
+        {/* Rainbow split — saturation pushed up (magenta/orange/gold/teal/
+            purple) with saturate() alongside brightness() so those hues
+            read as colour instead of just glow. */}
         <div style={{
-          position: "absolute", top: "44%", left: "-20%", width: "140%", height: 14, transform: "rotate(-37deg)", transformOrigin: "center",
-          background: "linear-gradient(90deg, rgba(244,114,182,0.4) 0%, rgba(251,146,60,0.6) 30%, rgba(254,240,138,0.85) 55%, rgba(52,211,153,0.6) 75%, rgba(96,165,250,0.5) 100%)",
-          filter: "blur(5px) brightness(1.3)", mixBlendMode: "screen",
+          position: "absolute", top: "43%", left: "-25%", width: "150%", height: 28, transform: "rotate(-38deg)", transformOrigin: "center",
+          background: "linear-gradient(90deg, rgba(236,72,153,0) 0%, rgba(236,72,153,0.7) 18%, rgba(249,115,22,0.8) 35%, rgba(250,204,21,0.9) 50%, rgba(45,212,191,0.8) 68%, rgba(168,85,247,0.7) 85%, rgba(168,85,247,0) 100%)",
+          filter: "blur(7px) saturate(1.8) brightness(1.15)", mixBlendMode: "screen",
         }} />
-        {/* Bright white core, on the same axis, thin and almost unblurred so
-            it reads as a sharp anamorphic-lens streak rather than adding to
-            the haze. */}
+        {/* Faint parallel ghost ray, off the main beam's axis — the
+            secondary reflection a real anamorphic lens throws alongside its
+            main streak. */}
         <div style={{
-          position: "absolute", top: "44.3%", left: "-20%", width: "140%", height: 2, transform: "rotate(-37deg)", transformOrigin: "center",
-          background: "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 40%, rgba(255,255,255,1) 60%, rgba(255,255,255,0) 100%)",
-          boxShadow: "0 0 8px #ffffff",
+          position: "absolute", top: "41%", left: "-25%", width: "150%", height: 2, transform: "rotate(-38deg)", transformOrigin: "center",
+          background: "linear-gradient(90deg, rgba(168,85,247,0) 0%, rgba(168,85,247,0.4) 35%, rgba(45,212,191,0.4) 65%, rgba(45,212,191,0) 100%)",
+          filter: "blur(1px)", mixBlendMode: "screen",
+        }} />
+        {/* Bright white core, on the same axis as the main beam, thin and
+            almost unblurred so it reads as a sharp streak rather than
+            washing the spectrum out. */}
+        <div style={{
+          position: "absolute", top: "44.8%", left: "-25%", width: "150%", height: 1.5, transform: "rotate(-38deg)", transformOrigin: "center",
+          background: "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.95) 70%, rgba(255,255,255,0) 100%)",
+          boxShadow: "0 0 6px #ffffff",
           filter: "blur(0.5px)", mixBlendMode: "screen",
         }} />
         {[

@@ -62,7 +62,7 @@ html, body {
      --glass-card-shadow are per-theme for the same reason: light wants real
      frosted blur and a soft blue-tinted lift, dark wants neither (any blur
      smears the point stars behind the card into nothing). */
-  --glass-bg: rgba(255, 255, 255, 0.52);
+  --glass-bg: rgba(255, 255, 255, 0.78);
   --glass-border: rgba(255, 255, 255, 0.85);
   --glass-shadow: rgba(15, 23, 42, 0.08);
   --glass-blur: 12px;
