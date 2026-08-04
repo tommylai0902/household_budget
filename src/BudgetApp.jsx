@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, X, Check, Tag, Coins, Settings, Sun, Moon,
   Users, User, Receipt, ChevronRight, ChevronDown, LogOut, Loader2, Camera, Upload, Menu, BookOpen, PieChart, Store, Languages,
   Home, Plane, Repeat, Pause, Play, PiggyBank, Bell, Palette, Lock,
-  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, ExternalLink,
+  Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, MoreVertical, ExternalLink,
   Archive, ArchiveRestore, Filter,
 } from "lucide-react";
 
@@ -2588,8 +2588,8 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <ChevronRight size={16} style={{ color: SUB }} />
             <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
-              aria-label={t("moreActions")} style={{ ...iconBtn, width: 32, height: 28, borderRadius: 10, border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.06)" }}>
-              <MoreHorizontal size={14} />
+              aria-label={t("moreActions")} style={moreBtn}>
+              <MoreVertical size={16} />
             </button>
           </div>
         </div>
@@ -6641,8 +6641,8 @@ function InventoryRow({ it, t, categoryName, locationName, low, expired, expirin
             <ShoppingCart size={14} />
           </button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
-            aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
-            <MoreHorizontal size={15} />
+            aria-label={t("moreActions")} style={moreBtn}>
+            <MoreVertical size={16} />
           </button>
         </div>
         {/* Warnings and category/location share one line under the actions —
@@ -7105,8 +7105,8 @@ function GroceryRow({ it, t, lang, checkingId, hasPostal = true, onToggle, onChe
             {checking ? <Loader2 size={15} className="spin" /> : <Search size={15} />}
           </button>
           <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }}
-            aria-label={t("moreActions")} style={{ ...iconBtn, width: 28, height: 28, flexShrink: 0 }}>
-            <MoreHorizontal size={15} />
+            aria-label={t("moreActions")} style={moreBtn}>
+            <MoreVertical size={16} />
           </button>
         </div>
         {/* The proof, sized to be readable across a counter rather than as a
@@ -7648,6 +7648,13 @@ const ghostBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding
 const categoryLink = { padding: 0, border: "none", background: "none", color: INK, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const dangerBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "12px", borderRadius: 9, border: `1px solid ${BAD_LINE}`, background: CARD, color: DANGER, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: `1px solid ${LINE}`, background: CHIP_BG, color: SUB, cursor: "pointer" };
+// The row overflow ("...") — deliberately not iconBtn. As a chip it claimed as
+// much width as a real action for a control that only reveals the row's swipe
+// actions, and every row carries one. Bare vertical dots, no fill or border.
+// Negative margins on top of the narrow width: the dots themselves are only
+// ~4px of the 16px icon, and each row's own flex gap sits outside that again,
+// so trimming the box alone still leaves it floating in white space.
+const moreBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 28, margin: "0 -4px", padding: 0, border: "none", background: "none", color: SUB, cursor: "pointer", flexShrink: 0 };
 // Rounded rather than square-edged: flush square tiles butted right up
 // against the card's own rounded corners read as a harsh, bolted-on block
 // next to the rest of the app's soft glass aesthetic. A shared radius plus a
