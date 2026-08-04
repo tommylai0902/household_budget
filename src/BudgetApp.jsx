@@ -6,6 +6,7 @@ import {
   Package, ShoppingCart, Search, Minus, ArrowLeft, Wallet, ArrowUpRight, Sparkles, Info, MapPin, MoreHorizontal, MoreVertical, ExternalLink,
   Archive, ArchiveRestore, Filter,
 } from "lucide-react";
+import kidPigMascot from "./assets/kid-pig.svg";
 
 // Each starter template gets its own mark in the ledger list.
 const LEDGER_ICONS = { household: Home, travel: Plane, personal: Users, kid: PiggyBank, blank: BookOpen };
@@ -2673,43 +2674,12 @@ const kidSoftBtn = (bg, line, ink) => ({
   textAlign: "center", cursor: "pointer", fontFamily: "inherit", boxShadow: KID_SOFT_SHADOW,
 });
 
-// The vault mascot: a piggy bank asleep with its swim goggles pushed up onto
-// its forehead. Inline SVG rather than an image file — it's flat vector art,
-// so this stays crisp at any size and costs no asset or request.
+// The vault mascot. Licensed vector art (VectorStock #47618104), dropped in
+// as a bundled asset rather than redrawn — swap src/assets/kid-pig.svg to
+// change it. Background rect stripped from the source file so it sits
+// transparent on the card.
 function PiggyMascot({ size = 96 }) {
-  const PINK = "#F0A49C", PINK_DEEP = "#DE8B84", NAVY = "#3A4A63", LENS = "#C3DAF2";
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size} style={{ flexShrink: 0 }} aria-hidden="true">
-      {/* zZ */}
-      <g fill={NAVY} fontFamily={KID_FONT} fontWeight="800">
-        <text x="72" y="20" fontSize="15">z</text>
-        <text x="83" y="11" fontSize="11">z</text>
-      </g>
-      {/* Ear, behind the head */}
-      <path d="M60 34 C58 22 66 18 72 22 C77 25 76 33 72 38 Z" fill={PINK_DEEP} />
-      {/* Body */}
-      <ellipse cx="50" cy="58" rx="34" ry="27" fill={PINK} />
-      {/* Legs */}
-      <rect x="28" y="80" width="13" height="9" rx="4" fill={PINK_DEEP} />
-      <rect x="57" y="80" width="13" height="9" rx="4" fill={PINK_DEEP} />
-      {/* Curly tail */}
-      <path d="M83 54 C90 52 92 45 87 43 C83 41 81 45 84 47" fill="none" stroke={PINK_DEEP} strokeWidth="4" strokeLinecap="round" />
-      {/* Snout */}
-      <ellipse cx="19" cy="61" rx="11" ry="9" fill={PINK_DEEP} />
-      <ellipse cx="15.5" cy="61" rx="2" ry="3" fill={NAVY} opacity="0.55" />
-      <ellipse cx="22.5" cy="61" rx="2" ry="3" fill={NAVY} opacity="0.55" />
-      {/* Closed, contented eye */}
-      <path d="M34 55 C37 60 43 60 46 55" fill="none" stroke={NAVY} strokeWidth="3" strokeLinecap="round" />
-      {/* Goggles, pushed up onto the forehead: strap first, then the lenses */}
-      <path d="M16 44 C30 33 62 30 80 41" fill="none" stroke={NAVY} strokeWidth="7" strokeLinecap="round" />
-      <g stroke={NAVY} strokeWidth="3">
-        <ellipse cx="33" cy="40" rx="14" ry="12" fill={LENS} />
-        <ellipse cx="56" cy="37" rx="14" ry="12" fill={LENS} />
-      </g>
-      <path d="M27 36 C29 32 34 31 37 33" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
-      <path d="M50 33 C52 29 57 28 60 30" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
-    </svg>
-  );
+  return <img src={kidPigMascot} width={size} height={size} style={{ flexShrink: 0 }} alt="" />;
 }
 
 // Empty-state mascot: a bear asleep on a pillow under a blanket. Same reason
