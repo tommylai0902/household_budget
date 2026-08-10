@@ -292,6 +292,36 @@ come back empty even though the product is right there — the route retries
 once without the brand filter whenever that happens, rather than reporting a
 false "no deals".
 
+**Matching is word-boundary first, substring only as a fallback.** A flyer
+table punishes plain `ilike '%term%'`: `%egg%` returned 105 rows for one
+region, 41 of them Eggplant / Veggie / Eggo, which then pushed real eggs past
+the 25-row limit. `scan-deals.js` matches with Postgres's `\y` word boundary
+via PostgREST's `imatch` operator, plus a trailing `(s|es)?` so plurals still
+work — "egg" must still find "Large White Eggs" without finding "Eggplant".
+Measured on the live mirror: 105 rows → 50, keeping all 48 genuine egg rows.
+
+`searchTerm` then widens in a fixed order, stopping at the first attempt that
+finds anything: word-boundary with brand → word-boundary without brand →
+substring with brand → substring without brand. Substring is last because it
+is what drags Eggplant in, but a loose hit still beats reporting "no deals",
+and it is what keeps prefix searches like "choc" working. Terms reaching the
+regex are escaped (`escapeRegex`) — they come straight from a grocery-list row,
+and an unescaped `(a+)+` reaching Postgres is a query that never finishes.
+
+**A Chinese-typed item is searched in both languages and the results merged**,
+not English-only-when-Chinese-finds-nothing. One match at a Chinese-language
+grocer used to suppress the English search entirely, hiding every English
+flyer for the same product including cheaper ones. Worth knowing when reading
+that code: as of 2026-08 the mirror holds **no Chinese product names at all**
+(0 of 15,587 rows for common characters — even T&T and Btrust publish to Flipp
+in English), so today this merge is insurance rather than an active gain.
+`zhGroceryTerms.js` is what actually does the work, and its coverage is the
+real limit — a term missing from it returns nothing rather than searching
+English. Lookup takes the **longest** matching key, not the first declared:
+short keys are substrings of longer ones throughout ("蛋" inside "蛋糕", "魚"
+inside "三文魚"), and hand-ordering the table is a trap that springs on
+whoever adds the next entry.
+
 **Flipp has no canonical product spelling, and substring matching is
 unforgiving about it.** One region held `GLAD CLING WRAP` (Food Basics),
 `GLAD CLINGWRAP` (No Frills) and `GLAD PLASTIC WRAP` (Fortinos) within two

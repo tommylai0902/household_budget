@@ -14,6 +14,17 @@ const normalisePostal = (s) => (s || "").toUpperCase().replace(/\s+/g, "");
 // PostgREST treats these as wildcards inside ilike, so a search for "50%" or
 // "cream_cheese" would otherwise match far more than the user typed.
 const escapeLike = (s) => s.replace(/[%_\\]/g, "\\$&");
+// Same idea for the regex matcher below. Must not be skipped: the term comes
+// straight from a grocery-list row, and an unescaped `(a+)+` reaching Postgres
+// is a query that never finishes.
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// `\y` is Postgres's word boundary. Plain substring matching is far too loose
+// on a flyer table: `%egg%` returns 105 rows for this region, 41 of them
+// Eggplant/Veggie/Eggo, which then push real eggs off the end of the 25-row
+// limit. The trailing `(s|es)?` keeps plurals working — "egg" still has to
+// find "Large White Eggs" — without letting a term match inside a longer word.
+// Measured on the live mirror: 105 rows -> 50, keeping all 48 genuine egg rows.
+const wordPattern = (term) => `\\y${escapeRegex(term)}(s|es)?\\y`;
 
 export default async function handler(req, res) {
   const { VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY } = process.env;
@@ -28,12 +39,15 @@ export default async function handler(req, res) {
   // and return `this`, so a shared builder can't be branched on brand below.
   // Takes the search term as a parameter (not closed over q) so the Chinese
   // fallback further down can rebuild it against a translated term too.
-  const baseQuery = (term) => {
+  const baseQuery = (term, loose = false) => {
     let qb = supabase
       .from("flyer_items")
       .select("name, price, merchant, valid_from, valid_to, image_url, merchant_logo, flyer_id, item_id")
-      .eq("postal_code", postalCode)
-      .ilike("name", `%${escapeLike(term)}%`);
+      .eq("postal_code", postalCode);
+    // Precise by default, substring only as a last resort — see searchTerm.
+    qb = loose
+      ? qb.ilike("name", `%${escapeLike(term)}%`)
+      : qb.filter("name", "imatch", wordPattern(term));
     // Expired deals are worse than no deal — a cashier checks the date and turns
     // it down, having wasted the trip. Weekly flyers overlap, so the mirror
     // always holds some already-past items. Rows with no end date are kept: an
@@ -54,49 +68,72 @@ export default async function handler(req, res) {
   // "MILK BONE DOG BISCUITS ... 750-900 G" on a search for milk.
   const brand = (searchParams.get("brand") || "").trim();
 
-  let { data, error } = await (brand ? baseQuery(q).ilike("name", `%${escapeLike(brand)}%`) : baseQuery(q))
-    .order("price", { ascending: true }).limit(MAX_RESULTS);
-  if (error) return res.status(500).json({ error: error.message });
+  // One attempt: word-boundary or substring, with or without the brand filter.
+  const attempt = (term, { loose, withBrand }) => {
+    const qb = baseQuery(term, loose);
+    return (withBrand ? qb.ilike("name", `%${escapeLike(brand)}%`) : qb)
+      .order("price", { ascending: true }).limit(MAX_RESULTS);
+  };
 
-  // Flipp often folds several products into one "OR" flyer line ("REAL DAIRY
-  // OR DRUMSTICK ICE CREAM") without spelling out the manufacturer, so a
-  // brand-filtered search can find nothing even though the product's own
-  // name is right there. A brand match failing isn't proof the deal is
-  // missing, so fall back to the unfiltered name search rather than
-  // reporting a false "no deals".
-  if (brand && !data.length) {
-    ({ data, error } = await baseQuery(q).order("price", { ascending: true }).limit(MAX_RESULTS));
-    if (error) return res.status(500).json({ error: error.message });
-  }
-
-  // A Chinese-typed grocery-list item ("雞脾") found nothing directly — most
-  // flyers are English-only, though a handful of ethnic grocers' ARE in
-  // Chinese and would already have matched above without reaching here. Retry
-  // once against a known English equivalent rather than reporting a false
-  // "no deals" for a translation gap, not an actual absence.
-  if (!data.length && hasChineseChars(q)) {
-    // One term can map to several competing flyer spellings (cling wrap /
-    // clingwrap / plastic wrap all appear for 保鮮紙). Every spelling is
-    // searched and the results merged rather than stopping at the first that
-    // hits — different stores use different spellings, so stopping early
-    // hides exactly the cheaper store this feature exists to surface.
-    const merged = [];
-    for (const en of translateZhGroceryTerm(q) || []) {
-      const alt = await (brand ? baseQuery(en).ilike("name", `%${escapeLike(brand)}%`) : baseQuery(en))
-        .order("price", { ascending: true }).limit(MAX_RESULTS);
-      if (alt.error) return res.status(500).json({ error: alt.error.message });
-      merged.push(...(alt.data || []));
+  // Widens in fixed order and stops at the first attempt that finds anything,
+  // so the most precise result available always wins.
+  //
+  // Dropping the brand comes first because Flipp folds several products into
+  // one "OR" flyer line ("REAL DAIRY OR DRUMSTICK ICE CREAM") without naming
+  // the manufacturer — a brand match failing is not proof the deal is missing.
+  // Substring comes last: it is what pulls Eggplant into a search for eggs, so
+  // it is only worth reaching for once the precise pass has found nothing at
+  // all, where a loose hit still beats reporting "no deals".
+  const searchTerm = async (term) => {
+    const widening = brand
+      ? [{ loose: false, withBrand: true }, { loose: false, withBrand: false },
+         { loose: true, withBrand: true }, { loose: true, withBrand: false }]
+      : [{ loose: false, withBrand: false }, { loose: true, withBrand: false }];
+    let last;
+    for (const step of widening) {
+      last = await attempt(term, step);
+      if (last.error || last.data?.length) return last;
     }
-    // One flyer line can match two spellings at once ("ALCAN FOIL ... GLAD
-    // CLINGWRAP ..."), so dedupe before re-sorting the combined set.
+    return last;
+  };
+
+  // The same flyer line can arrive from more than one term, so results are
+  // always deduped and re-sorted before being cut to MAX_RESULTS — otherwise
+  // merging two searches could return the same deal twice and push a cheaper
+  // one off the end.
+  const mergeDeals = (...lists) => {
     const seen = new Set();
-    data = merged
+    return lists.flat()
       .filter((d) => {
         const k = `${d.merchant}|${d.name}|${d.price}`;
         return seen.has(k) ? false : (seen.add(k), true);
       })
       .sort((a, b) => a.price - b.price)
       .slice(0, MAX_RESULTS);
+  };
+
+  let { data, error } = await searchTerm(q);
+  if (error) return res.status(500).json({ error: error.message });
+
+  // A Chinese-typed item ("雞脾") is searched in BOTH languages and the results
+  // merged — not English-only-if-Chinese-found-nothing. The region carries
+  // flyers in both: a handful of Asian grocers publish in Chinese, everyone
+  // else in English. Falling back only on zero results meant one match at one
+  // Chinese-language grocer suppressed the English search entirely, hiding
+  // every English flyer for the same product — including cheaper ones, which
+  // is the whole point of looking.
+  //
+  // One term can also map to several competing English spellings (cling wrap /
+  // clingwrap / plastic wrap all appear for 保鮮紙), so every alternative is
+  // searched too rather than stopping at the first that hits.
+  if (hasChineseChars(q)) {
+    const lists = [data || []];
+    for (const en of translateZhGroceryTerm(q) || []) {
+      const alt = await searchTerm(en);
+      if (alt.error) return res.status(500).json({ error: alt.error.message });
+      lists.push(alt.data || []);
+    }
+    data = mergeDeals(...lists);
   }
 
   const deals = (data || []).map((d) => ({
