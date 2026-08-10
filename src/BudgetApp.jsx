@@ -270,7 +270,8 @@ const STRINGS = {
     restoreLedger: "Restore", restoreConfirm: 'Put "{name}" back in your ledger list?',
     ledgerLabelHousehold: "Home Budget", ledgerLabelTravel: "Travel Expenses", ledgerLabelPersonal: "Personal Expenses",
     ledgerLabelKid: "Kids Fund", ledgerLabelBlank: "Custom Ledger",
-    transactionsCount: "{n} Transactions", justNow: "Just now", minutesAgo: "{n}m ago", hoursAgo: "{n}h ago",
+    transactionsCount: "{n} this month", transactionsCountAll: "{n} Transactions",
+    justNow: "Just now", minutesAgo: "{n}m ago", hoursAgo: "{n}h ago",
     updatedToday: "Today", updatedYesterday: "Yesterday", updatedLine: "Updated {when}",
     currency: "Currency",
     tripDates: "Trip dates", tripStartDate: "Trip start date", tripEndDate: "Trip end date",
@@ -470,6 +471,9 @@ const STRINGS = {
     inviteAcceptBtn: "接受並加入", inviteDecline: "暫時唔要",
     inviteInvalid: "呢條邀請連結無效。", inviteExpired: "呢個邀請已過期。",
     inviteUsed: "呢個邀請已經用咗。",
+    transactionsCount: "本月 {n} 筆", transactionsCountAll: "{n} 筆交易",
+    justNow: "啱啱", minutesAgo: "{n} 分鐘前", hoursAgo: "{n} 小時前",
+    updatedToday: "今日", updatedYesterday: "尋日", updatedLine: "{when}更新",
     noLedgers: "仲未有帳簿。喺下面建立第一本。",
     language: "語言", openLedger: "開啟{name}",
     startWith: "揀個範本開始", tplHousehold: "家庭預算", tplTravel: "旅行",
@@ -684,6 +688,9 @@ const STRINGS = {
     inviteAcceptBtn: "接受并加入", inviteDecline: "暂时不用",
     inviteInvalid: "这条邀请链接无效。", inviteExpired: "这个邀请已过期。",
     inviteUsed: "这个邀请已经被使用过了。",
+    transactionsCount: "本月 {n} 笔", transactionsCountAll: "{n} 笔交易",
+    justNow: "刚刚", minutesAgo: "{n} 分钟前", hoursAgo: "{n} 小时前",
+    updatedToday: "今天", updatedYesterday: "昨天", updatedLine: "{when}更新",
     noLedgers: "还没有账本。在下面创建第一个。",
     language: "语言", openLedger: "打开{name}",
     startWith: "选个模板开始", tplHousehold: "家庭预算", tplTravel: "旅行",
@@ -897,6 +904,9 @@ const STRINGS = {
     inviteAcceptBtn: "Accepter et rejoindre", inviteDecline: "Pas maintenant",
     inviteInvalid: "Ce lien d'invitation n'est pas valide.", inviteExpired: "Cette invitation a expiré.",
     inviteUsed: "Cette invitation a déjà été utilisée.",
+    transactionsCount: "{n} ce mois-ci", transactionsCountAll: "{n} transactions",
+    justNow: "À l'instant", minutesAgo: "il y a {n} min", hoursAgo: "il y a {n} h",
+    updatedToday: "aujourd'hui", updatedYesterday: "hier", updatedLine: "Mis à jour {when}",
     noLedgers: "Aucun registre. Créez le premier ci-dessous.",
     language: "Langue", openLedger: "Ouvrir {name}",
     startWith: "Commencer avec un modèle", tplHousehold: "Budget familial", tplTravel: "Voyage",
@@ -1110,6 +1120,9 @@ const STRINGS = {
     inviteAcceptBtn: "Aceptar y unirme", inviteDecline: "Ahora no",
     inviteInvalid: "Este enlace de invitación no es válido.", inviteExpired: "Esta invitación ha caducado.",
     inviteUsed: "Esta invitación ya se ha usado.",
+    transactionsCount: "{n} este mes", transactionsCountAll: "{n} transacciones",
+    justNow: "Ahora mismo", minutesAgo: "hace {n} min", hoursAgo: "hace {n} h",
+    updatedToday: "hoy", updatedYesterday: "ayer", updatedLine: "Actualizado {when}",
     noLedgers: "Aún no hay libros. Crea el primero abajo.",
     language: "Idioma", openLedger: "Abrir {name}",
     startWith: "Empezar con una plantilla", tplHousehold: "Presupuesto del hogar", tplTravel: "Viaje",
@@ -2068,7 +2081,7 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
       const all = await db.fetchLedgers();
       setLedgers(all);
       const entries = await Promise.all(
-        all.map((l) => db.fetchLedgerStats(l.id).then((s) => [l.id, s]).catch(() => [l.id, null]))
+        all.map((l) => db.fetchLedgerStats(l).then((s) => [l.id, s]).catch(() => [l.id, null]))
       );
       setStatsById(Object.fromEntries(entries));
     } catch (e) { setError(e.message || String(e)); setLedgers([]); }
@@ -2076,11 +2089,18 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeLedgerList(() => load()), [load]);
 
-  // Most-used-first, so a busy account's top 3 are the ones actually worth
-  // seeing without scrolling — "used" means transaction count, the only
-  // usage signal the schema tracks per ledger.
+  // Busiest-first, so the top 3 are the ones actually worth seeing without
+  // scrolling. The count is now this month's, which is a better "worth seeing
+  // now" signal than an all-time total — but it resets on the 1st, and every
+  // ledger sitting at 0 would collapse the order back to whatever the database
+  // returned. Last activity breaks that tie, so early-month ordering stays
+  // meaningful instead of jumping around.
   const rankedLedgers = useMemo(
-    () => [...ledgers || []].sort((a, b) => (statsById[b.id]?.count || 0) - (statsById[a.id]?.count || 0)),
+    () => [...ledgers || []].sort((a, b) => {
+      const byCount = (statsById[b.id]?.count || 0) - (statsById[a.id]?.count || 0);
+      if (byCount) return byCount;
+      return String(statsById[b.id]?.lastUpdated || "").localeCompare(String(statsById[a.id]?.lastUpdated || ""));
+    }),
     [ledgers, statsById]
   );
   const visibleLedgers = showAll ? rankedLedgers : rankedLedgers.slice(0, 3);
@@ -2656,7 +2676,9 @@ function LedgerRow({ l, stats, t, lang, onOpen, onRename, onDelete }) {
             {/* Mint status dot with its own halo, same tone as the card glow. */}
             <span style={{ width: 6, height: 6, borderRadius: 99, background: TEAL, boxShadow: "0 0 8px rgba(var(--accent-rgb),0.8)", flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {t("transactionsCount", { n: stats.count })}
+              {/* A trip-period travel ledger isn't month-scoped anywhere, so its
+                  count covers the whole ledger and must not claim "this month". */}
+              {t(stats.periodScoped ? "transactionsCountAll" : "transactionsCount", { n: stats.count })}
               {stats.lastUpdated && ` • ${t("updatedLine", { when: relativeUpdated(stats.lastUpdated, lang, t) })}`}
             </span>
           </div>

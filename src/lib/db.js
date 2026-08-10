@@ -78,12 +78,45 @@ export async function fetchArchivedLedgers() {
 // since every other caller (switchers, dropdowns) just needs name/icon and
 // would otherwise pay for this on every render. One query per ledger: the
 // exact count plus the single latest row come back together, no round trip.
-export async function fetchLedgerStats(ledgerId) {
-  const { data, count, error } = await supabase
-    .from("expenses").select("updated_at", { count: "exact" })
-    .eq("ledger_id", ledgerId).order("updated_at", { ascending: false }).limit(1);
+// The card's count is scoped to the same period the ledger opens on, so the
+// number means "activity now" rather than "size since forever" — an all-time
+// count made a years-old household ledger look busy while saying nothing about
+// this month. A travel ledger with a fixed trip period (migration 040) is not
+// month-scoped anywhere in the app, so it keeps its whole-ledger count.
+//
+// `lastUpdated` deliberately stays all-time: it answers "when was this ledger
+// last touched", which a month filter would turn into "never" for any ledger
+// that is simply quiet this month.
+//
+// Takes the ledger row, not just an id — it needs template/startDate/endDate.
+export async function fetchLedgerStats(ledger) {
+  const id = typeof ledger === "string" ? ledger : ledger?.id;
+  const isPeriod = typeof ledger === "object"
+    && ledger?.template === "travel" && !!ledger?.startDate && !!ledger?.endDate;
+
+  const last = await supabase
+    .from("expenses").select("updated_at")
+    .eq("ledger_id", id).order("updated_at", { ascending: false }).limit(1);
+  if (last.error) throw last.error;
+
+  let countQuery = supabase
+    .from("expenses").select("id", { count: "exact", head: true }).eq("ledger_id", id);
+  if (!isPeriod) {
+    // Column is `transaction_date`; the app calls it `date` (see toAppExpense).
+    // Half-open range: building the upper bound as `${month}-31` would hand
+    // Postgres "2026-02-31" and error out in February.
+    const now = new Date();
+    const first = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}-01`;
+    countQuery = countQuery
+      .gte("transaction_date", first(now.getFullYear(), now.getMonth()))
+      .lt("transaction_date", now.getMonth() === 11
+        ? first(now.getFullYear() + 1, 0)
+        : first(now.getFullYear(), now.getMonth() + 1));
+  }
+  const { count, error } = await countQuery;
   if (error) throw error;
-  return { count: count || 0, lastUpdated: data[0]?.updated_at || null };
+
+  return { count: count || 0, lastUpdated: last.data[0]?.updated_at || null, periodScoped: isPeriod };
 }
 // Seeds at creation time rather than lazily on first open, so the "blank"
 // template stays blank instead of being backfilled with defaults.
