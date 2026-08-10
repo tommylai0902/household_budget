@@ -75,12 +75,28 @@ export default async function handler(req, res) {
   // once against a known English equivalent rather than reporting a false
   // "no deals" for a translation gap, not an actual absence.
   if (!data.length && hasChineseChars(q)) {
-    const en = translateZhGroceryTerm(q);
-    if (en) {
-      ({ data, error } = await (brand ? baseQuery(en).ilike("name", `%${escapeLike(brand)}%`) : baseQuery(en))
-        .order("price", { ascending: true }).limit(MAX_RESULTS));
-      if (error) return res.status(500).json({ error: error.message });
+    // One term can map to several competing flyer spellings (cling wrap /
+    // clingwrap / plastic wrap all appear for 保鮮紙). Every spelling is
+    // searched and the results merged rather than stopping at the first that
+    // hits — different stores use different spellings, so stopping early
+    // hides exactly the cheaper store this feature exists to surface.
+    const merged = [];
+    for (const en of translateZhGroceryTerm(q) || []) {
+      const alt = await (brand ? baseQuery(en).ilike("name", `%${escapeLike(brand)}%`) : baseQuery(en))
+        .order("price", { ascending: true }).limit(MAX_RESULTS);
+      if (alt.error) return res.status(500).json({ error: alt.error.message });
+      merged.push(...(alt.data || []));
     }
+    // One flyer line can match two spellings at once ("ALCAN FOIL ... GLAD
+    // CLINGWRAP ..."), so dedupe before re-sorting the combined set.
+    const seen = new Set();
+    data = merged
+      .filter((d) => {
+        const k = `${d.merchant}|${d.name}|${d.price}`;
+        return seen.has(k) ? false : (seen.add(k), true);
+      })
+      .sort((a, b) => a.price - b.price)
+      .slice(0, MAX_RESULTS);
   }
 
   const deals = (data || []).map((d) => ({

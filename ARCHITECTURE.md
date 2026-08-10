@@ -37,8 +37,8 @@ wired into `package.json`. Run one directly:
 node src/lib/settle.test.js
 ```
 
-Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`. The UI and
-`db.js` have no tests.
+Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`,
+`receiptOcr.js`, `zhGroceryTerms.js`. The UI and `db.js` have no tests.
 
 ---
 
@@ -47,26 +47,35 @@ Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`. The UI and
 ```
 src/
   main.jsx          31    entry
-  BudgetApp.jsx   6581    App (auth gate) + Login + Ledger + EVERY panel & i18n
+  BudgetApp.jsx   7906    App (auth gate) + Login + Ledger + EVERY panel & i18n
   sw.js             55    service worker: precache + push handlers
   index.css              reset + a few keyframes/media queries
+  assets/
+    kid-pig.svg           licensed vector art, see Kid Ledger below
   lib/
     supabase.js     16    client (VITE_ env vars)
-    db.js         1166    ALL data access: row⇄app mappers, CRUD, realtime, syncs
+    db.js         1237    ALL data access: row⇄app mappers, CRUD, realtime, syncs
     settle.js       60    split-bill netting        (+ .test.js)
     csv.js         107    statement/CSV parsing     (+ .test.js)
     categorize.js   16    keyword category guesser  (+ .test.js)
     recurring.js    28    recurrence date math      (+ .test.js)
 api/                     7 Vercel functions (below)
-migrations/              001–037, applied BY HAND (below)
+migrations/              001–041, applied BY HAND (below)
 ```
 
-`BudgetApp.jsx` is one 6,500-line file on purpose — every component, every
+`BudgetApp.jsx` is one 7,900-line file on purpose — every component, every
 style object, and all five language dictionaries. It is not an accident and it
 has not been "meaning to be split". Find things by `grep`, not by directory.
 
 **The one hard rule:** Postgres is `snake_case`, the app is `camelCase`, and
 *all* mapping lives in `db.js`. No component touches a raw row.
+
+**Every full-screen view renders its own background.** Sign-in, the ledger
+picker, the ledger view, and any popup that floats over page content each call
+`theme === "dark" ? <CosmicBackground/> : <DaylightBackground/>` (both defined
+in `BudgetApp.jsx`) themselves — there is no shared layout wrapper supplying
+it. A new full-screen view means adding that line yourself, or it renders on a
+flat background while everything around it has a starfield/daylight wash.
 
 ---
 
@@ -90,9 +99,10 @@ Ledger-scoped tables all follow the same RLS shape from migration 009:
 | Split bills | `ledger_members` (participant *names*, not auth users), `expense_splits` |
 | Access | `ledger_role` (user↔ledger↔role), `ledgers.owner_id`, `ledger_invite`, `members` (global allowlist) |
 | Recurring | `recurring_rules` |
-| Reminders | `notifications` |
-| Inventory/grocery | `inventory_items`, `grocery_list`, `inventory_labels` |
-| Flyers | `flyer_items` (regional mirror), `store_policies` |
+| Reminders | `notifications` (ledger-scoped, or household-wide when `ledger_id` is null — see below) |
+| Inventory/grocery/stores | `inventory_items`, `grocery_list`, `inventory_labels`, `store_policies` — household-wide, not ledger-scoped (migration 038) |
+| Household | `household_settings` — singleton row (`id = 1`), currently just the shared postal code |
+| Kid Ledger | `wishlist_goals` (one row per kid ledger), `expenses.kind` (`'spend'` \| `'earn'`) |
 | Push | `push_subscriptions` |
 
 Two easily-confused things:
@@ -100,6 +110,37 @@ Two easily-confused things:
   who can log in and see the ledger. They are unrelated.
 - Ledger recipients = `ledgers.owner_id` **∪** `ledger_role.user_id`. The owner
   does not necessarily have a `ledger_role` row.
+
+**Inventory, grocery, and store setup are household-wide, not per-ledger**
+(migration 038). They used to carry a `ledger_id` like every other table, but
+the Home page always presented "Ledger & Transactions" / "Inventory Hub" /
+"Smart Grocery" as three peer cards — switching the ledger switcher was
+silently emptying the other two, since their data was never actually shared,
+just coincidentally populated under whatever ledger you'd last added items
+from. RLS on these four tables now runs on `is_household_member()` (membership
+in `members`, the original login allowlist — unused for row security since
+migration 009, repurposed here) instead of `has_ledger_role()`. There is no
+VIEWER/EDITOR split on them: presence in `members` grants full read/write,
+matching how these features already behaved. `household_settings` exists
+because `GroceryListPanel`/`StoreSetupPanel`/`PriceMatchModePanel` all used to
+key off `ledgers.postal_code`, which no longer has a home once these aren't
+tied to one ledger. `notifications.ledger_id` is nullable for the same reason
+— only the inventory-expiry producer writes a null row; per-expense and
+upcoming-charge reminders stay ledger-scoped, since expenses genuinely are
+per-ledger.
+
+Two smaller additions since: `ledgers.archived` (migration 041) hides a ledger
+from every list — picker, switcher, notification routing, the nightly
+reminder cron — without deleting its data; only the owner can flip it (same
+RLS as rename/delete), and it's restored from Settings → Archived ledgers.
+`ledgers.start_date`/`end_date` (migration 040) let a travel ledger run on a
+fixed trip period instead of the monthly cycle every other template uses —
+nullable and opt-in, and when both are set the app stops month-scoping that
+ledger anywhere (transaction list, budget, Report, Settlement, Home banner);
+see `isPeriodLedger` in `BudgetApp.jsx`. `flyer_items.item_id` /
+`grocery_list.deal_item_id` (migration 039) let a saved deal deep-link to that
+item's exact position in the Flipp flyer instead of always landing on its
+front page.
 
 ### Migrations are applied by hand
 
@@ -143,14 +184,39 @@ must also be added to that list**, or it 404s in dev only.
 
 ---
 
-## Two non-obvious pipelines
+## Non-obvious pipelines
 
 ### 1. Flyer prices (price matching)
 
 Flipp is called **only** by the Thursday cron, which copies whole flyers for
-every postal code any ledger has saved into `flyer_items`. User searches hit
-that table. So no amount of tapping "Price Match Check" can rate-limit the IP,
-and a product nobody ever searched still answers instantly.
+the household's saved postal code (`household_settings`, migration 038) into
+`flyer_items`. User searches hit that table. So no amount of tapping "Price
+Match Check" can rate-limit the IP, and a product nobody ever searched still
+answers instantly.
+
+**The whole feature is only as fresh as that weekly run, and it fails silently
+when it doesn't happen.** An unrefreshed mirror doesn't error — every grocery
+flyer in it simply passes its `valid_to`, `scan-deals.js` filters them all out,
+and the app reports "no deals" for products that are visibly on sale in store.
+Two separate bugs caused exactly that on 2026-08-09 (mirror 8 days stale, every
+item expired 08-05):
+- `refresh-flyers.js` was still reading `ledgers.postal_code` after migration
+  038 moved it to `household_settings`. It kept working *only* on the value
+  left behind in the old column, and would have gone permanently silent
+  ("skipped: no postal code set") the moment anyone set a new postal code in
+  the app.
+- The re-run guard was a flat "skip if refreshed < 6 days ago". A one-off
+  manual refresh on a Saturday made the real Thursday run 5 days later, so it
+  skipped, pushing the next attempt out a further week. **A plain age
+  threshold cannot work here** — Vercel Hobby fires crons roughly daily
+  regardless of the expression, so any threshold low enough to let a slightly
+  early Thursday through also lets the daily re-fire through. The guard now
+  gates on the day (`getUTCDay() === 4`), with a 20-hour floor against
+  same-day double-fires and an 8-day ceiling so a missed Thursday self-heals
+  instead of waiting a whole extra week.
+
+When "no deals" looks wrong, check `max(fetched_at)` for the region before
+anything else.
 
 Consequence: a region with no mirror run yet returns `pending`, not "no
 results" — the UI says so explicitly. `nearby_merchants()` returns two
@@ -167,6 +233,23 @@ CREAM") without spelling out the manufacturer, so a brand-filtered search can
 come back empty even though the product is right there — the route retries
 once without the brand filter whenever that happens, rather than reporting a
 false "no deals".
+
+**Flipp has no canonical product spelling, and substring matching is
+unforgiving about it.** One region held `GLAD CLING WRAP` (Food Basics),
+`GLAD CLINGWRAP` (No Frills) and `GLAD PLASTIC WRAP` (Fortinos) within two
+weeks — three spellings of one product, and a search for any one of them finds
+at most two. So a value in `zhGroceryTerms.js` may be a **list** of
+alternatives; `scan-deals.js` searches every one and merges the results rather
+than stopping at the first that hits, because different stores use different
+spellings and stopping early hides exactly the cheaper store the feature
+exists to surface. Results are deduped (one combo line can match two
+spellings) and re-sorted by price after merging.
+
+Keep each alternative a **whole word**. The shorter "cling" covers both wrap
+spellings in a single term, which is tempting and wrong: it is also a
+substring of "re**cycling**", and pulled Wayfair recycling bins into a search
+for cling wrap. `zhGroceryTerms.test.js` pins both halves of this — real flyer
+lines that must match, and the recycling bin that must not.
 
 **Store setup (`store_policies`, migration 036) is one local store plus that
 store's price-match list, not a flat "my stores" set.** Exactly one row per
@@ -335,6 +418,38 @@ Gemini. `scan-product.js` and `scan-statement.js` are untouched — a photograph
 product has no fixed-layout text to key regex off, and it wasn't worth
 building for statements yet.
 
+### 4. Kid Ledger
+
+A fifth ledger template (`household`/`travel`/`personal`/`kid`/`blank`) that
+replaces the whole grown-up UI with its own dashboard (`KidLedgerDashboard`)
+rather than reusing the ledger transaction list with a different skin —
+`BudgetApp.jsx` branches on `ledger.template === "kid"` right where the ledger
+view mounts, before any of the normal Home/Ledger/Report chrome exists.
+
+It rides the existing `expenses` table instead of a parallel one (migration
+016): `kind` (`'spend'`|`'earn'`, default `'spend'`) is the only new column, so
+it inherits every mapper, RLS policy, and realtime subscription already built
+for expenses. Every other template only ever writes `'spend'` — Kid Ledger is
+a pure addition, nothing already in the app changes behaviour. `wishlist_goals`
+holds one savings target per kid ledger via `upsert`, not an append-only
+history — setting a new goal overwrites the old one. It's also the one query
+gated on `ledger.template === "kid"` client-side; every other template skips
+it outright rather than fetching and ignoring it.
+
+The dashboard is deliberately its own fixed, saturated palette
+(`KID_PURPLE`/`KID_YELLOW`/`KID_GREEN`/…) and rounded font stack
+(`"Quicksand", "Nunito", ui-rounded, "SF Pro Rounded", system-ui`) — it ignores
+the user's `--accent`/dark-mode theme vars on purpose, so it reads as its own
+gamified thing next to the grown-up ledgers rather than a tinted variant of
+them. No webfont is actually loaded; Quicksand/Nunito only take effect if the
+device happens to have them, and are named mainly in case this ever gets
+self-hosted.
+
+The vault mascot (`PiggyMascot`, rendering `src/assets/kid-pig.svg`) is
+licensed vector art (VectorStock #47618104), dropped in as a bundled asset
+rather than redrawn — swap the SVG file to change it, and clear the license
+before shipping a build with a different image there.
+
 ---
 
 ## Environment
@@ -371,7 +486,7 @@ Only the **anon** key belongs there.
   after editing something like `api/gemini.js`, or you'll test stale code.
 - `dev-dist/` is generated by the PWA plugin in dev and is gitignored.
 
-`grep -rn "ponytail:"` finds 6 deliberate shortcuts, each naming its own ceiling
+`grep -rn "ponytail:"` finds 8 deliberate shortcuts, each naming its own ceiling
 and upgrade path (PDF size caps, a read-then-write race, recurrence iteration
 limit, etc.). They are decisions, not TODOs.
 
@@ -386,9 +501,17 @@ picker), receipt/statement/product scanning, scan-to-price-match from the
 grocery page, expired-deal handling on grocery rows, deal fields cleared on
 completion, expiry reminders in the bell, cron-side reminder generation,
 notification dismiss (`dismissed` flag, not a hard delete — 035), **web push
-end-to-end** (see below).
+end-to-end** (see below), household-wide inventory/grocery/store setup (038,
+one shared list/store config instead of per-ledger), flyer deep links to a
+saved deal's exact item (039), travel-period ledgers that skip month-scoping
+(040), ledger archiving (041), Kid Ledger dashboard + wishlist goals (016,
+restyled 2026-08 — see Non-obvious pipelines).
 
-**Migrations 001–037 are all applied** as of 2026-07-31.
+**Migrations 001–041 are all applied.** 038–041 confirmed live against the
+production schema on 2026-08-09 (`household_settings` reachable,
+`flyer_items.item_id`/`ledgers.start_date`/`ledgers.archived`/
+`grocery_list.deal_item_id` all present, `inventory_items.ledger_id` correctly
+gone — 400 on select).
 
 **Cloud Vision receipt reading is confirmed working in production
 (2026-07-31)**, verified by scanning real receipts on a phone and watching
