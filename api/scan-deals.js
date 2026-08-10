@@ -110,12 +110,33 @@ export default async function handler(req, res) {
     flyerId: d.flyer_id, itemId: d.item_id, postalCode,
   }));
 
-  // No rows for the region at all means the weekly mirror hasn't run for it
-  // yet -- worth telling the user apart from "we looked, nothing is on sale".
+  // An empty result has three very different causes and the user cannot tell
+  // them apart from the outside -- a mirror that never ran, and a mirror that
+  // has gone stale, both look exactly like "nothing is on sale". Separate them
+  // before answering, so a data-collection failure is never reported as a
+  // shopping fact.
   if (!deals.length) {
-    const { count } = await supabase
-      .from("flyer_items").select("id", { count: "exact", head: true }).eq("postal_code", postalCode);
-    if (!count) return res.status(200).json({ query: q, deals: [], lowestPrice: null, lowestMerchant: null, pending: true });
+    const today = new Date().toISOString().slice(0, 10);
+    const region = supabase.from("flyer_items").select("id", { count: "exact", head: true }).eq("postal_code", postalCode);
+    const { count: total } = await region;
+    // Never mirrored this region.
+    if (!total) return res.status(200).json({ query: q, deals: [], lowestPrice: null, lowestMerchant: null, pending: true });
+
+    // Mirrored, but nothing in it is still valid. This is exact rather than a
+    // staleness threshold: the region always carries some live flyer while the
+    // cron is keeping up, so zero live rows means a run was missed, full stop.
+    const { count: live } = await supabase
+      .from("flyer_items").select("id", { count: "exact", head: true })
+      .eq("postal_code", postalCode).or(`valid_to.gte.${today},valid_to.is.null`);
+    if (!live) {
+      const { data: last } = await supabase
+        .from("flyer_items").select("fetched_at").eq("postal_code", postalCode)
+        .order("fetched_at", { ascending: false }).limit(1).maybeSingle();
+      return res.status(200).json({
+        query: q, deals: [], lowestPrice: null, lowestMerchant: null,
+        stale: true, lastRun: last?.fetched_at || null,
+      });
+    }
   }
 
   return res.status(200).json({

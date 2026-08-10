@@ -20,15 +20,36 @@ const INSERT_BATCH = 2000;      // rows per PostgREST call
 // past this, add a `?after=<flyerId>` cursor and chain a second invocation.
 const TIME_BUDGET_MS = 240_000;
 // Vercel Hobby fires crons roughly daily whatever the expression says, so the
-// weekly cadence is enforced here rather than trusted to the schedule. This
-// can't be a plain age threshold: 6 days once skipped the real Thursday run
-// because a manual refresh had happened 5 days earlier (Sat), which left the
-// mirror 12 days stale and every grocery flyer in it expired. So gate on the
-// day instead — Thursday runs, anything else only rescues a mirror that has
-// gone stale enough to be serving expired prices.
-const THURSDAY = 4;
+// cadence is enforced here rather than trusted to the schedule. This can't be
+// a plain age threshold: 6 days once skipped the real Thursday run because a
+// manual refresh had happened 5 days earlier (Sat), which left the mirror 12
+// days stale and every grocery flyer in it expired. So gate on the day
+// instead; anything else only rescues a mirror that has gone stale enough to
+// be serving expired prices.
+//
+// Thursday AND Saturday, because Flipp publishes each flyer on its own
+// schedule and one weekly run cannot cover both shapes. Flipp exposes
+// `available_from` separately from `valid_from`: roughly half the region's
+// flyers go up a day early (the big chains' Thursday flyer is already up on
+// Wednesday, so Thursday catches them), but the other half become available
+// the same day they take effect. That second group is mostly Friday-start
+// merchants -- T&T, Oceans, Blue Sky, Bestco, Fresh Land, Tone Tai, Food
+// Depot -- whose flyers run Fri->Thu. A Thursday-only run reaches them just
+// as they expire, so they were effectively never searchable. Saturday catches
+// that group while it is still fresh.
+const REFRESH_DAYS = [4, 6];                             // Thu, Sat (UTC)
 const MIN_REFRESH_GAP_MS = 20 * 60 * 60 * 1000;          // never twice in one day
-const STALE_AFTER_MS = 8 * 24 * 60 * 60 * 1000;          // a missed Thursday self-heals
+const STALE_AFTER_MS = 8 * 24 * 60 * 60 * 1000;          // a missed run self-heals
+
+// Pure so it can be tested without a database or a live clock — this guard has
+// already caused one silent multi-day outage, and its bugs are invisible from
+// the outside (a wrongly-skipped run looks exactly like "nothing is on sale").
+export function isRefreshDue(lastFetchedAt, now = Date.now()) {
+  if (!lastFetchedAt) return true;                       // empty mirror: always run
+  const age = now - new Date(lastFetchedAt).getTime();
+  if (age < MIN_REFRESH_GAP_MS) return false;
+  return REFRESH_DAYS.includes(new Date(now).getUTCDay()) || age >= STALE_AFTER_MS;
+}
 
 // Flipp's flyer endpoint wants no spaces; storing the same normalised form is
 // what lets a search for "M5A 0E7" hit rows written as "M5A0E7".
@@ -81,12 +102,9 @@ export default async function handler(req, res) {
     if (!force) {
       const { data: last } = await supabase
         .from("flyer_items").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle();
-      if (last) {
+      if (last && !isRefreshDue(last.fetched_at)) {
         const age = Date.now() - new Date(last.fetched_at).getTime();
-        const isThursday = new Date().getUTCDay() === THURSDAY;
-        if (age < MIN_REFRESH_GAP_MS || (!isThursday && age < STALE_AFTER_MS)) {
-          return res.status(200).json({ skipped: "not due yet", lastRun: last.fetched_at, ageDays: +(age / 86_400_000).toFixed(1) });
-        }
+        return res.status(200).json({ skipped: "not due yet", lastRun: last.fetched_at, ageDays: +(age / 86_400_000).toFixed(1) });
       }
     }
 

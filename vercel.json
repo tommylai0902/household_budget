@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/refresh-flyers",
-      "schedule": "0 8 * * 4"
+      "schedule": "0 8 * * 4,6"
     },
     {
       "path": "/api/send-reminders",
