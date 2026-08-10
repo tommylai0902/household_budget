@@ -219,7 +219,7 @@ const STRINGS = {
     receiptTitle: "Receipt items",
     receiptEmpty: "No receipt attached yet. When you scan a receipt, its line items will show up here.",
     scanReceipt: "Scan receipt", uploadReceipt: "Upload receipt", scanning: "Reading receipt…",
-    scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}",
+    scanHint: "or fill it in yourself", scanFailed: "Couldn't read that receipt: {msg}", saveFailed: "Couldn't save: {msg}",
     scanRetryIn: "Scanner busy — retrying in {secs}s…",
     scanRateLimited: "too many scans just now. Wait a minute and try again.",
     scanItemsWithAi: "Read the individual items with AI",
@@ -437,7 +437,7 @@ const STRINGS = {
     receiptTitle: "收據項目",
     receiptEmpty: "尚未附上收據。掃描收據後，明細項目會顯示在這裡。",
     scanReceipt: "掃描收據", uploadReceipt: "上載收據", scanning: "讀取收據中…",
-    scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}",
+    scanHint: "或自己填寫", scanFailed: "讀唔到張收據：{msg}", saveFailed: "儲存唔到：{msg}",
     scanRetryIn: "掃描器繁忙——{secs} 秒後再試…",
     scanRateLimited: "一時間掃得太密。等一分鐘再試。",
     scanItemsWithAi: "用 AI 讀逐件商品",
@@ -654,7 +654,7 @@ const STRINGS = {
     receiptTitle: "收据项目",
     receiptEmpty: "还没有附上收据。扫描收据后，明细会显示在这里。",
     scanReceipt: "扫描收据", uploadReceipt: "上传收据", scanning: "读取收据中…",
-    scanHint: "或自己填写", scanFailed: "读取不了这张收据：{msg}",
+    scanHint: "或自己填写", scanFailed: "读取不了这张收据：{msg}", saveFailed: "保存不了：{msg}",
     scanRetryIn: "扫描器繁忙——{secs} 秒后重试…",
     scanRateLimited: "短时间内扫描太多次。等一分钟再试。",
     scanItemsWithAi: "用 AI 读逐件商品",
@@ -870,7 +870,7 @@ const STRINGS = {
     receiptTitle: "Articles du reçu",
     receiptEmpty: "Aucun reçu joint. Après la lecture d'un reçu, ses articles apparaîtront ici.",
     scanReceipt: "Scanner un reçu", uploadReceipt: "Téléverser un reçu", scanning: "Lecture du reçu…",
-    scanHint: "ou remplissez vous-même", scanFailed: "Impossible de lire ce reçu : {msg}",
+    scanHint: "ou remplissez vous-même", scanFailed: "Impossible de lire ce reçu : {msg}", saveFailed: "Enregistrement impossible : {msg}",
     scanRetryIn: "Lecteur occupé — nouvelle tentative dans {secs} s…",
     scanRateLimited: "trop de lectures d'un coup. Attendez une minute et réessayez.",
     scanItemsWithAi: "Lire les articles avec l'IA",
@@ -1086,7 +1086,7 @@ const STRINGS = {
     receiptTitle: "Artículos del recibo",
     receiptEmpty: "Aún no hay recibo adjunto. Al escanear uno, sus artículos aparecerán aquí.",
     scanReceipt: "Escanear recibo", uploadReceipt: "Subir recibo", scanning: "Leyendo el recibo…",
-    scanHint: "o rellénalo tú", scanFailed: "No se pudo leer ese recibo: {msg}",
+    scanHint: "o rellénalo tú", scanFailed: "No se pudo leer ese recibo: {msg}", saveFailed: "No se pudo guardar: {msg}",
     scanRetryIn: "Escáner ocupado — reintentando en {secs} s…",
     scanRateLimited: "demasiados escaneos seguidos. Espera un minuto e inténtalo de nuevo.",
     scanItemsWithAi: "Leer los artículos con IA",
@@ -3353,8 +3353,12 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         await db.deleteReminderNotification(expenseId);
       }
       if (personal) await db.insertPersonalExpense(personal, memberById(members, draft.paidById)?.name);
+      // No ledger id: inventory and grocery are household-wide as of migration
+      // 038. These three calls kept passing one and were silently shifting
+      // every argument along — the item object landed in a parameter that no
+      // longer exists, and the write failed on a row with no name.
       if (draft.addToInventory && draft.description) {
-        await db.upsertInventoryItem(ledger.id, {
+        await db.upsertInventoryItem({
           name: draft.description, quantity: draft.invQuantity, unit: draft.invUnit,
           expiryDate: draft.invExpiryDate, category: catName(catById(draft.categoryId), lang),
         });
@@ -3366,14 +3370,20 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
       // household-scale volume, and upsertInventoryItem's own read-then-write
       // isn't safe to run concurrently against itself.
       for (const name of draft.inventoryItemNames || []) {
-        await db.upsertInventoryItem(ledger.id, { name, quantity: 1, unit: "", expiryDate: null, category: catName(catById(draft.categoryId), lang) });
+        await db.upsertInventoryItem({ name, quantity: 1, unit: "", expiryDate: null, category: catName(catById(draft.categoryId), lang) });
       }
       for (const name of draft.groceryItemNames || []) {
-        await db.addGroceryItem(ledger.id, name, 1);
+        await db.addGroceryItem(name, 1);
       }
       setEditing(null);
       refresh();
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      // Rethrown so ExpenseForm can show this itself: the form is a fixed,
+      // full-screen overlay, so setError alone painted the message behind it
+      // where nobody could ever see it.
+      setError(e.message);
+      throw e;
+    }
   };
   const removeExpense = async (id) => { try { await db.deleteExpense(id); refresh(); } catch (e) { setError(e.message); } };
   const reassign = async (id, categoryId) => { try { await db.setExpenseCategory(id, categoryId); refresh(); } catch (e) { setError(e.message); } };
@@ -4524,6 +4534,8 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanErr, setScanErr] = useState("");
+  // Save failures shown in the form itself — see submit.
+  const [saveErr, setSaveErr] = useState("");
   const [retryIn, setRetryIn] = useState(0); // seconds left on a rate-limit wait
   const [currencyMismatch, setCurrencyMismatch] = useState(null); // scanned receipt's ISO code, when it differs from the ledger's
   const [remember, setRemember] = useState(false);
@@ -4719,8 +4731,22 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
   useEffect(() => { setRemember(false); }, [typed]);
 
   const submit = async () => {
-    if (!valid) return;
+    if (!valid || busy) return; // a second tap mid-save would double-write
     setBusy(true);
+    setSaveErr("");
+    try {
+      await doSubmit();
+    } catch (e) {
+      setSaveErr(e?.message || String(e));
+    } finally {
+      // A successful save unmounts this form, so this only matters when onSave
+      // throws — without it the spinner ran forever and a genuine failure was
+      // indistinguishable from a slow network.
+      setBusy(false);
+    }
+  };
+
+  const doSubmit = async () => {
     // Items marked personal leave as their own unsplit expense in the ledger you
     // chose, so they never reach this ledger's settle-up.
     const asItems = (list) => list.map((i) => ({ name: i.name, amount: round2(i.price * taxRatio) }));
@@ -4990,9 +5016,16 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
         <textarea value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder={t("notePh")}
           rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5, fontFamily: "inherit" }} />
       </Field>
+      {/* Sits inside the overlay on purpose: the ledger's own error banner is
+          painted underneath this fixed, full-screen form and can't be seen. */}
+      {saveErr && (
+        <div style={{ background: BAD_BG, border: `1px solid ${BAD_LINE}`, color: BAD_INK, borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 6 }}>
+          {t("saveFailed", { msg: saveErr })}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <button onClick={onClose} style={{ ...ghostBtn, flex: 1, justifyContent: "center", padding: "12px" }}>{t("cancel")}</button>
-        <button onClick={submit} disabled={!valid} className="btn-glow" style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+        <button onClick={submit} disabled={!valid || busy} className="btn-glow" style={{ ...addBtn, flex: 2, marginTop: 0, opacity: valid && !busy ? 1 : 0.5, cursor: valid && !busy ? "pointer" : "not-allowed" }}>
           {busy ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {initial ? t("saveChanges") : t("addExpense")}
         </button>
       </div>

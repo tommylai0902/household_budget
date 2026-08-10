@@ -80,6 +80,22 @@ flat background while everything around it has a starfield/daylight wash.
 `ToolScreen` is that shell packaged up for the two views rendered outside
 `Ledger` (below); it is not a general layout component.
 
+**Migration 038's signature change has already bitten twice.** Dropping
+`ledger_id` also dropped the leading `ledgerId` parameter from
+`upsertInventoryItem` and `addGroceryItem`, and three call sites in
+`upsertExpense` kept passing one. JavaScript shifts the rest along silently:
+the item object landed in a parameter that no longer exists, and the insert
+went out with no `name` — a not-null violation. When touching either function,
+`grep` every call site rather than the one you came for.
+
+That bug was invisible for a different reason worth remembering: `ExpenseForm`
+is a `position: fixed` full-screen overlay, so the ledger's own error banner
+was painted *underneath* it, and the form set `busy` without ever clearing it.
+A failed save therefore looked like an infinite spinner with no message. Save
+failures are now shown inside the form itself (`saveErr`), `submit` clears
+`busy` in a `finally`, and `upsertExpense` rethrows after `setError` so the
+form can see what happened.
+
 **Inventory and Grocery render in two places.** They are household-wide
 (migration 038) and take only `t`/`lang`/`onSwitchView` — no ledger prop at
 all — but they were originally reachable only through `Ledger`'s `viewState`,
