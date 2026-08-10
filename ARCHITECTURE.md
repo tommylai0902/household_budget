@@ -80,6 +80,14 @@ flat background while everything around it has a starfield/daylight wash.
 `ToolScreen` is that shell packaged up for the two views rendered outside
 `Ledger` (below); it is not a general layout component.
 
+**Notifications for household-wide items carry no ledger, and must not need
+one.** `notificationTarget` returns `{ view: "inventory", ledgerId: null }` for
+an expiry reminder, so routing picks any grown-up ledger purely as a container.
+`pickLedger` returns null in two cases — no ledgers at all, and a household
+whose *only* ledger is a Kid Ledger (it filters those out deliberately) — and
+both paths used to `return` on that, so tapping the notification did nothing
+whatsoever. They now fall back to the standalone tool screen.
+
 **Migration 038's signature change has already bitten twice.** Dropping
 `ledger_id` also dropped the leading `ledgerId` parameter from
 `upsertInventoryItem` and `addGroceryItem`, and three call sites in
