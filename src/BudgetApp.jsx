@@ -180,7 +180,8 @@ const STRINGS = {
     pmChecking: "Checking your list…", pmSummary: "{n} of {total} items are cheaper elsewhere",
     pmAlreadyHere: "cheapest here, {price}", pmNoDeals: "no flyer deal",
     dealCheckErr: "Couldn't check prices: {msg}",
-    dealsPending: "No flyer prices for this yet — the weekly update runs Thursday.",
+    dealsPending: "No flyer prices for this area yet — the first update is still to run.",
+    dealsStale: "Flyer prices are out of date (last updated {date}), so this isn't a reliable \"no deals\".",
     dealsNoneFound: "No flyer deals found for this item.",
     priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
@@ -395,7 +396,8 @@ const STRINGS = {
     pmChecking: "檢查緊你張清單…", pmSummary: "{total} 樣入面有 {n} 樣其他舖更平",
     pmAlreadyHere: "呢度最平，{price}", pmNoDeals: "冇海報優惠",
     dealCheckErr: "格價失敗：{msg}",
-    dealsPending: "呢樣嘢仲未有海報價，星期四先更新。",
+    dealsPending: "呢區仲未有海報價，第一次更新未跑過。",
+    dealsStale: "海報價已經過期（最後更新 {date}），所以呢個「冇優惠」信唔過。",
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
     priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
@@ -608,7 +610,8 @@ const STRINGS = {
     pmChecking: "正在检查你的清单…", pmSummary: "{total} 项中有 {n} 项在其他店更便宜",
     pmAlreadyHere: "这里最便宜，{price}", pmNoDeals: "没有传单优惠",
     dealCheckErr: "比价失败：{msg}",
-    dealsPending: "这件商品还没有传单价格，每周四更新。",
+    dealsPending: "本地区还没有传单价格，第一次更新尚未运行。",
+    dealsStale: "传单价格已过期（最后更新 {date}），所以这个「没有优惠」不可靠。",
     dealsNoneFound: "没有找到这件商品的传单优惠。",
     priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
@@ -819,7 +822,8 @@ const STRINGS = {
     pmChecking: "Vérification de votre liste…", pmSummary: "{n} article(s) sur {total} moins chers ailleurs",
     pmAlreadyHere: "le moins cher ici, {price}", pmNoDeals: "aucune aubaine",
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
-    dealsPending: "Pas encore de prix de circulaire — la mise à jour hebdomadaire a lieu le jeudi.",
+    dealsPending: "Pas encore de prix de circulaire pour cette région — la première mise à jour n'a pas encore eu lieu.",
+    dealsStale: "Les prix des circulaires sont périmés (dernière mise à jour : {date}), donc cette absence d'aubaines n'est pas fiable.",
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
     priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
@@ -1031,7 +1035,8 @@ const STRINGS = {
     pmChecking: "Revisando tu lista…", pmSummary: "{n} de {total} artículos más baratos en otra tienda",
     pmAlreadyHere: "más barato aquí, {price}", pmNoDeals: "sin oferta de folleto",
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
-    dealsPending: "Aún no hay precios de folleto — la actualización semanal es el jueves.",
+    dealsPending: "Aún no hay precios de folleto para esta zona — la primera actualización todavía no se ha ejecutado.",
+    dealsStale: "Los precios de folleto están desactualizados (última actualización: {date}), así que este «sin ofertas» no es fiable.",
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
     priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
@@ -6908,6 +6913,23 @@ function InventoryItemForm({ item, t, categories = [], locations = [], onManage,
 
 const NEW_GROCERY_ITEM = { itemName: "", quantityNeeded: 1, brand: "" };
 
+// An empty deal lookup has three causes and only one of them is about
+// shopping. `pending` (this region was never mirrored) and `stale` (it was,
+// but every flyer in it has expired) both mean the data collection failed —
+// reporting either as "no deals" tells the user a product isn't on sale when
+// nobody actually looked. Returns "" when the result is genuinely empty, so
+// callers can fall through to their own not-found message.
+const dealsMirrorMessage = (result, t, lang) => {
+  if (result?.pending) return t("dealsPending");
+  if (result?.stale) {
+    const date = result.lastRun
+      ? new Date(result.lastRun).toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric" })
+      : "—";
+    return t("dealsStale", { date });
+  }
+  return "";
+};
+
 function GroceryListPanel({ t, lang, onSwitchView }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
@@ -6974,9 +6996,13 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
     setError("");
     try {
       const result = await db.fetchDeals(item.itemName, postalCode, { brand: item.brand });
-      // `pending` = the weekly mirror hasn't run for this region yet. Nothing
-      // to retry here — the lookup never touches Flipp live by design.
-      if (result.pending) setToast({ id: Date.now(), text: t("dealsPending") });
+      // Three different empty results, and only the last one is a fact about
+      // shopping: `pending` = never mirrored here, `stale` = mirrored but
+      // everything in it expired, so a missed cron run is never reported as
+      // "nothing is on sale". Nothing to retry either way — the lookup never
+      // touches Flipp live by design.
+      const mirrorMsg = dealsMirrorMessage(result, t, lang);
+      if (mirrorMsg) setToast({ id: Date.now(), text: mirrorMsg });
       else if (!result.deals?.length) setToast({ id: Date.now(), text: t("dealsNoneFound") });
       else setDealsFor({ item, deals: result.deals });
     } catch (e) {
@@ -7002,7 +7028,8 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
       const name = out.brand && !out.name.toLowerCase().includes(out.brand.toLowerCase())
         ? `${out.brand} ${out.name}` : out.name;
       const result = await db.fetchDeals(name, postalCode, { brand: out.brand });
-      if (result.pending) setToast({ id: Date.now(), text: t("dealsPending") });
+      const mirrorMsg = dealsMirrorMessage(result, t, lang);
+      if (mirrorMsg) setToast({ id: Date.now(), text: mirrorMsg });
       else if (!result.deals?.length) setToast({ id: Date.now(), text: t("dealsNoneFound") });
       else setDealsFor({ item: { id: null, itemName: name, brand: out.brand || "" }, deals: result.deals });
     } catch (e) {
@@ -7426,8 +7453,13 @@ function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSe
     const names = new Set(matchStores.map((s) => s.merchant));
     // Read-only lookups, so these can go in parallel — unlike the batch
     // writes elsewhere in this file, there's no read-then-write to serialise.
+    // Every lookup shares one mirror, so if it's unusable the whole report is
+    // meaningless — not a list of items that happen to have no deal. Held
+    // aside and checked before any of it is shown.
+    let mirrorProblem = "";
     Promise.all(items.map(async (it) => {
       const out = await db.fetchDeals(it.itemName, postalCode, { brand: it.brand });
+      mirrorProblem ||= dealsMirrorMessage(out, t, lang);
       const deals = (out.deals || []).filter((d) => names.has(d.merchant) || d.merchant === localStore.merchant);
       const elsewhere = deals.filter((d) => d.merchant !== localStore.merchant);
       const here = deals.find((d) => d.merchant === localStore.merchant);
@@ -7444,7 +7476,13 @@ function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSe
         imageUrl: best.imageUrl, merchantLogo: best.merchantLogo, validTo: best.validTo,
         flyerUrl: db.dealUrl(best.itemId, best.flyerId, best.postalCode),
       };
-    })).then((rows) => { if (live) setReport(rows); })
+    })).then((rows) => {
+      if (!live) return;
+      // A stale mirror would otherwise render as every item cleanly reporting
+      // "no deals" — the single most misleading thing this panel can say.
+      if (mirrorProblem) { setError(mirrorProblem); setReport(null); return; }
+      setReport(rows);
+    })
       .catch((e) => { if (live) setError(e.message || String(e)); })
       .finally(() => { if (live) setRunning(false); });
     return () => { live = false; };

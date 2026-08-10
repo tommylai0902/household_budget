@@ -1145,7 +1145,10 @@ export async function fetchDeals(query, postalCode, { brand } = {}) {
   const res = await fetch(`/api/scan-deals?${params}`);
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(out.error || res.statusText);
-  return out; // { query, deals, lowestPrice, lowestMerchant, pending? }
+  // pending = this region was never mirrored; stale = it was, but nothing in
+  // it is still valid, so an empty result is a collection failure and not a
+  // statement about what is on sale. Callers must not treat either as "no deals".
+  return out; // { query, deals, lowestPrice, lowestMerchant, pending?, stale?, lastRun? }
 }
 
 /* ---- store setup + price match policy (migration 030) ---- */

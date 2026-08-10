@@ -245,8 +245,27 @@ curl -s "https://backflipp.wishabi.com/flipp/flyers?locale=en-ca&postal_code=M5A
 When "no deals" looks wrong, check `max(fetched_at)` for the region before
 anything else.
 
-Consequence: a region with no mirror run yet returns `pending`, not "no
-results" — the UI says so explicitly. `nearby_merchants()` returns two
+**An empty result has three causes and only one of them is about shopping.**
+`scan-deals.js` separates them before answering, because a data-collection
+failure reported as "no deals" tells the user a product isn't on sale when
+nobody actually looked:
+
+| Response | Meaning | UI |
+|---|---|---|
+| `pending: true` | no rows for the region at all — never mirrored | `dealsPending` |
+| `stale: true` + `lastRun` | rows exist, but **none are still valid** | `dealsStale`, naming the date |
+| neither, `deals: []` | mirror is current, nothing matched | `dealsNoneFound` |
+
+The stale check is exact rather than an age threshold: while the cron keeps
+up, the region always carries some live flyer, so *zero* live rows means a run
+was missed, full stop. `dealsMirrorMessage()` in `BudgetApp.jsx` is the one
+place that maps this to a string — all three call sites go through it.
+
+Price Match Mode is the one that mattered most: it never checked `pending` at
+all, so a stale mirror rendered as every item cleanly reporting "no deals",
+the most misleading thing that panel can say. It now refuses to show a report
+at all when the mirror is unusable, since every row in it would be built from
+the same dead data. `nearby_merchants()` returns two
 booleans derived from Flipp's own flyer categories, `is_grocery` (032) and
 `is_home_garden` (037 — Flipp has no dedicated "hardware" category, so this is
 the closest bucket: Home Hardware/RONA/Home Depot/Canadian Tire, alongside
