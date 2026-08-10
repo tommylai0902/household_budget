@@ -39,5 +39,24 @@ assert.ok(!wrapTerms.some((t) => NOT_WRAP.toLowerCase().includes(t)), "matched a
 // Simplified and traditional must not diverge.
 assert.deepEqual(translateZhGroceryTerm("保鮮紙"), translateZhGroceryTerm("保鲜纸"));
 assert.deepEqual(translateZhGroceryTerm("錫紙"), translateZhGroceryTerm("锡纸"));
+for (const [trad, simp] of [["蠔油", "蚝油"], ["洗潔精", "洗洁精"], ["檸檬", "柠檬"], ["薑", "姜"]]) {
+  assert.deepEqual(translateZhGroceryTerm(trad), translateZhGroceryTerm(simp), `${trad}/${simp} diverged`);
+}
+
+// Longest key wins, not first-declared. "蛋" is a substring of plenty of
+// longer keys, and declaration order must not decide the answer.
+assert.deepEqual(translateZhGroceryTerm("雞蛋"), ["egg"]);
+assert.deepEqual(translateZhGroceryTerm("三文魚"), ["salmon"], "should not fall back to 魚/fish");
+assert.deepEqual(translateZhGroceryTerm("免治牛肉"), ["ground beef"], "should not fall back to 牛肉/beef");
+assert.deepEqual(translateZhGroceryTerm("椰菜花"), ["cauliflower"], "should not fall back to 椰菜/cabbage");
+// Same rule inside a longer sentence, where only substring matching applies.
+assert.deepEqual(translateZhGroceryTerm("今晚煮三文魚"), ["salmon"]);
+
+// No English target may be a substring of a longer unrelated word once the
+// caller matches on word boundaries — a bare "egg" is fine, "cling" was not.
+const BAD_SUBSTRINGS = ["cling"];
+for (const [, en] of Object.entries({ 保鮮紙: translateZhGroceryTerm("保鮮紙") })) {
+  for (const t of en) assert.ok(!BAD_SUBSTRINGS.includes(t), `${t} is a known false-positive magnet`);
+}
 
 console.log("zhGroceryTerms.js: all checks passed");
