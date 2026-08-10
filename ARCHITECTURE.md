@@ -38,7 +38,8 @@ node src/lib/settle.test.js
 ```
 
 Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`,
-`receiptOcr.js`, `zhGroceryTerms.js`. The UI and `db.js` have no tests.
+`receiptOcr.js`, `zhGroceryTerms.js`, and `api/refresh-flyers.js`'s
+`isRefreshDue` guard. The UI and `db.js` have no tests.
 
 ---
 
@@ -175,7 +176,7 @@ half-applied database.
 | `scan-product.js` | caller's token + `members` | Gemini → product name/brand/unit. Reads the **label, not the barcode** (Safari has no `BarcodeDetector`) |
 | `scan-statement.js` | caller's token + `members` | Gemini → many transactions, for batch import |
 | `scan-deals.js` | none (public read) | Searches the `flyer_items` mirror **only** — never calls Flipp live |
-| `refresh-flyers.js` | `CRON_SECRET` | **Cron, Thu 08:00 UTC.** Mirrors whole flyers per postal code |
+| `refresh-flyers.js` | `CRON_SECRET` | **Cron, Thu + Sat 08:00 UTC.** Mirrors whole flyers for the household postal code |
 | `send-reminders.js` | `CRON_SECRET` | **Cron, daily 13:00 UTC.** Generates expiry rows + sends push |
 
 `vite.config.js` mounts these under `vite dev` with a tiny `res.status().json()`
@@ -188,11 +189,11 @@ must also be added to that list**, or it 404s in dev only.
 
 ### 1. Flyer prices (price matching)
 
-Flipp is called **only** by the Thursday cron, which copies whole flyers for
-the household's saved postal code (`household_settings`, migration 038) into
-`flyer_items`. User searches hit that table. So no amount of tapping "Price
-Match Check" can rate-limit the IP, and a product nobody ever searched still
-answers instantly.
+Flipp is called **only** by the cron (Thursday and Saturday — see below),
+which copies whole flyers for the household's saved postal code
+(`household_settings`, migration 038) into `flyer_items`. User searches hit
+that table. So no amount of tapping "Price Match Check" can rate-limit the
+IP, and a product nobody ever searched still answers instantly.
 
 **The whole feature is only as fresh as that weekly run, and it fails silently
 when it doesn't happen.** An unrefreshed mirror doesn't error — every grocery
@@ -211,9 +212,35 @@ item expired 08-05):
   threshold cannot work here** — Vercel Hobby fires crons roughly daily
   regardless of the expression, so any threshold low enough to let a slightly
   early Thursday through also lets the daily re-fire through. The guard now
-  gates on the day (`getUTCDay() === 4`), with a 20-hour floor against
-  same-day double-fires and an 8-day ceiling so a missed Thursday self-heals
-  instead of waiting a whole extra week.
+  gates on the day (`isRefreshDue`, exported and unit-tested in
+  `api/refresh-flyers.test.js`), with a 20-hour floor against same-day
+  double-fires and an 8-day ceiling so a missed run self-heals instead of
+  waiting a whole extra cycle.
+
+**It runs Thursday *and* Saturday, and one run a week cannot replace that.**
+Flipp exposes `available_from` separately from `valid_from`, and the two are
+not a fixed offset. Measured over one region's 148 flyers: 65 go up a day
+early, 65 go up the same day they take effect, a handful 2+ days early. The
+big chains (Food Basics, No Frills, Loblaws, Metro, Sobeys, Superstore,
+FreshCo, Fortinos) publish Wednesday for a Thursday start, so Thursday
+catches them — as it does Shoppers (up 2 days early) and Walmart/Btrust/
+Nations (1 day early).
+
+The same-day group is the problem, and it is mostly Friday-start Asian
+supermarkets — T&T, Oceans, Blue Sky, Bestco, Fresh Land, Tone Tai, Food
+Depot, Lady York. Their flyers run Fri→Thu and only become available on the
+Friday, so a Thursday-only mirror met them on the single day they were
+expiring and never once carried them while they were current. They were
+effectively absent from price matching altogether. Saturday catches that
+group with five days of validity left.
+
+When adding a merchant to a search and getting nothing, check
+`available_from` on the Flipp flyer list before assuming the product simply
+isn't on sale:
+
+```bash
+curl -s "https://backflipp.wishabi.com/flipp/flyers?locale=en-ca&postal_code=M5A0E7"
+```
 
 When "no deals" looks wrong, check `max(fetched_at)` for the region before
 anything else.
