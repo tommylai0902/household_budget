@@ -47,7 +47,9 @@ const isUuid = (id) => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.
 /* ---- ledgers ---- */
 const toAppLedger = (r) => ({
   id: r.id, name: r.name, template: r.template || "household", ownerId: r.owner_id,
-  currency: r.currency || "CAD", postalCode: r.postal_code || "",
+  // No postalCode here — it lives on household_settings since migration 038
+  // and the column was dropped in 042. Nothing consumed this field.
+  currency: r.currency || "CAD",
   // Travel-only (migration 040) — a fixed trip period instead of the
   // monthly cycle. Null/null means "not set", same as today's behaviour.
   startDate: r.start_date || null, endDate: r.end_date || null,

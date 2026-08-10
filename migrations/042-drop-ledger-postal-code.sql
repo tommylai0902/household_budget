@@ -1,0 +1,24 @@
+-- 042: drop ledgers.postal_code, superseded by household_settings (038).
+--
+-- 038 moved the postal code to the household_settings singleton but left this
+-- column behind. That leftover is what let api/refresh-flyers.js keep working
+-- for months while reading the wrong table: it read ledgers.postal_code, found
+-- the stale pre-038 value still sitting there, and mirrored flyers off it. The
+-- app had long since stopped writing this column, so the two would have
+-- diverged the moment anyone changed their postal code in Settings -- the
+-- cron would have carried on mirroring the OLD region indefinitely, with no
+-- error anywhere.
+--
+-- refresh-flyers.js now reads household_settings. Removing the column is what
+-- makes that permanent: nothing can quietly fall back to it again.
+--
+-- BEFORE RUNNING, confirm the value survived the move -- this drop is not
+-- reversible and the column is the only other copy:
+--
+--   select postal_code from household_settings where id = 1;
+--
+-- If that returns null or empty, STOP and set the postal code in the app
+-- (Smart Grocery -> the postal code field) first, or the Thursday flyer
+-- mirror will skip with "no postal code set" and price matching goes dark.
+
+alter table ledgers drop column if exists postal_code;
