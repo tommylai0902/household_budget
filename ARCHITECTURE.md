@@ -77,6 +77,18 @@ picker, the ledger view, and any popup that floats over page content each call
 in `BudgetApp.jsx`) themselves — there is no shared layout wrapper supplying
 it. A new full-screen view means adding that line yourself, or it renders on a
 flat background while everything around it has a starfield/daylight wash.
+`ToolScreen` is that shell packaged up for the two views rendered outside
+`Ledger` (below); it is not a general layout component.
+
+**Inventory and Grocery render in two places.** They are household-wide
+(migration 038) and take only `t`/`lang`/`onSwitchView` — no ledger prop at
+all — but they were originally reachable only through `Ledger`'s `viewState`,
+so an account with no ledger yet could not open them despite them needing
+none. Someone who only wanted the shopping list had to create a ledger first.
+`App` now renders them standalone inside `ToolScreen` when `goToView` finds no
+ledger to host them, and the picker's nav dropdown is shown even at zero
+ledgers. With a ledger present nothing changed — they still open inside it, so
+the ledger's own chrome stays available.
 
 ---
 

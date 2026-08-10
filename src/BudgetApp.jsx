@@ -1362,7 +1362,14 @@ export default function App() {
   // switcher — picking one there is a clear "I want to work in this book"
   // signal, not another dashboard to look at.
   const [entryView, setEntryView] = useState("home");
-  const openLedger = (l, view) => { setEntryView(view); cacheLastLedgerId(l.id); setLedger(l); };
+  // Inventory and Grocery are household-wide (migration 038) and take no
+  // ledger props, but they were only ever rendered inside Ledger's viewState —
+  // so an account with no ledger yet could not reach them at all, despite them
+  // needing none. Held here so they can be shown on their own in that case.
+  const [standaloneView, setStandaloneView] = useState(null); // "inventory" | "grocery"
+  // Cleared on open, or exiting a ledger later would drop straight back into
+  // the tool instead of the picker.
+  const openLedger = (l, view) => { setStandaloneView(null); setEntryView(view); cacheLastLedgerId(l.id); setLedger(l); };
 
   // Arriving from a tapped push notification: /?view=…[&ledger=…][&expense=…],
   // built by api/send-reminders.js and opened by sw.js. Read once at mount
@@ -1442,9 +1449,23 @@ export default function App() {
     try {
       const all = await db.fetchLedgers();
       const match = all.find((l) => l.id === getLastLedgerId()) || all[0];
-      if (match) openLedger(match, view);
+      if (match) return openLedger(match, view);
+      // Nothing to host them, but Inventory and Grocery don't need a ledger —
+      // show them standalone rather than dead-ending the tap.
+      if (view === "inventory" || view === "grocery") setStandaloneView(view);
     } catch {}
   };
+
+  if (!ledger && standaloneView) {
+    const Panel = standaloneView === "inventory" ? InventoryPanel : GroceryListPanel;
+    return (
+      <ToolScreen theme={theme}>
+        {/* "ledger" is the only exit with no ledger to switch to — back to the
+            picker, which is where a ledger gets created. */}
+        <Panel t={t} lang={lang} onSwitchView={(v) => setStandaloneView(v === "ledger" ? null : v)} />
+      </ToolScreen>
+    );
+  }
 
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
     onOpen={(l) => openLedger(l, "ledger")} onHome={() => goToView("home")}
@@ -1453,6 +1474,19 @@ export default function App() {
   return <Ledger ledger={ledger} startView={entryView} nav={nav} onNotification={openNotification} currentUserId={session.user.id} onExit={() => setLedger(null)}
     onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
     theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />;
+}
+
+// The shell Ledger paints around Inventory/Grocery, for showing them without
+// one. Backgrounds are per-view in this app — there is no layout wrapper
+// supplying one — so a screen rendered outside Ledger has to bring its own or
+// it lands on flat paper while everything around it has a starfield.
+function ToolScreen({ theme, children }) {
+  return (
+    <div style={{ position: "relative", background: PAPER, color: INK, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100%", padding: "20px 16px 40px" }}>
+      {theme === "dark" ? <CosmicBackground /> : <DaylightBackground />}
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>{children}</div>
+    </div>
+  );
 }
 
 function Centered({ children }) {
@@ -2138,7 +2172,11 @@ function LedgerPicker({ lang, changeLang, t, theme, changeTheme, accent, changeA
             on the right — same string in every language, like the eyebrow on
             the sign-in screen. */}
         <BrandHeader
-          left={onNavigate && ledgers?.length ? <ViewSwitcher current="ledger" label={t("navDropdownLabel")} hideIcon onSwitch={onNavigate} t={t} /> : undefined}
+          // Shown even with no ledgers: Inventory and Grocery are household-wide
+          // (migration 038) and reachable on their own, so this is the only way
+          // a brand-new account gets to them without first creating a ledger it
+          // may not want.
+          left={onNavigate ? <ViewSwitcher current="ledger" label={t("navDropdownLabel")} hideIcon onSwitch={onNavigate} t={t} /> : undefined}
           right={<>
           <NotificationBell t={t} lang={lang} onNavigate={onNotification} />
           {/* Same overflow menu as inside a ledger, minus the entries that need one
