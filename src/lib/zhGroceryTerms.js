@@ -22,16 +22,31 @@ const ZH_TO_EN = {
   "橙": "orange", "蘋果": "apple", "香蕉": "banana", "西瓜": "watermelon", "提子": "grape",
   "可樂": "coke", "雪糕": "ice cream",
   "廁紙": "toilet paper", "洗衣粉": "laundry detergent", "紙巾": "paper towel",
+  // A value may be a list of alternative spellings; the caller searches all of
+  // them and merges the results. Flipp spells the same product differently
+  // week to week and merchant to merchant — "GLAD CLING WRAP" (Food Basics),
+  // "GLAD CLINGWRAP" (No Frills) and "GLAD PLASTIC WRAP" (Fortinos) were all
+  // live in one region inside two weeks, so a single fixed string silently
+  // misses whichever spelling that week happens to use.
+  //
+  // Each alternative stays a full word: the shorter "cling" would cover both
+  // wrap spellings in one, but it is also a substring of "reCYCLINg" and drags
+  // in recycling bins.
+  "保鮮紙": ["cling wrap", "clingwrap", "plastic wrap"],
+  "保鲜纸": ["cling wrap", "clingwrap", "plastic wrap"],
+  "錫紙": ["aluminum foil", "alcan foil"], "锡纸": ["aluminum foil", "alcan foil"],
 };
 
 export const hasChineseChars = (s) => /[一-鿿]/.test(s || "");
 
 // Exact match first (the common case — a grocery-list item named just
 // "雞脾"), else the first known term found anywhere inside a longer phrase.
+// Always returns an array (or null), since one term can map to several
+// competing flyer spellings — see ZH_TO_EN above.
 export function translateZhGroceryTerm(term) {
   const trimmed = (term || "").trim();
   if (!trimmed) return null;
-  if (ZH_TO_EN[trimmed]) return ZH_TO_EN[trimmed];
-  const hit = Object.entries(ZH_TO_EN).find(([zh]) => trimmed.includes(zh));
-  return hit ? hit[1] : null;
+  const hit = ZH_TO_EN[trimmed] ?? Object.entries(ZH_TO_EN).find(([zh]) => trimmed.includes(zh))?.[1];
+  if (!hit) return null;
+  return Array.isArray(hit) ? hit : [hit];
 }

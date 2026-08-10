@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Thursday flyer mirror (scheduled in vercel.json). For every postal code any
-// ledger has saved, this copies every item out of every current flyer into
+// Thursday flyer mirror (scheduled in vercel.json). For the household's saved
+// postal code, this copies every item out of every current flyer into
 // flyer_items. api/scan-deals.js then answers user searches from that table,
 // so Flipp sees one batch a week from this IP instead of a request per tap --
 // and anything printed in a flyer is searchable immediately, even for items
@@ -20,8 +20,15 @@ const INSERT_BATCH = 2000;      // rows per PostgREST call
 // past this, add a `?after=<flyerId>` cursor and chain a second invocation.
 const TIME_BUDGET_MS = 240_000;
 // Vercel Hobby fires crons roughly daily whatever the expression says, so the
-// weekly cadence is enforced here rather than trusted to the schedule.
-const MIN_REFRESH_GAP_MS = 6 * 24 * 60 * 60 * 1000;
+// weekly cadence is enforced here rather than trusted to the schedule. This
+// can't be a plain age threshold: 6 days once skipped the real Thursday run
+// because a manual refresh had happened 5 days earlier (Sat), which left the
+// mirror 12 days stale and every grocery flyer in it expired. So gate on the
+// day instead — Thursday runs, anything else only rescues a mirror that has
+// gone stale enough to be serving expired prices.
+const THURSDAY = 4;
+const MIN_REFRESH_GAP_MS = 20 * 60 * 60 * 1000;          // never twice in one day
+const STALE_AFTER_MS = 8 * 24 * 60 * 60 * 1000;          // a missed Thursday self-heals
 
 // Flipp's flyer endpoint wants no spaces; storing the same normalised form is
 // what lets a search for "M5A 0E7" hit rows written as "M5A0E7".
@@ -74,17 +81,25 @@ export default async function handler(req, res) {
     if (!force) {
       const { data: last } = await supabase
         .from("flyer_items").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle();
-      if (last && Date.now() - new Date(last.fetched_at).getTime() < MIN_REFRESH_GAP_MS) {
-        return res.status(200).json({ skipped: "refreshed less than 6 days ago", lastRun: last.fetched_at });
+      if (last) {
+        const age = Date.now() - new Date(last.fetched_at).getTime();
+        const isThursday = new Date().getUTCDay() === THURSDAY;
+        if (age < MIN_REFRESH_GAP_MS || (!isThursday && age < STALE_AFTER_MS)) {
+          return res.status(200).json({ skipped: "not due yet", lastRun: last.fetched_at, ageDays: +(age / 86_400_000).toFixed(1) });
+        }
       }
     }
 
-    const { data: ledgers, error: ledgerErr } = await supabase
-      .from("ledgers").select("postal_code").not("postal_code", "is", null);
-    if (ledgerErr) throw ledgerErr;
+    // Migration 038 moved the postal code off ledgers into the
+    // household_settings singleton. Reading ledgers.postal_code here kept
+    // working only on the value left behind before that migration, and goes
+    // permanently silent the moment the user sets a new one in the app.
+    const { data: settings, error: settingsErr } = await supabase
+      .from("household_settings").select("postal_code").eq("id", 1).maybeSingle();
+    if (settingsErr) throw settingsErr;
 
-    const postalCodes = [...new Set((ledgers || []).map((l) => normalisePostal(l.postal_code)).filter(Boolean))];
-    if (!postalCodes.length) return res.status(200).json({ skipped: "no ledger has a postal code set" });
+    const postalCodes = [normalisePostal(settings?.postal_code)].filter(Boolean);
+    if (!postalCodes.length) return res.status(200).json({ skipped: "no postal code set" });
 
     const report = [];
     for (const postalCode of postalCodes) {
