@@ -591,6 +591,14 @@ Only the **anon** key belongs there.
   `SCAN_REQUEST_OPTS` — which must be the **second argument** to
   `interactions.create`; the interactions bridge builds its own inner client and
   ignores `retry_config` passed to `new GoogleGenAI()`.
+- **Split money is integer cents in `settle.js`, never floats.** Halving an odd
+  number of cents has no exact answer, and rounding each member's balance
+  separately let the two halves disagree: a real month showed Tommy "should
+  receive $1,187.44" against Wing "should pay $1,187.43", because `Math.round`
+  sends `+x.5` up but `-x.5` toward zero. `splitCents` divides exactly and
+  hands the leftover cent(s) out one at a time, and `sharedShares` exists so
+  the settle-up screen reads its figures from the same pass the balances came
+  from rather than re-deriving them.
 - **`ON CONFLICT` cannot infer a partial unique index** unless the statement
   repeats the predicate, which PostgREST's upsert never does. Keep unique
   indexes plain; NULLs don't collide anyway.

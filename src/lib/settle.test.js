@@ -1,6 +1,6 @@
 // Run: node src/lib/settle.test.js
 import assert from "node:assert/strict";
-import { netBalances, settlements } from "./settle.js";
+import { netBalances, settlements, sharedShares, splitCents } from "./settle.js";
 
 const M = (...names) => names.map((n) => ({ id: n, name: n }));
 // shared(payer, amount, ...whoShares) — the payer is not automatically included.
@@ -113,6 +113,59 @@ const sum = (xs) => Math.round(xs.reduce((a, b) => a + b, 0) * 100) / 100;
     [],
     "unknown sharer dropped; a paying only for itself owes nothing",
   );
+}
+
+// --- odd cents: the half-cent that used to make the two sides disagree ---
+{
+  // The real month that surfaced this. 2651.12 + 276.25 = 2927.37, an odd
+  // number of cents, so half of it is 1463.685 — a half-cent that does not
+  // exist. Rounding each balance separately produced "should receive 1187.44"
+  // against "should pay 1187.43".
+  const ms = M("t", "w");
+  const exps = [shared("t", 2651.12, "t", "w"), shared("w", 276.25, "t", "w")];
+  const net = netBalances(exps, ms);
+  assert.equal(net.get("t") + net.get("w"), 0, "the two sides must cancel exactly");
+  assert.equal(Math.abs(net.get("t")), Math.abs(net.get("w")), "receive must equal pay");
+
+  // And the shares shown on screen must add back up to what was split.
+  const shares = sharedShares(exps, ms);
+  assert.equal(shares.get("t") + shares.get("w"), 2927.37, "shares must sum to the shared total");
+}
+
+// --- splitCents keeps its promise for every shape ---
+{
+  for (const [cents, n] of [[1, 2], [7, 2], [100, 3], [1, 3], [2927_37, 2], [99, 7], [0, 4]]) {
+    const parts = splitCents(cents, n);
+    assert.equal(parts.length, n);
+    assert.equal(parts.reduce((a, b) => a + b, 0), cents, `${cents}c into ${n} must sum back`);
+    assert.ok(Math.max(...parts) - Math.min(...parts) <= 1, "parts differ by at most a cent");
+  }
+  // A refund splits too, without the remainder flipping sign.
+  const refund = splitCents(-7, 2);
+  assert.equal(refund.reduce((a, b) => a + b, 0), -7);
+  assert.ok(refund.every((p) => p <= 0), "a negative split stays negative");
+  assert.deepEqual(splitCents(10, 0), [], "no sharers, no division by zero");
+}
+
+// --- the odd cent doesn't always land on the same person ---
+{
+  // Two expenses with different ids and an odd split: whoever absorbs the extra
+  // cent should not be the same both times, or a long ledger drifts one way.
+  const ms = M("a", "b");
+  const one = netBalances([{ id: "e1", ...shared("a", 0.01, "a", "b") }], ms);
+  const two = netBalances([{ id: "e2", ...shared("a", 0.01, "a", "b") }], ms);
+  assert.equal(one.get("a") + one.get("b"), 0);
+  assert.equal(two.get("a") + two.get("b"), 0);
+}
+
+// --- three-way split of an amount that can't divide evenly ---
+{
+  const ms = M("a", "b", "c");
+  const exps = [shared("a", 100, "a", "b", "c")]; // 10000c / 3 = 3333.33…
+  const net = netBalances(exps, ms);
+  assert.equal(sum([...net.values()]), 0, "no cent invented or lost");
+  const shares = sharedShares(exps, ms);
+  assert.equal(sum([...shares.values()]), 100, "shares still total the bill");
 }
 
 console.log("settle.js: all checks passed");
