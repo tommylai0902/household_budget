@@ -1491,7 +1491,7 @@ export default function App() {
     try {
       const all = await db.fetchLedgers();
       const match = all.find((l) => l.id === getLastLedgerId()) || all[0];
-      if (match) return openLedger(match, view);
+      if (match) { setNav(null); return openLedger(match, view); }
       // Nothing to host them, but Inventory and Grocery don't need a ledger —
       // show them standalone rather than dead-ending the tap.
       if (view === "inventory" || view === "grocery") setStandaloneView(view);
@@ -1509,12 +1509,19 @@ export default function App() {
     );
   }
 
+  // `nav` is a one-shot instruction from a tapped notification, but it lives up
+  // here and Ledger re-applies it on every mount — so a notification that once
+  // opened Inventory kept dragging every later ledger tap back there, long
+  // after it had been dealt with. Any navigation the user drives themselves
+  // retires it; the notification paths below set it fresh right after.
   if (!ledger) return <LedgerPicker lang={lang} changeLang={changeLang} t={t} theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent}
-    onOpen={(l) => openLedger(l, "ledger")} onHome={() => goToView("home")}
+    onOpen={(l) => { setNav(null); openLedger(l, "ledger"); }} onHome={() => goToView("home")}
     onNavigate={goToView} onNotification={openNotification}
     currentUserId={session.user.id} inviteMsg={inviteMsg} onDismissInvite={() => setInviteMsg(null)} />;
-  return <Ledger ledger={ledger} startView={entryView} nav={nav} onNotification={openNotification} currentUserId={session.user.id} onExit={() => setLedger(null)}
-    onSwitchLedger={(l) => openLedger(l, "ledger")} onSwitchLedgerHome={(l) => openLedger(l, "home")} lang={lang} changeLang={changeLang} t={t}
+  return <Ledger ledger={ledger} startView={entryView} nav={nav} onNotification={openNotification} currentUserId={session.user.id}
+    onExit={() => { setNav(null); setLedger(null); }}
+    onSwitchLedger={(l) => { setNav(null); openLedger(l, "ledger"); }}
+    onSwitchLedgerHome={(l) => { setNav(null); openLedger(l, "home"); }} lang={lang} changeLang={changeLang} t={t}
     theme={theme} changeTheme={changeTheme} accent={accent} changeAccent={changeAccent} />;
 }
 
