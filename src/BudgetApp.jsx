@@ -23,7 +23,7 @@ const MEMBER_ICONS = { user: User, people: Users, home: Home, plane: Plane, book
 const memberIcon = (icon) => MEMBER_ICONS[icon] || User;
 import { supabase } from "./lib/supabase";
 import * as db from "./lib/db";
-import { settlements, netBalances } from "./lib/settle";
+import { settlements, netBalances, sharedShares } from "./lib/settle";
 import { nextOccurrence, addDays } from "./lib/recurring";
 import { parseCsvText, guessCategoryId, buildPreviewRows } from "./lib/csv";
 import { parseNotificationUrl, notificationTarget } from "./lib/notificationLink";
@@ -3431,17 +3431,18 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
   const summary = useMemo(() => {
     let total = 0;
     const paid = new Map(members.map((m) => [m.id, 0]));
-    const sharedShare = new Map(members.map((m) => [m.id, 0]));
     for (const e of rows) {
       const amt = Number(e.amount) || 0;
       total += amt;
       if (paid.has(e.paidById)) paid.set(e.paidById, paid.get(e.paidById) + amt);
-      if (e.split === "shared") {
-        const sharers = (e.sharedWith || []).filter((id) => sharedShare.has(id));
-        if (sharers.length) for (const id of sharers) sharedShare.set(id, sharedShare.get(id) + amt / sharers.length);
-      }
     }
-    return { total, paid, sharedShare, balances: netBalances(rows, members), transfers: settlements(rows, members) };
+    // Shares come from settle.js rather than being re-derived here: splitting
+    // them separately in floats is what let two members each show $1,463.69 of
+    // a $2,927.37 bill — a cent more than was actually spent.
+    return {
+      total, paid, sharedShare: sharedShares(rows, members),
+      balances: netBalances(rows, members), transfers: settlements(rows, members),
+    };
   }, [rows, members]);
 
   if (!ready) return <Centered>{t("connecting")}</Centered>;
