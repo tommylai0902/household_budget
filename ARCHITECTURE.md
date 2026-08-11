@@ -91,6 +91,15 @@ flat background while everything around it has a starfield/daylight wash.
 `ToolScreen` is that shell packaged up for the two views rendered outside
 `Ledger` (below); it is not a general layout component.
 
+**Never gate a feature on a category *name*.** The expense reminder used to
+render only when the selected category was literally called `"Subscriptions"`,
+so it was invisible on any household ledger — that template never seeds such a
+category — and vanished the moment anyone renamed theirs. The identical
+mistake was already removed from recurring rules once (see
+`syncUpcomingChargeReminders` in `db.js`, which spells out the reasoning);
+this was the copy nobody caught. The toggle is the gate now, and the save path
+never checked the category to begin with.
+
 **`nav` is a one-shot instruction and has to be retired after use.** It lives
 in `App` while `Ledger` re-applies it in a `useEffect` on every mount, so a
 notification that once opened Inventory kept dragging every later ledger tap
