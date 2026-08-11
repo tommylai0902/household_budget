@@ -1413,7 +1413,15 @@ export default function App() {
     try {
       const all = await db.fetchLedgers();
       const match = pickLedger(all, target.ledgerId);
-      if (!match) return;
+      // Inventory notifications are household-wide (038) and name no ledger,
+      // so they need one only as a container. When there isn't a grown-up one
+      // — no ledgers at all, or a household whose only ledger is a Kid Ledger,
+      // which pickLedger deliberately skips — the tap used to do nothing at
+      // all. Show the tool on its own instead.
+      if (!match) {
+        if (target.view === "inventory" || target.view === "grocery") setStandaloneView(target.view);
+        return;
+      }
       setNav((prev) => ({ ...target, n: (prev?.n || 0) + 1 }));
       // "recurring" is a panel over the ledger, not a view of its own — the
       // Ledger's nav effect opens it; entryView just needs the page under it.
@@ -1428,13 +1436,19 @@ export default function App() {
   useEffect(() => {
     if (!userId || ledger) return;
     // A deep link names its own ledger, except for household-wide inventory
-    // (migration 038), which still needs *some* ledger to render inside —
-    // hence the first-ledger fallback rather than bouncing to the picker.
+    // (migration 038), which carries none — it opens inside whatever ledger is
+    // handy, or on its own if there isn't one.
     if (!deepLink && !getLastLedgerId()) return;
     let live = true;
     db.fetchLedgers().then((all) => {
       const match = deepLink ? pickLedger(all, deepLink.ledgerId) : all.find((l) => l.id === getLastLedgerId());
-      if (!live || !match) return;
+      if (!live) return;
+      if (!match) {
+        // Same dead end as openNotification: with no grown-up ledger to host
+        // it, tapping an inventory notification did nothing at all.
+        if (deepLink?.view === "inventory" || deepLink?.view === "grocery") setStandaloneView(deepLink.view);
+        return;
+      }
       openLedger(match, deepLink?.view === "recurring" ? "ledger" : (deepLink?.view || "home"));
     }).catch(() => {});
     return () => { live = false; };
