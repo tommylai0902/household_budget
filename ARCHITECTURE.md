@@ -91,6 +91,16 @@ flat background while everything around it has a starfield/daylight wash.
 `ToolScreen` is that shell packaged up for the two views rendered outside
 `Ledger` (below); it is not a general layout component.
 
+**`nav` is a one-shot instruction and has to be retired after use.** It lives
+in `App` while `Ledger` re-applies it in a `useEffect` on every mount, so a
+notification that once opened Inventory kept dragging every later ledger tap
+back there — you'd open a ledger from the picker and land in Inventory Hub,
+for the rest of the session, with nothing on screen explaining why. Each
+user-driven navigation (`onOpen`, `onExit`, `onSwitchLedger`, `goToView`) now
+clears it; the notification paths set it fresh immediately afterwards. Note
+`startView` cannot fix this on its own — `useState(startView)` only reads its
+argument on the first render, so the effect always wins.
+
 **Notifications for household-wide items carry no ledger, and must not need
 one.** `notificationTarget` returns `{ view: "inventory", ledgerId: null }` for
 an expiry reminder, so routing picks any grown-up ledger purely as a container.
