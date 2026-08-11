@@ -107,7 +107,7 @@ const STRINGS = {
     category: "Category", whoPaid: "Who paid?", paidBy: "Paid by", split: "Split",
     noMembersHint: "No members yet", noCategoriesHint: "No categories yet",
     noteLabel: "Note (optional)", noteDisplay: "Note", notePh: "Note",
-    cancel: "Cancel", saveChanges: "Save changes",
+    cancel: "Cancel", saveChanges: "Save changes", clearDate: "Clear date",
     newCatPh: "New category name", saveCategories: "Save categories", deleteCategory: "Delete category",
     close: "Close",
     owesLine: "{debtor} owes {creditor} {amount}", personalLine: "Personal expense — not split",
@@ -328,7 +328,7 @@ const STRINGS = {
     category: "類別", whoPaid: "付款人", paidBy: "付款人", split: "分帳",
     noMembersHint: "仲未有成員", noCategoriesHint: "仲未有類別",
     noteLabel: "備註（可選）", noteDisplay: "備註", notePh: "附註",
-    cancel: "取消", saveChanges: "儲存修改",
+    cancel: "取消", saveChanges: "儲存修改", clearDate: "清除日期",
     newCatPh: "新類別名稱", saveCategories: "儲存類別", deleteCategory: "刪除類別",
     close: "關閉",
     owesLine: "{debtor} 欠 {creditor} {amount}", personalLine: "個人支出，不分帳",
@@ -547,7 +547,7 @@ const STRINGS = {
     category: "类别", whoPaid: "付款人", paidBy: "付款人", split: "分账",
     noMembersHint: "还没有成员", noCategoriesHint: "还没有类别",
     noteLabel: "备注（可选）", noteDisplay: "备注", notePh: "备注",
-    cancel: "取消", saveChanges: "保存修改",
+    cancel: "取消", saveChanges: "保存修改", clearDate: "清除日期",
     newCatPh: "新类别名称", saveCategories: "保存类别", deleteCategory: "删除类别",
     close: "关闭",
     owesLine: "{debtor} 欠 {creditor} {amount}", personalLine: "个人支出，不分账",
@@ -765,7 +765,7 @@ const STRINGS = {
     category: "Catégorie", whoPaid: "Qui a payé ?", paidBy: "Payé par", split: "Partage",
     noMembersHint: "Aucun membre", noCategoriesHint: "Aucune catégorie",
     noteLabel: "Note (facultatif)", noteDisplay: "Note", notePh: "Note",
-    cancel: "Annuler", saveChanges: "Enregistrer",
+    cancel: "Annuler", saveChanges: "Enregistrer", clearDate: "Effacer la date",
     newCatPh: "Nom de la nouvelle catégorie", saveCategories: "Enregistrer les catégories", deleteCategory: "Supprimer la catégorie",
     close: "Fermer",
     owesLine: "{debtor} doit {amount} à {creditor}", personalLine: "Dépense personnelle — non partagée",
@@ -984,7 +984,7 @@ const STRINGS = {
     category: "Categoría", whoPaid: "¿Quién pagó?", paidBy: "Pagado por", split: "División",
     noMembersHint: "Aún no hay miembros", noCategoriesHint: "Aún no hay categorías",
     noteLabel: "Nota (opcional)", noteDisplay: "Nota", notePh: "Nota",
-    cancel: "Cancelar", saveChanges: "Guardar cambios",
+    cancel: "Cancelar", saveChanges: "Guardar cambios", clearDate: "Borrar fecha",
     newCatPh: "Nombre de la nueva categoría", saveCategories: "Guardar categorías", deleteCategory: "Eliminar categoría",
     close: "Cerrar",
     owesLine: "{debtor} le debe {amount} a {creditor}", personalLine: "Gasto personal, no se divide",
@@ -2536,10 +2536,10 @@ function NewLedgerFlow({ t, busy, onCreate }) {
         <div ref={travelRef} style={{ paddingTop: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("tripDates")}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            <input type="date" value={startDate} max={endDate || undefined} onChange={(e) => setStartDate(e.target.value)}
-              aria-label={t("tripStartDate")} style={{ ...input, flex: 1 }} />
-            <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)}
-              aria-label={t("tripEndDate")} style={{ ...input, flex: 1 }} />
+            <ClearableDate t={t} value={startDate} max={endDate || undefined} onChange={(e) => setStartDate(e.target.value)}
+              aria-label={t("tripStartDate")} style={{ ...input }} />
+            <ClearableDate t={t} value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)}
+              aria-label={t("tripEndDate")} style={{ ...input }} />
           </div>
           <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 6 }}>{t("currency")}</div>
           <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ ...input, width: "auto" }}>
@@ -4985,7 +4985,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                 flex-shrink/minWidth, so cramming it in with the other two let it
                 overflow the card edge on a phone. */}
             <Field label={t("expiryDate")} style={{ marginTop: 8 }}>
-              <input type="date" value={d.invExpiryDate || ""} onChange={(e) => setD({ ...d, invExpiryDate: e.target.value })} style={dateInput} />
+              <ClearableDate t={t} value={d.invExpiryDate || ""} onChange={(e) => setD({ ...d, invExpiryDate: e.target.value })} />
             </Field>
           </>
         )}
@@ -5780,12 +5780,12 @@ function HeaderMenu({ t, lang, changeLang, theme, changeTheme, accent, changeAcc
                 <Plane size={15} /> <span style={{ flex: 1 }}>{t("tripDates")}</span>
               </div>
               <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-                <input type="date" value={tripDates.startDate || ""} max={tripDates.endDate || undefined}
+                <ClearableDate t={t} value={tripDates.startDate || ""} max={tripDates.endDate || undefined}
                   onChange={(e) => onChangeTripDates(e.target.value, tripDates.endDate)}
-                  aria-label={t("tripStartDate")} style={{ ...input, flex: 1, fontSize: 12, padding: "6px 8px" }} />
-                <input type="date" value={tripDates.endDate || ""} min={tripDates.startDate || undefined}
+                  aria-label={t("tripStartDate")} style={{ ...input, fontSize: 12, padding: "6px 8px" }} />
+                <ClearableDate t={t} value={tripDates.endDate || ""} min={tripDates.startDate || undefined}
                   onChange={(e) => onChangeTripDates(tripDates.startDate, e.target.value)}
-                  aria-label={t("tripEndDate")} style={{ ...input, flex: 1, fontSize: 12, padding: "6px 8px" }} />
+                  aria-label={t("tripEndDate")} style={{ ...input, fontSize: 12, padding: "6px 8px" }} />
               </div>
             </div>
           )}
@@ -6770,7 +6770,7 @@ function InventoryPanel({ t, lang, onSwitchView }) {
               flex-shrink/minWidth, so cramming it in with the other two let it
               overflow the card edge on a phone. */}
           <Field label={t("expiryDate")}>
-            <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={dateInput} />
+            <ClearableDate t={t} value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} />
           </Field>
           <Field label={t("minQuantityLabel")}>
             <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
@@ -7012,7 +7012,7 @@ function InventoryItemForm({ item, t, categories = [], locations = [], onManage,
           flex-shrink/minWidth, so cramming it in with the other two let it
           overflow the card edge on a phone. */}
       <Field label={t("expiryDate")}>
-        <input type="date" value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} style={dateInput} />
+        <ClearableDate t={t} value={draft.expiryDate} onChange={(e) => setDraft({ ...draft, expiryDate: e.target.value })} />
       </Field>
       <Field label={t("minQuantityLabel")}>
         <input type="number" inputMode="decimal" value={draft.minQuantity} onChange={(e) => setDraft({ ...draft, minQuantity: e.target.value })} style={input} />
@@ -7993,6 +7993,31 @@ const input = { width: "100%", boxSizing: "border-box", padding: "10px 12px", bo
 // not a flex or box-sizing bug, appearance:none is what actually stops it
 // (the date picker itself still opens on tap).
 const dateInput = { ...input, WebkitAppearance: "none", appearance: "none" };
+
+// An optional <input type="date"> with a way to empty it again.
+//
+// The bare input has none. Desktop Chrome hides that behind a "Clear" button
+// inside its own picker popup, but iOS Safari's picker is a wheel with no such
+// affordance — and iOS is where this app actually runs, as a home-screen PWA.
+// So an expiry date, once set even by accident, could never be removed: the
+// item stayed flagged Expired forever with no way back.
+//
+// Emits the same synthetic shape as a real change event so every call site can
+// keep its `(e) => ... e.target.value` handler untouched.
+function ClearableDate({ value, onChange, t, style = dateInput, ...rest }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+      <input type="date" value={value || ""} onChange={onChange} style={{ ...style, flex: 1, minWidth: 0 }} {...rest} />
+      {value ? (
+        <button type="button" onClick={() => onChange({ target: { value: "" } })}
+          aria-label={t("clearDate")} title={t("clearDate")}
+          style={{ ...iconBtn, flexShrink: 0 }}>
+          <X size={15} />
+        </button>
+      ) : null}
+    </div>
+  );
+}
 // fontSize 16, not input's 15: below 16px, iOS Safari zooms in on focus and,
 // for a <select>, sometimes doesn't fully zoom back out after you pick a
 // value — leaving the page clipped/squeezed at the top until you scroll.
