@@ -52,6 +52,16 @@ assert.deepEqual(translateZhGroceryTerm("椰菜花"), ["cauliflower"], "should n
 // Same rule inside a longer sentence, where only substring matching applies.
 assert.deepEqual(translateZhGroceryTerm("今晚煮三文魚"), ["salmon"]);
 
+// A short compound noun is never picked apart. 魚露 (fish sauce) contains 魚,
+// and guessing "fish" from it returned 25 confident, entirely wrong fish deals
+// — worse than admitting the word is unknown.
+assert.equal(translateZhGroceryTerm("魚露"), null, "魚露 must not be read as 魚");
+assert.equal(translateZhGroceryTerm("豬頸肉"), null, "unknown 3-char compound stays unknown");
+assert.equal(translateZhGroceryTerm("腐乳"), null);
+// ...but the exact entries those characters belong to still resolve.
+assert.deepEqual(translateZhGroceryTerm("魚"), ["fish"]);
+assert.deepEqual(translateZhGroceryTerm("豬肉"), ["pork"]);
+
 // No English target may be a substring of a longer unrelated word once the
 // caller matches on word boundaries — a bare "egg" is fine, "cling" was not.
 const BAD_SUBSTRINGS = ["cling"];

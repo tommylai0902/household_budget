@@ -126,9 +126,23 @@ export default async function handler(req, res) {
   // One term can also map to several competing English spellings (cling wrap /
   // clingwrap / plastic wrap all appear for 保鮮紙), so every alternative is
   // searched too rather than stopping at the first that hits.
+  // What this actually searched in English, echoed back so the answer can be
+  // checked rather than trusted. A wrong term is otherwise indistinguishable
+  // from an absent deal: "no flyer deals for 菜心" reads like a fact about the
+  // shops when it may only mean we looked for the wrong word.
+  let searchedAs = null;
+  let untranslated = false;
+
   if (hasChineseChars(q)) {
+    const terms = translateZhGroceryTerm(q);
+    // No entry at all: the only thing searched was the Chinese itself, and the
+    // mirror holds no Chinese product names (0 of 15,587 rows as of 2026-08).
+    // So this is "we don't know this word", not "nothing is on sale".
+    if (!terms) untranslated = true;
+    else searchedAs = terms;
+
     const lists = [data || []];
-    for (const en of translateZhGroceryTerm(q) || []) {
+    for (const en of terms || []) {
       const alt = await searchTerm(en);
       if (alt.error) return res.status(500).json({ error: alt.error.message });
       lists.push(alt.data || []);
@@ -157,7 +171,7 @@ export default async function handler(req, res) {
     const region = supabase.from("flyer_items").select("id", { count: "exact", head: true }).eq("postal_code", postalCode);
     const { count: total } = await region;
     // Never mirrored this region.
-    if (!total) return res.status(200).json({ query: q, deals: [], lowestPrice: null, lowestMerchant: null, pending: true });
+    if (!total) return res.status(200).json({ query: q, deals: [], lowestPrice: null, lowestMerchant: null, pending: true, searchedAs, untranslated });
 
     // Mirrored, but nothing in it is still valid. This is exact rather than a
     // staleness threshold: the region always carries some live flyer while the
@@ -171,8 +185,32 @@ export default async function handler(req, res) {
         .order("fetched_at", { ascending: false }).limit(1).maybeSingle();
       return res.status(200).json({
         query: q, deals: [], lowestPrice: null, lowestMerchant: null,
-        stale: true, lastRun: last?.fetched_at || null,
+        stale: true, lastRun: last?.fetched_at || null, searchedAs, untranslated,
       });
+    }
+
+    // The mirror is healthy, so the miss is about the word rather than the
+    // data. Does the term appear in this region's flyers AT ALL — ignoring
+    // whether it's currently on sale? Measured on the live mirror: a literal
+    // translation scores zero every time ("vegetable heart" 0 vs "choy sum" 4,
+    // "chinese cabbage" 0 vs "bok choy" 19) while a real retail word scores
+    // positive, so this separates "we searched the wrong word" from "that
+    // product just isn't on sale this week".
+    //
+    // A signal, never a verdict: "plastic wrap" is a perfectly good term that
+    // happened to score 0 the week this was written. It only changes the
+    // wording, never whether results are shown.
+    if (searchedAs?.length) {
+      const anyPattern = searchedAs.map((t) => `name.imatch.${wordPattern(t)}`).join(",");
+      const { count: everSeen } = await supabase
+        .from("flyer_items").select("id", { count: "exact", head: true })
+        .eq("postal_code", postalCode).or(anyPattern);
+      if (!everSeen) {
+        return res.status(200).json({
+          query: q, deals: [], lowestPrice: null, lowestMerchant: null,
+          termNotInFlyers: true, searchedAs, untranslated,
+        });
+      }
     }
   }
 
@@ -181,5 +219,7 @@ export default async function handler(req, res) {
     deals,
     lowestPrice: deals[0]?.price ?? null,
     lowestMerchant: deals[0]?.merchant ?? null,
+    searchedAs,
+    untranslated,
   });
 }

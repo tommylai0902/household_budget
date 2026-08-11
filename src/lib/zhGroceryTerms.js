@@ -101,11 +101,21 @@ export const hasChineseChars = (s) => /[一-鿿]/.test(s || "");
 // "雞脾"), else the first known term found anywhere inside a longer phrase.
 // Always returns an array (or null), since one term can map to several
 // competing flyer spellings — see ZH_TO_EN above.
+// Below this length, a Chinese string is a product name in its own right, not
+// a sentence with a product buried in it — so an unknown one must stay unknown
+// rather than be guessed at from a character it happens to contain.
+const PHRASE_MIN_LENGTH = 5;
+
 export function translateZhGroceryTerm(term) {
   const trimmed = (term || "").trim();
   if (!trimmed) return null;
   let hit = ZH_TO_EN[trimmed];
-  if (!hit) {
+  if (!hit && trimmed.length >= PHRASE_MIN_LENGTH) {
+    // Substring matching is for phrases ("今晚想食雞脾"), never for compound
+    // nouns. 魚露 is fish sauce, but it contains 魚, so this branch used to
+    // translate it as "fish" and hand back 25 confident, entirely wrong fish
+    // deals. A wrong answer delivered confidently is worse than no answer.
+    //
     // Longest key wins, not first-declared. Short keys are substrings of longer
     // ones all over this table ("蛋" inside "蛋糕", "魚" inside "三文魚"), so
     // scanning in declaration order would translate 蛋糕 as "egg" purely

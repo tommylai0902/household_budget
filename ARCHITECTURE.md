@@ -290,7 +290,22 @@ nobody actually looked:
 |---|---|---|
 | `pending: true` | no rows for the region at all — never mirrored | `dealsPending` |
 | `stale: true` + `lastRun` | rows exist, but **none are still valid** | `dealsStale`, naming the date |
+| `untranslated: true` | Chinese term with no dictionary entry — **nothing was searched in English** | `dealsUnknownTerm` |
+| `termNotInFlyers: true` | searched, but the English word never appears in this region at all | `dealsTermNotInFlyers` |
 | neither, `deals: []` | mirror is current, nothing matched | `dealsNoneFound` |
+
+Every response also carries `searchedAs` — the English terms actually used —
+and the price-match sheet prints it. A wrong translation is otherwise
+indistinguishable from an absent deal, and that transparency immediately
+caught a real one (below).
+
+`termNotInFlyers` leans on the mirror as a vocabulary corpus: measured against
+it, a literal translation scores zero every time (`vegetable heart` 0 vs
+`choy sum` 4, `chinese cabbage` 0 vs `bok choy` 19, `soya sauce` 0 vs
+`soy sauce` 24) while a real retail word scores positive. It is a **signal,
+not a verdict** — `plastic wrap` is a perfectly good term that happened to
+score 0 the week this was written — so it only changes the wording, never
+whether results are shown.
 
 The stale check is exact rather than an age threshold: while the cron keeps
 up, the region always carries some live flyer, so *zero* live rows means a run
@@ -341,7 +356,15 @@ that code: as of 2026-08 the mirror holds **no Chinese product names at all**
 in English), so today this merge is insurance rather than an active gain.
 `zhGroceryTerms.js` is what actually does the work, and its coverage is the
 real limit — a term missing from it returns nothing rather than searching
-English. Lookup takes the **longest** matching key, not the first declared:
+English. **Substring matching only applies to phrases**, never to short compound nouns
+(`PHRASE_MIN_LENGTH`). 魚露 is fish sauce and has no entry, but it contains 魚,
+so the fallback used to translate it as "fish" and hand back 25 confident,
+entirely wrong fish deals. Under five characters a Chinese string is a product
+name in its own right: if it isn't in the table, it stays unknown. Longer
+strings are sentences with a product buried in them ("今晚煮三文魚"), which is
+what the fallback is for.
+
+Lookup takes the **longest** matching key, not the first declared:
 short keys are substrings of longer ones throughout ("蛋" inside "蛋糕", "魚"
 inside "三文魚"), and hand-ordering the table is a trap that springs on
 whoever adds the next entry.

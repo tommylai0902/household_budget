@@ -182,6 +182,9 @@ const STRINGS = {
     dealCheckErr: "Couldn't check prices: {msg}",
     dealsPending: "No flyer prices for this area yet — the first update is still to run.",
     dealsStale: "Flyer prices are out of date (last updated {date}), so this isn't a reliable \"no deals\".",
+    dealsUnknownTerm: "「{term}」 isn't in the Chinese→English list yet, so nothing was searched in English. Try the English name.",
+    dealsTermNotInFlyers: "Searched for \"{terms}\" — that word never appears in local flyers, so it may be the wrong name for it here.",
+    dealsSearchedAs: "Searched as: {terms}",
     dealsNoneFound: "No flyer deals found for this item.",
     priceMatchTitle: "Flyer prices: {name}", priceMatchHint: "Show this to the cashier to price match. Tap one to save it to your list.",
     dealValidUntil: "Valid until {date}", dealNoImage: "This flyer deal has no picture.",
@@ -399,6 +402,9 @@ const STRINGS = {
     dealCheckErr: "格價失敗：{msg}",
     dealsPending: "呢區仲未有海報價，第一次更新未跑過。",
     dealsStale: "海報價已經過期（最後更新 {date}），所以呢個「冇優惠」信唔過。",
+    dealsUnknownTerm: "「{term}」仍未在中英對照表內，所以完全冇搜過英文。試下直接打英文名。",
+    dealsTermNotInFlyers: "搜咗「{terms}」—— 呢個詞喺本地 flyer 從未出現過，可能係用錯咗詞。",
+    dealsSearchedAs: "搜索詞：{terms}",
     dealsNoneFound: "搵唔到呢件貨嘅海報優惠。",
     priceMatchTitle: "海報價：{name}", priceMatchHint: "俾收銀睇呢張就可以格價。撳一個存返落清單。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "呢個海報優惠冇圖。",
@@ -616,6 +622,9 @@ const STRINGS = {
     dealCheckErr: "比价失败：{msg}",
     dealsPending: "本地区还没有传单价格，第一次更新尚未运行。",
     dealsStale: "传单价格已过期（最后更新 {date}），所以这个「没有优惠」不可靠。",
+    dealsUnknownTerm: "「{term}」还不在中英对照表里，所以完全没搜过英文。试试直接输入英文名。",
+    dealsTermNotInFlyers: "搜了「{terms}」—— 这个词在本地传单从未出现过，可能是用错了词。",
+    dealsSearchedAs: "搜索词：{terms}",
     dealsNoneFound: "没有找到这件商品的传单优惠。",
     priceMatchTitle: "传单价格：{name}", priceMatchHint: "把这个给收银员看即可比价。点一个保存到清单。",
     dealValidUntil: "有效期至 {date}", dealNoImage: "这个传单优惠没有图片。",
@@ -831,6 +840,9 @@ const STRINGS = {
     dealCheckErr: "Impossible de vérifier les prix : {msg}",
     dealsPending: "Pas encore de prix de circulaire pour cette région — la première mise à jour n'a pas encore eu lieu.",
     dealsStale: "Les prix des circulaires sont périmés (dernière mise à jour : {date}), donc cette absence d'aubaines n'est pas fiable.",
+    dealsUnknownTerm: "« {term} » n'est pas encore dans la liste chinois→anglais, donc rien n'a été cherché en anglais. Essayez le nom anglais.",
+    dealsTermNotInFlyers: "Recherche de « {terms} » — ce mot n'apparaît jamais dans les circulaires d'ici, ce n'est peut-être pas le bon nom.",
+    dealsSearchedAs: "Recherché comme : {terms}",
     dealsNoneFound: "Aucune aubaine trouvée pour cet article.",
     priceMatchTitle: "Prix en circulaire : {name}", priceMatchHint: "Montrez ceci à la caisse pour l'ajustement de prix. Touchez-en un pour l'enregistrer.",
     dealValidUntil: "Valide jusqu'au {date}", dealNoImage: "Cette aubaine n'a pas d'image.",
@@ -1047,6 +1059,9 @@ const STRINGS = {
     dealCheckErr: "No se pudieron comprobar los precios: {msg}",
     dealsPending: "Aún no hay precios de folleto para esta zona — la primera actualización todavía no se ha ejecutado.",
     dealsStale: "Los precios de folleto están desactualizados (última actualización: {date}), así que este «sin ofertas» no es fiable.",
+    dealsUnknownTerm: "«{term}» aún no está en la lista chino→inglés, así que no se buscó nada en inglés. Prueba con el nombre en inglés.",
+    dealsTermNotInFlyers: "Se buscó «{terms}»: esa palabra nunca aparece en los folletos de aquí, quizá no sea el nombre correcto.",
+    dealsSearchedAs: "Buscado como: {terms}",
     dealsNoneFound: "No se encontraron ofertas de folleto para este artículo.",
     priceMatchTitle: "Precios de folleto: {name}", priceMatchHint: "Muestra esto en caja para igualar el precio. Toca uno para guardarlo en tu lista.",
     dealValidUntil: "Válido hasta el {date}", dealNoImage: "Esta oferta no tiene imagen.",
@@ -7027,7 +7042,7 @@ const NEW_GROCERY_ITEM = { itemName: "", quantityNeeded: 1, brand: "" };
 // reporting either as "no deals" tells the user a product isn't on sale when
 // nobody actually looked. Returns "" when the result is genuinely empty, so
 // callers can fall through to their own not-found message.
-const dealsMirrorMessage = (result, t, lang) => {
+const dealsMirrorMessage = (result, t, lang, query = "") => {
   if (result?.pending) return t("dealsPending");
   if (result?.stale) {
     const date = result.lastRun
@@ -7035,6 +7050,14 @@ const dealsMirrorMessage = (result, t, lang) => {
       : "—";
     return t("dealsStale", { date });
   }
+  // Nothing was searched in English at all — the Chinese→English list has no
+  // entry, and the mirror holds no Chinese product names. Reporting this as
+  // "no deals found" would be a claim about the shops when the truth is we
+  // never looked.
+  if (result?.untranslated) return t("dealsUnknownTerm", { term: result.query || query });
+  // We looked, but the word we looked for has never once appeared in this
+  // region's flyers — so it is probably not what the shops call it here.
+  if (result?.termNotInFlyers) return t("dealsTermNotInFlyers", { terms: (result.searchedAs || []).join(", ") });
   return "";
 };
 
@@ -7112,7 +7135,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
       const mirrorMsg = dealsMirrorMessage(result, t, lang);
       if (mirrorMsg) setToast({ id: Date.now(), text: mirrorMsg });
       else if (!result.deals?.length) setToast({ id: Date.now(), text: t("dealsNoneFound") });
-      else setDealsFor({ item, deals: result.deals });
+      else setDealsFor({ item, deals: result.deals, searchedAs: result.searchedAs });
     } catch (e) {
       setError(t("dealCheckErr", { msg: e.message || String(e) }));
     }
@@ -7139,7 +7162,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
       const mirrorMsg = dealsMirrorMessage(result, t, lang);
       if (mirrorMsg) setToast({ id: Date.now(), text: mirrorMsg });
       else if (!result.deals?.length) setToast({ id: Date.now(), text: t("dealsNoneFound") });
-      else setDealsFor({ item: { id: null, itemName: name, brand: out.brand || "" }, deals: result.deals });
+      else setDealsFor({ item: { id: null, itemName: name, brand: out.brand || "" }, deals: result.deals, searchedAs: result.searchedAs });
     } catch (e) {
       setError(
         e.code === "no_product" ? t("scanNoProduct")
@@ -7268,7 +7291,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
         </>
       )}
       {dealsFor && (
-        <PriceMatchPanel deals={dealsFor.deals} itemName={dealsFor.item.itemName} t={t} lang={lang}
+        <PriceMatchPanel deals={dealsFor.deals} itemName={dealsFor.item.itemName} searchedAs={dealsFor.searchedAs} t={t} lang={lang}
           onPick={pickDeal} onClose={() => setDealsFor(null)} />
       )}
       {showStores && (
@@ -7288,10 +7311,18 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
 // cutout artwork — the product clipped straight out of this week's flyer with
 // its price on it — plus the merchant and the expiry date, which is what a
 // cashier checks before honouring a match. A number alone proves nothing.
-function PriceMatchPanel({ deals, itemName, t, lang, onPick, onClose }) {
+function PriceMatchPanel({ deals, itemName, searchedAs, t, lang, onPick, onClose }) {
   return (
     <Overlay title={t("priceMatchTitle", { name: itemName })} onClose={onClose} t={t}>
       <div style={{ fontSize: 12.5, color: SUB, marginBottom: 4 }}>{t("priceMatchHint")}</div>
+      {/* Only when a Chinese item was translated to get here: the English term
+          is what the results were actually matched on, and seeing it is the
+          difference between trusting a wrong answer and spotting it. */}
+      {searchedAs?.length > 0 && (
+        <div style={{ fontSize: 12, color: SUB, marginBottom: 4, fontStyle: "italic" }}>
+          {t("dealsSearchedAs", { terms: searchedAs.join(", ") })}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {deals.map((d, i) => (
           <div key={i} style={{ position: "relative" }}>
