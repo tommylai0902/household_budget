@@ -71,6 +71,17 @@ has not been "meaning to be split". Find things by `grep`, not by directory.
 **The one hard rule:** Postgres is `snake_case`, the app is `camelCase`, and
 *all* mapping lives in `db.js`. No component touches a raw row.
 
+**An optional date needs `ClearableDate`, not a bare `<input type="date">`.**
+The native input has no way to empty itself. Desktop Chrome hides that behind
+a Clear button inside its own picker popup, but iOS Safari's picker is a wheel
+with no such affordance — and iOS is where this app actually runs, as a
+home-screen PWA. An expiry date set even by accident could never be removed,
+so the item stayed flagged Expired with no way back. `ClearableDate` adds an
+explicit × and emits the same synthetic `{ target: { value: "" } }` a real
+change event would, so call sites keep their existing handlers. Required dates
+(an expense's own date, a CSV row, a reminder) deliberately still use the bare
+input — there is nothing sensible to clear them to.
+
 **Every full-screen view renders its own background.** Sign-in, the ledger
 picker, the ledger view, and any popup that floats over page content each call
 `theme === "dark" ? <CosmicBackground/> : <DaylightBackground/>` (both defined
