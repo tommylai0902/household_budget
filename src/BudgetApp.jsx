@@ -284,8 +284,8 @@ const STRINGS = {
     goalNamePh: "e.g. Lego Star Wars", goalAmountLabel: "Target amount", saveGoal: "Save goal",
     goalReached: "🎉 Goal reached!", recentActivity: "Recent Activity",
     noKidActivity: "No adventures yet!", kidEmptyCta: "Let's earn some coins!",
-    cancellationReminder: "Cancellation Reminder", remindMeToCancel: "Remind me to cancel",
-    cancellationReminderTitle: "Cancel {name} before it renews",
+    expenseReminder: "Reminder", remindMeAbout: "Remind me about this",
+    expenseReminderTitle: "Reminder: {name}",
     upcomingChargeTitle: "Upcoming charge for {name} in {days} days",
     // Dated rather than "expires soon": the row outlives the day it appears,
     // and a stale "soon" on something a week gone reads as a broken app.
@@ -503,8 +503,8 @@ const STRINGS = {
     goalNamePh: "例如：Lego Star Wars", goalAmountLabel: "目標金額", saveGoal: "儲存目標",
     goalReached: "🎉 達成目標喇！", recentActivity: "最近活動",
     noKidActivity: "仲未有冒險！", kidEmptyCta: "去賺啲金幣啦！",
-    cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
-    cancellationReminderTitle: "續約前記得取消{name}",
+    expenseReminder: "提醒", remindMeAbout: "就呢筆提醒我",
+    expenseReminderTitle: "提醒：{name}",
     upcomingChargeTitle: "{name} {days} 日後扣款",
     expiryReminderTitle: "{name} {date} 到期",
     pushEnable: "喺呢部機通知我", pushDisable: "唔好再喺呢部機通知",
@@ -723,8 +723,8 @@ const STRINGS = {
     goalNamePh: "例如：乐高星球大战", goalAmountLabel: "目标金额", saveGoal: "保存目标",
     goalReached: "🎉 达成目标啦！", recentActivity: "最近活动",
     noKidActivity: "还没有冒险！", kidEmptyCta: "去赚点金币吧！",
-    cancellationReminder: "取消提醒", remindMeToCancel: "提醒我取消",
-    cancellationReminderTitle: "续约前记得取消{name}",
+    expenseReminder: "提醒", remindMeAbout: "就这笔提醒我",
+    expenseReminderTitle: "提醒：{name}",
     upcomingChargeTitle: "{name} 将在 {days} 天后扣款",
     expiryReminderTitle: "{name} {date} 到期",
     pushEnable: "在这台设备上通知我", pushDisable: "停止在这台设备上通知",
@@ -942,8 +942,8 @@ const STRINGS = {
     goalNamePh: "ex. Lego Star Wars", goalAmountLabel: "Montant visé", saveGoal: "Enregistrer l'objectif",
     goalReached: "🎉 Objectif atteint !", recentActivity: "Activité récente",
     noKidActivity: "Pas encore d'aventures !", kidEmptyCta: "Gagnons des pièces !",
-    cancellationReminder: "Rappel d'annulation", remindMeToCancel: "Me rappeler d'annuler",
-    cancellationReminderTitle: "Annuler {name} avant le renouvellement",
+    expenseReminder: "Rappel", remindMeAbout: "Me le rappeler",
+    expenseReminderTitle: "Rappel : {name}",
     upcomingChargeTitle: "Prélèvement de {name} dans {days} jours",
     expiryReminderTitle: "{name} périme le {date}",
     pushEnable: "M'avertir sur cet appareil", pushDisable: "Ne plus avertir cet appareil",
@@ -1161,8 +1161,8 @@ const STRINGS = {
     goalNamePh: "p. ej. Lego Star Wars", goalAmountLabel: "Monto objetivo", saveGoal: "Guardar meta",
     goalReached: "🎉 ¡Meta alcanzada!", recentActivity: "Actividad reciente",
     noKidActivity: "¡Aún no hay aventuras!", kidEmptyCta: "¡Vamos a ganar monedas!",
-    cancellationReminder: "Recordatorio de cancelación", remindMeToCancel: "Recuérdame cancelar",
-    cancellationReminderTitle: "Cancela {name} antes de que se renueve",
+    expenseReminder: "Recordatorio", remindMeAbout: "Recuérdamelo",
+    expenseReminderTitle: "Recordatorio: {name}",
     upcomingChargeTitle: "Cargo próximo de {name} en {days} días",
     expiryReminderTitle: "{name} caduca el {date}",
     pushEnable: "Avisarme en este dispositivo", pushDisable: "Dejar de avisar en este dispositivo",
@@ -1275,6 +1275,15 @@ const okTintsFor = (accent, theme) => (theme === "dark"
   ? { bg: mix(accent, "#14171A", 0.24), ink: mix(accent, "#ffffff", 0.55), line: mix(accent, "#14171A", 0.44), strong: mix(accent, "#14171A", 0.34) }
   : { bg: mix(accent, "#ffffff", 0.12), ink: accent, line: mix(accent, "#ffffff", 0.32), strong: mix(accent, "#ffffff", 0.22) });
 const todayISO = () => new Date().toISOString().slice(0, 10);
+// Three days before the expense's own date suits a renewal you're logging on
+// the billing date, but for anything already past it lands in the past — and
+// fetchNotifications surfaces everything due on or before today, so the
+// reminder would fire the instant it was saved. Fall back to a week out.
+// ISO dates compare correctly as strings.
+const defaultReminderDate = (date) => {
+  const lead = addDays(date, -3);
+  return lead > todayISO() ? lead : addDays(todayISO(), 7);
+};
 const monthOf = (iso) => (iso || "").slice(0, 7);
 const nextMonthOf = (month) => {
   const [y, m] = month.split("-").map(Number);
@@ -3380,7 +3389,7 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
       else expenseId = await db.insertExpense(draft, ledger.id);
       if (draft.hasReminder && draft.reminderDate) {
         await db.upsertReminderNotification(ledger.id, expenseId, {
-          title: t("cancellationReminderTitle", { name: draft.description }), remindAt: draft.reminderDate,
+          title: t("expenseReminderTitle", { name: draft.description }), remindAt: draft.reminderDate,
         });
       } else if (reminders.has(expenseId)) {
         // The toggle was turned off, or the category changed away from
@@ -4741,13 +4750,12 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
     && (d.split !== "shared" || sharerCount > 0) && (!d.hasReminder || d.reminderDate) && !busy;
   // Name-based, not template-based — "Subscriptions" only ships pre-seeded in
   // the Personal template, but any ledger can rename/add a category to match.
-  const isSubscription = catName(categories.find((c) => c.id === d.categoryId)) === "Subscriptions";
   const toggleReminder = () => setD((prev) => ({
     ...prev, hasReminder: !prev.hasReminder,
     // Default only fills in once, on the way from off to on — a date you've
     // already adjusted shouldn't get silently overwritten by re-deriving it
     // from the billing date on every render.
-    reminderDate: !prev.hasReminder && !prev.reminderDate ? addDays(prev.date, -3) : prev.reminderDate,
+    reminderDate: !prev.hasReminder && !prev.reminderDate ? defaultReminderDate(prev.date) : prev.reminderDate,
   }));
 
   // Offer to keep a shop only when it isn't already saved, and never pre-ticked —
@@ -4997,18 +5005,23 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
           </>
         )}
       </Field>
-      {isSubscription && (
-        <Field label={t("cancellationReminder")}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
-            <input type="checkbox" checked={d.hasReminder} onChange={toggleReminder} />
-            {t("remindMeToCancel")}
-          </label>
-          {d.hasReminder && (
-            <input type="date" value={d.reminderDate} onChange={(e) => setD({ ...d, reminderDate: e.target.value })}
-              style={{ ...dateInput, marginTop: 8 }} />
-          )}
-        </Field>
-      )}
+      {/* Shown for every expense, not just a category literally named
+          "Subscriptions". That name-match was removed from recurring rules for
+          exactly this reason (see syncUpcomingChargeReminders in db.js): a
+          category renamed or spelled anything else silently lost the feature —
+          and the household template never seeds "Subscriptions" at all, so it
+          was simply absent there. The toggle is the gate, as it already is
+          everywhere else; the save path never checked the category. */}
+      <Field label={t("expenseReminder")}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
+          <input type="checkbox" checked={d.hasReminder} onChange={toggleReminder} />
+          {t("remindMeAbout")}
+        </label>
+        {d.hasReminder && (
+          <ClearableDate t={t} value={d.reminderDate} onChange={(e) => setD({ ...d, reminderDate: e.target.value })}
+            style={{ ...dateInput, marginTop: 8 }} />
+        )}
+      </Field>
       {features.showSplit && (
         <>
           <Field label={
