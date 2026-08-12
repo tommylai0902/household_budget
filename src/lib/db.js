@@ -569,14 +569,15 @@ export async function syncUpcomingChargeReminders(ledgerId, buildTitle) {
 // surfaces immediately instead of being silently skipped.
 export const EXPIRY_LEAD_DAYS = 3; // matches the Inventory panel's own "Expiring soon" window
 
-// Inventory is household-wide, not ledger-scoped (migration 038) — so are
-// the reminders it generates. Written with ledger_id null; the bell's RLS
-// (migration 038) treats a null-ledger notification as visible to any
-// household member rather than gating it to one ledger's roster.
-export async function syncExpiryReminders(buildTitle) {
+// Inventory is scoped to one household ledger (migration 043) — so are the
+// reminders it generates. Run once per household ledger the caller has
+// opened, same as syncUpcomingChargeReminders above; a household ledger
+// nobody's opened yet gets its expiry reminders from the send-reminders.js
+// cron instead, same fallback that already covers upcoming-charge reminders.
+export async function syncExpiryReminders(ledgerId, buildTitle) {
   const [{ data: items, error: ierr }, { data: existing, error: eerr }] = await Promise.all([
-    supabase.from("inventory_items").select("id, name, expiry_date"),
-    supabase.from("notifications").select("inventory_item_id, cycle_date").is("ledger_id", null).not("inventory_item_id", "is", null),
+    supabase.from("inventory_items").select("id, name, expiry_date").eq("ledger_id", ledgerId),
+    supabase.from("notifications").select("inventory_item_id, cycle_date").eq("ledger_id", ledgerId).not("inventory_item_id", "is", null),
   ]);
   if (ierr) throw ierr;
   if (eerr) throw eerr;
@@ -590,7 +591,7 @@ export async function syncExpiryReminders(buildTitle) {
     if (tracked.get(item.id) === item.expiry_date) continue; // already built for this date — leave any manual edit alone
     const { error } = await supabase.from("notifications").upsert(
       {
-        ledger_id: null, inventory_item_id: item.id,
+        ledger_id: ledgerId, inventory_item_id: item.id,
         title: buildTitle(item.name, item.expiry_date),
         remind_at: addDays(item.expiry_date, -EXPIRY_LEAD_DAYS),
         cycle_date: item.expiry_date, read: false, dismissed: false,
@@ -926,13 +927,14 @@ const toAppInventoryItem = (r) => ({
 });
 
 /* ---- inventory labels: categories and storage locations (migration 029) ----
-   Household-wide, not ledger-scoped (migration 038) — same list regardless
-   of which ledger you're viewing. */
+   Scoped to a specific household ledger (migration 043) — a person may
+   belong to more than one, and their taxonomies must not leak into each
+   other. */
 // One table, split by `kind` — same shape, same CRUD, so callers pass the kind
 // rather than there being two of everything.
-export async function fetchInventoryLabels() {
+export async function fetchInventoryLabels(ledgerId) {
   const { data, error } = await supabase
-    .from("inventory_labels").select("*").order("sort_order").order("name");
+    .from("inventory_labels").select("*").eq("ledger_id", ledgerId).order("sort_order").order("name");
   if (error) throw error;
   return data.map((r) => ({ id: r.id, kind: r.kind, name: r.name }));
 }
@@ -941,8 +943,8 @@ export async function fetchInventoryLabels() {
 // back the whole list and this reconciles it. Renames keep the row (and so
 // every item pointing at it); deletes null out the items' reference rather
 // than removing them, per the FK's `on delete set null`.
-export async function saveInventoryLabels(kind, list) {
-  const existing = (await fetchInventoryLabels()).filter((l) => l.kind === kind);
+export async function saveInventoryLabels(ledgerId, kind, list) {
+  const existing = (await fetchInventoryLabels(ledgerId)).filter((l) => l.kind === kind);
   const keep = new Set(list.filter((l) => !l.isNew).map((l) => l.id));
 
   const removed = existing.filter((l) => !keep.has(l.id)).map((l) => l.id);
@@ -955,7 +957,7 @@ export async function saveInventoryLabels(kind, list) {
     if (!name) continue;
     if (l.isNew) {
       const { error } = await supabase.from("inventory_labels")
-        .insert({ kind, name, sort_order: i });
+        .insert({ ledger_id: ledgerId, kind, name, sort_order: i });
       // A name that already exists isn't an error worth failing the save over.
       if (error && error.code !== "23505") throw error;
     } else {
@@ -974,11 +976,11 @@ export async function saveInventoryLabels(kind, list) {
 // what the thing is ("Dairy", "Frozen"). Auto-creating meant every expense
 // category eventually appeared as an inventory category. So it reuses a match
 // if the name happens to line up, and otherwise leaves the item unfiled.
-export async function matchInventoryLabel(kind, name) {
+export async function matchInventoryLabel(ledgerId, kind, name) {
   const clean = (name || "").trim();
   if (!clean) return null;
   const { data } = await supabase.from("inventory_labels")
-    .select("id").eq("kind", kind).ilike("name", clean).maybeSingle();
+    .select("id").eq("ledger_id", ledgerId).eq("kind", kind).ilike("name", clean).maybeSingle();
   return data?.id ?? null;
 }
 
@@ -990,20 +992,21 @@ export function subscribeInventoryLabels(onChange) {
   return () => supabase.removeChannel(ch);
 }
 
-// Household-wide, not ledger-scoped (migration 038) — same inventory
-// regardless of which ledger you're viewing.
-export async function fetchInventoryItems() {
-  const { data, error } = await supabase.from("inventory_items").select("*").order("name");
+// Scoped to a specific household ledger (migration 043) — a person may
+// belong to more than one, and their pantries must not leak into each other.
+export async function fetchInventoryItems(ledgerId) {
+  const { data, error } = await supabase.from("inventory_items").select("*").eq("ledger_id", ledgerId).order("name");
   if (error) throw error;
   return data.map(toAppInventoryItem);
 }
 
-// Restocks an existing row (by name) by adding to its quantity, or inserts a
-// new one. ponytail: read-then-write, not a single atomic upsert — fine at
-// two-person household scale, revisit only if concurrent double-entry shows up.
-export async function upsertInventoryItem(item) {
+// Restocks an existing row (by name, within the same household ledger) by
+// adding to its quantity, or inserts a new one. ponytail: read-then-write,
+// not a single atomic upsert — fine at household scale, revisit only if
+// concurrent double-entry shows up.
+export async function upsertInventoryItem(ledgerId, item) {
   const { data: existing, error: selErr } = await supabase
-    .from("inventory_items").select("id, quantity").eq("name", item.name).maybeSingle();
+    .from("inventory_items").select("id, quantity").eq("ledger_id", ledgerId).eq("name", item.name).maybeSingle();
   if (selErr) throw selErr;
   if (existing) {
     const { error } = await supabase.from("inventory_items")
@@ -1015,9 +1018,9 @@ export async function upsertInventoryItem(item) {
   // `category` arrives as a name (the expense form knows the expense's category
   // by name, not by any inventory label id), so it's matched against the
   // household's own inventory categories — reused if one lines up, dropped if not.
-  const categoryId = item.categoryId ?? await matchInventoryLabel("category", item.category);
+  const categoryId = item.categoryId ?? await matchInventoryLabel(ledgerId, "category", item.category);
   const { data, error } = await supabase.from("inventory_items").insert({
-    name: item.name, quantity: Number(item.quantity) || 0, unit: item.unit || null,
+    ledger_id: ledgerId, name: item.name, quantity: Number(item.quantity) || 0, unit: item.unit || null,
     min_quantity: item.minQuantity ?? null, expiry_date: item.expiryDate || null,
     category_id: categoryId, location_id: item.locationId || null,
   }).select("id").single();
@@ -1086,18 +1089,62 @@ export const flyerUrl = (flyerId, postalCode) =>
 export const dealUrl = (itemId, flyerId, postalCode) =>
   itemId ? `https://flipp.com/en-ca/item/${itemId}-deal?postal_code=${normalisedPostal(postalCode)}` : flyerUrl(flyerId, postalCode);
 
-// Household-wide, not ledger-scoped (migration 038) — same list regardless
-// of which ledger you're viewing.
-export async function fetchGroceryList() {
-  const { data, error } = await supabase.from("grocery_list").select("*").order("created_at");
+// Finds a grocery_lists row matching `filter` ({ledger_id} or {owner_id}), or
+// creates it. `grocery_lists`' partial unique indexes (migration 043) are
+// what make this safe to call from two devices at once: the loser of a race
+// re-selects instead of erroring, same pattern saveInventoryLabels already
+// uses for a duplicate name.
+async function getOrCreateGroceryList(filter) {
+  const { data: existing, error: selErr } = await supabase.from("grocery_lists").select("id").match(filter).maybeSingle();
+  if (selErr) throw selErr;
+  if (existing) return existing.id;
+  const { data, error } = await supabase.from("grocery_lists").insert(filter).select("id").single();
+  if (error) {
+    if (error.code !== "23505") throw error;
+    const { data: retry, error: reErr } = await supabase.from("grocery_lists").select("id").match(filter).single();
+    if (reErr) throw reErr;
+    return retry.id;
+  }
+  return data.id;
+}
+
+// One household ledger's shared list id, lazily created on first ask —
+// what "add to inventory"'s sibling "add to grocery" targets, and what
+// InventoryPanel resolves once it already knows which household it's showing.
+export async function fetchHouseholdGroceryListId(ledgerId) {
+  return getOrCreateGroceryList({ ledger_id: ledgerId });
+}
+
+// Every list the signed-in user can add to: their own private list (always
+// exists) plus one shared list per household ledger they belong to. Lazily
+// creates whichever of those don't exist yet, so a user's first-ever visit to
+// Smart Grocery — or a household's first member to open it — just works
+// rather than needing a separate "set up your list" step.
+export async function fetchMyGroceryLists() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("not signed in");
+
+  const households = (await fetchLedgers()).filter((l) => l.template === "household");
+  const shared = [];
+  for (const h of households) shared.push({ id: await getOrCreateGroceryList({ ledger_id: h.id }), ledgerId: h.id, ledgerName: h.name });
+  const privateId = await getOrCreateGroceryList({ owner_id: userId });
+
+  return { shared, private: { id: privateId } };
+}
+
+// Scoped to one list (migration 043) — either a household ledger's shared
+// list or one person's private list; see fetchMyGroceryLists above.
+export async function fetchGroceryList(listId) {
+  const { data, error } = await supabase.from("grocery_list").select("*").eq("list_id", listId).order("created_at");
   if (error) throw error;
   return data.map(toAppGroceryItem);
 }
 // `brand` is optional and trailing so the inventory panel's "add to grocery
 // list" call, which only knows a name and a shortfall, still works unchanged.
-export async function addGroceryItem(itemName, quantityNeeded = 1, brand = "") {
+export async function addGroceryItem(listId, itemName, quantityNeeded = 1, brand = "") {
   const { data, error } = await supabase.from("grocery_list")
-    .insert({ item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null })
+    .insert({ list_id: listId, item_name: itemName, quantity_needed: quantityNeeded, brand: brand || null })
     .select("id").single();
   if (error) throw error;
   return data.id; // lets a scan-then-price-match attach the deal to the new row
@@ -1209,41 +1256,41 @@ const toAppStorePolicy = (r) => ({
   priceMatches: r.price_matches, note: r.note || "", confirmedAt: r.confirmed_at || null,
 });
 
-// Household-wide, not ledger-scoped (migration 038) — one shared store setup
-// regardless of which ledger you're viewing.
-export async function fetchStorePolicies() {
+// Scoped to a specific household ledger (migration 043) — each household
+// keeps its own store setup; nothing here is meant to leak into another one.
+export async function fetchStorePolicies(ledgerId) {
   const { data, error } = await supabase
-    .from("store_policies").select("*").order("merchant");
+    .from("store_policies").select("*").eq("ledger_id", ledgerId).order("merchant");
   if (error) throw error;
   return data.map(toAppStorePolicy);
 }
 
-// Upsert by merchant — the row may not exist yet, since policies are filled
-// in as they're learned rather than seeded for every shop in the region.
-// Only the passed fields are written, so toggling `isLocal` can't wipe a note.
-// Answering the price-match question stamps confirmedAt, which is what the
-// staleness nudge later reads.
-export async function setStorePolicy(merchant, fields) {
-  const patch = { merchant };
+// Upsert by (ledger, merchant) — the row may not exist yet, since policies
+// are filled in as they're learned rather than seeded for every shop in the
+// region. Only the passed fields are written, so toggling `isLocal` can't
+// wipe a note. Answering the price-match question stamps confirmedAt, which
+// is what the staleness nudge later reads.
+export async function setStorePolicy(ledgerId, merchant, fields) {
+  const patch = { ledger_id: ledgerId, merchant };
   if ("isLocal" in fields) patch.is_local = fields.isLocal;
   if ("note" in fields) patch.note = fields.note || null;
   if ("priceMatches" in fields) {
     patch.price_matches = fields.priceMatches;
     patch.confirmed_at = fields.priceMatches == null ? null : new Date().toISOString();
   }
-  const { error } = await supabase.from("store_policies").upsert(patch, { onConflict: "merchant" });
+  const { error } = await supabase.from("store_policies").upsert(patch, { onConflict: "ledger_id,merchant" });
   if (error) throw error;
 }
 
-// Exactly one store can be "the" local store, period (migration 036, made a
-// true singleton in 038) — the one you actually stand in when Price Match
-// Mode runs. Clear every other row first so that stays true even if an
-// older row from before the single-store model was never touched.
-export async function setLocalStore(merchant) {
+// Exactly one store can be "the" local store per household ledger (migration
+// 036, re-scoped per-ledger in 043) — the one you actually stand in when
+// Price Match Mode runs. Clear every other row in this ledger first so that
+// stays true even if an older row was never touched.
+export async function setLocalStore(ledgerId, merchant) {
   const { error } = await supabase.from("store_policies")
-    .update({ is_local: false }).eq("is_local", true).neq("merchant", merchant);
+    .update({ is_local: false }).eq("ledger_id", ledgerId).eq("is_local", true).neq("merchant", merchant);
   if (error) throw error;
-  await setStorePolicy(merchant, { isLocal: true });
+  await setStorePolicy(ledgerId, merchant, { isLocal: true });
 }
 
 export function subscribeStorePolicies(onChange) {
@@ -1254,16 +1301,17 @@ export function subscribeStorePolicies(onChange) {
   return () => supabase.removeChannel(ch);
 }
 
-/* ---- household settings (migration 038) ----
-   One shared postal code for Smart Grocery/Store Setup, now that neither is
-   tied to a single ledger's own postal_code. Singleton row, id always 1. */
-export async function fetchHouseholdPostalCode() {
-  const { data, error } = await supabase.from("household_settings").select("postal_code").eq("id", 1).maybeSingle();
+/* ---- household settings (migration 038, re-keyed per household ledger in 043) ----
+   One postal code per household ledger, for that household's Smart
+   Grocery/Store Setup — `ledgers.postal_code` was dropped in migration 042
+   and never comes back; this is its only home. */
+export async function fetchHouseholdPostalCode(ledgerId) {
+  const { data, error } = await supabase.from("household_settings").select("postal_code").eq("ledger_id", ledgerId).maybeSingle();
   if (error) throw error;
   return data?.postal_code || "";
 }
-export async function updateHouseholdPostalCode(postalCode) {
-  const { error } = await supabase.from("household_settings").upsert({ id: 1, postal_code: postalCode || null });
+export async function updateHouseholdPostalCode(ledgerId, postalCode) {
+  const { error } = await supabase.from("household_settings").upsert({ ledger_id: ledgerId, postal_code: postalCode || null });
   if (error) throw error;
 }
 export function subscribeHouseholdSettings(onChange) {

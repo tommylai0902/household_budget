@@ -14,9 +14,9 @@ import { notificationUrl } from "../src/lib/notificationLink.js";
 // past RLS. The upsert shape and the cycle_date guard are deliberately
 // identical; if one changes the other has to follow.
 //
-// Inventory (and the expiry reminders it produces) is household-wide, not
-// ledger-scoped (migration 038) — those notifications write ledger_id null
-// and go to every household member (`members`), not one ledger's roster.
+// Inventory is scoped to one household ledger (migration 043) — those
+// notifications carry a real ledger_id and go to that ledger's own roster,
+// same as every other reminder producer.
 
 const EXPIRY_LEAD_DAYS = 3; // keep in step with db.js
 
@@ -62,24 +62,20 @@ export default async function handler(req, res) {
 
   try {
     // ---- 1. generate expiry reminders ----
-    // Inventory is household-wide, not ledger-scoped (migration 038), so
-    // these rows are written with ledger_id null — see langOf/recipients below.
-    const [{ data: items, error: ierr }, { data: tracked, error: terr }, { data: subs, error: serr }, { data: members, error: merr }] = await Promise.all([
-      supabase.from("inventory_items").select("id, name, expiry_date").not("expiry_date", "is", null),
+    const [{ data: items, error: ierr }, { data: tracked, error: terr }, { data: subs, error: serr }] = await Promise.all([
+      supabase.from("inventory_items").select("id, ledger_id, name, expiry_date").not("expiry_date", "is", null),
       supabase.from("notifications").select("inventory_item_id, cycle_date").not("inventory_item_id", "is", null),
       supabase.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth, lang"),
-      supabase.from("members").select("user_id"),
     ]);
     if (ierr) throw ierr;
     if (terr) throw terr;
     if (serr) throw serr;
-    if (merr) throw merr;
 
     const trackedByItem = new Map((tracked || []).map((r) => [r.inventory_item_id, r.cycle_date]));
 
     // Who can see each ledger: its owner, plus anyone holding a role on it.
-    // Only used for the (still per-ledger) upcoming-charge producer's
-    // recipients now — inventory expiry uses the household-wide set below.
+    // Every reminder producer's recipients come from this now, inventory
+    // expiry included (migration 043 gave it a real ledger_id to key off).
     const [{ data: roles }, { data: ledgers }] = await Promise.all([
       supabase.from("ledger_role").select("ledger_id, user_id"),
       supabase.from("ledgers").select("id, owner_id, archived"),
@@ -90,13 +86,10 @@ export default async function handler(req, res) {
       if (!usersByLedger.has(r.ledger_id)) usersByLedger.set(r.ledger_id, new Set());
       usersByLedger.get(r.ledger_id).add(r.user_id);
     }
-    // Everyone in the household allowlist — the recipient set for
-    // household-wide (ledger_id null) notifications, i.e. inventory expiry.
-    const householdUsers = new Set((members || []).map((m) => m.user_id));
-    // An archived ledger (migration 041) is hidden everywhere in the app, so it
-    // has no business buzzing a phone about a subscription nobody can see any
-    // more. Household-wide inventory reminders (ledger_id null) aren't tied to
-    // a ledger at all and keep sending.
+    // An archived ledger (migration 041) is hidden everywhere in the app, so
+    // it has no business buzzing a phone about anything tied to it any more —
+    // inventory expiry included, now that it's tied to a ledger like every
+    // other reminder.
     const archivedLedgers = new Set((ledgers || []).filter((l) => l.archived).map((l) => l.id));
 
     // Which language to write a row's title in. The row feeds the in-app bell,
@@ -111,11 +104,11 @@ export default async function handler(req, res) {
     let created = 0;
     for (const item of items || []) {
       if (trackedByItem.get(item.id) === item.expiry_date) continue; // already built for this date
-      const lang = langOf(householdUsers);
+      const lang = langOf(usersByLedger.get(item.ledger_id) || []);
       const title = (EXPIRY_TITLE[lang] || EXPIRY_TITLE.en)(item.name, shortDate(item.expiry_date, lang));
       const { error } = await supabase.from("notifications").upsert(
         {
-          ledger_id: null, inventory_item_id: item.id, title,
+          ledger_id: item.ledger_id, inventory_item_id: item.id, title,
           remind_at: addDays(item.expiry_date, -EXPIRY_LEAD_DAYS),
           cycle_date: item.expiry_date, read: false,
         },
@@ -147,10 +140,10 @@ export default async function handler(req, res) {
     let sent = 0, pruned = 0;
     const pushedIds = [], deadEndpoints = [];
     for (const n of due) {
-      if (n.ledger_id && archivedLedgers.has(n.ledger_id)) continue;
+      if (archivedLedgers.has(n.ledger_id)) continue;
       let anySent = false;
       const url = notificationUrl(n);
-      const recipients = n.ledger_id == null ? householdUsers : (usersByLedger.get(n.ledger_id) || []);
+      const recipients = usersByLedger.get(n.ledger_id) || [];
       for (const userId of recipients) {
         for (const s of subsByUser.get(userId) || []) {
           try {
