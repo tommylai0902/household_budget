@@ -1366,13 +1366,15 @@ async function resolveDefaultHousehold() {
 }
 
 // Same idea for Smart Grocery's default list: the cached last-used one if
-// it's still one of the user's lists, else their own private list (which
-// always exists, unlike a household ledger).
+// it's still one of the user's lists, else the first household's shared list
+// — not the private one. Matches GroceryListPanel's own default and for the
+// same reason: existing items live on the shared list, and defaulting to the
+// always-empty private one made this card's own pending count read as 0.
 async function resolveDefaultGroceryListId() {
   const lists = await db.fetchMyGroceryLists();
   const valid = new Set([...lists.shared.map((s) => s.id), lists.private.id]);
   const cached = getLastGroceryListId();
-  return valid.has(cached) ? cached : lists.private.id;
+  return valid.has(cached) ? cached : (lists.shared[0]?.id || lists.private.id);
 }
 
 /* ============================ Root ================================= */
@@ -7235,7 +7237,12 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
   // user belongs to, plus their own private list, which always exists — so
   // this panel stays reachable even with zero household ledgers, unlike
   // Inventory Hub. Options are built once the real list resolves; the cached
-  // last-used one wins if it's still valid, else the private list.
+  // last-used one wins if it's still valid, else the first household's
+  // shared list — not the private one. Every pre-existing item migrated onto
+  // the shared list (migration 043 had nothing else to backfill it as), and
+  // the private list is a brand-new, always-empty option: defaulting there
+  // landed a first-time visitor on an empty list while their actual groceries
+  // sat one tap away, looking like the migration had lost data.
   const [lists, setLists] = useState(null); // null = loading
   const [activeListId, setActiveListId] = useState(null);
   useEffect(() => {
@@ -7243,7 +7250,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
       setLists(ls);
       const valid = new Set([...ls.shared.map((s) => s.id), ls.private.id]);
       const cached = getLastGroceryListId();
-      const initial = valid.has(cached) ? cached : ls.private.id;
+      const initial = valid.has(cached) ? cached : (ls.shared[0]?.id || ls.private.id);
       setActiveListId(initial);
       cacheLastGroceryListId(initial);
     }).catch((e) => setError(e.message || String(e)));
