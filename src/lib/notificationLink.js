@@ -6,7 +6,8 @@
 //
 // A notification row carries exactly one of three source ids (migrations 017 /
 // 032 / 033), and each one has its own home in the UI:
-//   inventory_item_id  -> Inventory Hub (household-wide since 038, so no ledger)
+//   inventory_item_id  -> Inventory Hub, in the household ledger that owns it
+//                         (migration 043 — carries a real ledger_id again)
 //   recurring_rule_id  -> that ledger's Recurring panel
 //   expense_id         -> that expense's detail panel, in its own ledger
 
@@ -15,7 +16,7 @@
 // The in-app bell navigates straight to this; notificationUrl below is the
 // same answer encoded for a push payload, so the two can never disagree.
 export function notificationTarget(n) {
-  if (n.inventoryItemId) return { view: "inventory", ledgerId: null, expenseId: null };
+  if (n.inventoryItemId) return { view: "inventory", ledgerId: n.ledgerId, expenseId: null };
   if (!n.ledgerId) return null;
   if (n.recurringRuleId) return { view: "recurring", ledgerId: n.ledgerId, expenseId: null };
   if (n.expenseId) return { view: "ledger", ledgerId: n.ledgerId, expenseId: n.expenseId };

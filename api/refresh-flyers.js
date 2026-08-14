@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Thursday flyer mirror (scheduled in vercel.json). For the household's saved
-// postal code, this copies every item out of every current flyer into
-// flyer_items. api/scan-deals.js then answers user searches from that table,
+// Thursday/Saturday flyer mirror (scheduled in vercel.json). For every
+// distinct postal code any household has saved, this copies every item out
+// of every current flyer into flyer_items. api/scan-deals.js then answers
+// user searches from that table,
 // so Flipp sees one batch a week from this IP instead of a request per tap --
 // and anything printed in a flyer is searchable immediately, even for items
 // added to a list days after the run.
@@ -108,16 +109,17 @@ export default async function handler(req, res) {
       }
     }
 
-    // Migration 038 moved the postal code off ledgers into the
-    // household_settings singleton. Reading ledgers.postal_code here kept
-    // working only on the value left behind before that migration, and goes
-    // permanently silent the moment the user sets a new one in the app.
+    // household_settings is one row per household ledger (migration 043) —
+    // several households can share a region, so postal codes are deduped
+    // into a set before mirroring, same as the pre-038 per-ledger version of
+    // this route did (each household's own local flyers, one Flipp call per
+    // distinct region rather than per household).
     const { data: settings, error: settingsErr } = await supabase
-      .from("household_settings").select("postal_code").eq("id", 1).maybeSingle();
+      .from("household_settings").select("postal_code");
     if (settingsErr) throw settingsErr;
 
-    const postalCodes = [normalisePostal(settings?.postal_code)].filter(Boolean);
-    if (!postalCodes.length) return res.status(200).json({ skipped: "no postal code set" });
+    const postalCodes = [...new Set((settings || []).map((s) => normalisePostal(s.postal_code)).filter(Boolean))];
+    if (!postalCodes.length) return res.status(200).json({ skipped: "no household has a postal code set" });
 
     const report = [];
     for (const postalCode of postalCodes) {

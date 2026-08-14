@@ -48,23 +48,23 @@ Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`,
 ```
 src/
   main.jsx          31    entry
-  BudgetApp.jsx   7906    App (auth gate) + Login + Ledger + EVERY panel & i18n
+  BudgetApp.jsx   8321    App (auth gate) + Login + Ledger + EVERY panel & i18n
   sw.js             55    service worker: precache + push handlers
   index.css              reset + a few keyframes/media queries
   assets/
     kid-pig.svg           licensed vector art, see Kid Ledger below
   lib/
     supabase.js     16    client (VITE_ env vars)
-    db.js         1237    ALL data access: row⇄app mappers, CRUD, realtime, syncs
+    db.js         1323    ALL data access: row⇄app mappers, CRUD, realtime, syncs
     settle.js       60    split-bill netting        (+ .test.js)
     csv.js         107    statement/CSV parsing     (+ .test.js)
     categorize.js   16    keyword category guesser  (+ .test.js)
     recurring.js    28    recurrence date math      (+ .test.js)
 api/                     7 Vercel functions (below)
-migrations/              001–041, applied BY HAND (below)
+migrations/              001–043, applied BY HAND (below — 043 not yet run, see State)
 ```
 
-`BudgetApp.jsx` is one 7,900-line file on purpose — every component, every
+`BudgetApp.jsx` is one 8,300-line file on purpose — every component, every
 style object, and all five language dictionaries. It is not an accident and it
 has not been "meaning to be split". Find things by `grep`, not by directory.
 
@@ -110,21 +110,25 @@ clears it; the notification paths set it fresh immediately afterwards. Note
 `startView` cannot fix this on its own — `useState(startView)` only reads its
 argument on the first render, so the effect always wins.
 
-**Notifications for household-wide items carry no ledger, and must not need
-one.** `notificationTarget` returns `{ view: "inventory", ledgerId: null }` for
-an expiry reminder, so routing picks any grown-up ledger purely as a container.
-`pickLedger` returns null in two cases — no ledgers at all, and a household
-whose *only* ledger is a Kid Ledger (it filters those out deliberately) — and
-both paths used to `return` on that, so tapping the notification did nothing
-whatsoever. They now fall back to the standalone tool screen.
+**A tapped notification names the exact ledger it belongs to** — inventory
+notifications included, since migration 043 gave `inventory_items` a real
+`ledger_id` back. `pickLedger` returns null in two cases — no ledgers at all,
+and a household whose *only* ledger is a Kid Ledger (it filters those out
+deliberately) — and both paths used to `return` on that, so a tap could dead-end
+with nothing on screen. They now fall back to the standalone tool screen; this
+is now a rare edge case (access revoked since the notification was created)
+rather than the *only* path inventory notifications ever took, which is what
+it was when every inventory notification carried `ledgerId: null` (migration
+038 era).
 
-**Migration 038's signature change has already bitten twice.** Dropping
-`ledger_id` also dropped the leading `ledgerId` parameter from
-`upsertInventoryItem` and `addGroceryItem`, and three call sites in
-`upsertExpense` kept passing one. JavaScript shifts the rest along silently:
-the item object landed in a parameter that no longer exists, and the insert
-went out with no `name` — a not-null violation. When touching either function,
-`grep` every call site rather than the one you came for.
+**A leading `ledgerId` parameter on `upsertInventoryItem`/`addGroceryItem` has
+been added and removed twice now — 038 dropped it, 043 brought it back.** Both
+times, every call site had to move in lockstep, and both times it was easy to
+miss one: 038's removal left three call sites in `upsertExpense` still passing
+a ledger id that JavaScript silently shifted into a parameter that no longer
+existed, corrupting the insert. When touching either function's signature,
+`grep` every call site rather than the one you came for — see the Database
+section below for the full lockstep list migration 043 required.
 
 That bug was invisible for a different reason worth remembering: `ExpenseForm`
 is a `position: fixed` full-screen overlay, so the ledger's own error banner
@@ -134,15 +138,21 @@ failures are now shown inside the form itself (`saveErr`), `submit` clears
 `busy` in a `finally`, and `upsertExpense` rethrows after `setError` so the
 form can see what happened.
 
-**Inventory and Grocery render in two places.** They are household-wide
-(migration 038) and take only `t`/`lang`/`onSwitchView` — no ledger prop at
-all — but they were originally reachable only through `Ledger`'s `viewState`,
-so an account with no ledger yet could not open them despite them needing
-none. Someone who only wanted the shopping list had to create a ledger first.
-`App` now renders them standalone inside `ToolScreen` when `goToView` finds no
-ledger to host them, and the picker's nav dropdown is shown even at zero
-ledgers. With a ledger present nothing changed — they still open inside it, so
-the ledger's own chrome stays available.
+**Inventory and Grocery render in two places, and resolve their own household
+ledger internally rather than taking one as a required prop.** `InventoryPanel`
+takes an *optional* `initialLedgerId` (only ever passed by the notification
+render site and the in-`Ledger` render site — see Database, migration 043);
+otherwise it fetches every `template === "household"` ledger the user belongs
+to and picks the cached last-used one, falling back to the first. This is why
+they were made standalone-renderable in the first place: originally reachable
+only through `Ledger`'s `viewState`, so an account with no ledger yet — or,
+now, no *household* ledger — could not open them despite Grocery needing none
+(its private list always exists) and Inventory needing only a household ledger
+somewhere, not necessarily the one currently open. `App` renders them inside
+`ToolScreen` when there's no ledger to host them at all, and the picker's nav
+dropdown is shown even at zero ledgers. With a ledger open, nothing about the
+*host* changed — they still render inside `Ledger`'s chrome — but which
+household ledger's data they show is resolved independently of it.
 
 ---
 
@@ -166,9 +176,10 @@ Ledger-scoped tables all follow the same RLS shape from migration 009:
 | Split bills | `ledger_members` (participant *names*, not auth users), `expense_splits` |
 | Access | `ledger_role` (user↔ledger↔role), `ledgers.owner_id`, `ledger_invite`, `members` (global allowlist) |
 | Recurring | `recurring_rules` |
-| Reminders | `notifications` (ledger-scoped, or household-wide when `ledger_id` is null — see below) |
-| Inventory/grocery/stores | `inventory_items`, `grocery_list`, `inventory_labels`, `store_policies` — household-wide, not ledger-scoped (migration 038) |
-| Household | `household_settings` — singleton row (`id = 1`), currently just the shared postal code |
+| Reminders | `notifications` — always ledger-scoped (`ledger_id` is `NOT NULL`) |
+| Inventory/stores | `inventory_items`, `inventory_labels`, `store_policies` — scoped to a `template = 'household'` ledger (migration 043) |
+| Household | `household_settings` — one row per household ledger (`ledger_id` primary key), currently just that household's postal code |
+| Grocery | `grocery_list` (items) + `grocery_lists` (migration 043) — a list is either shared with a household ledger's members or private to one user (`owner_id`), never both |
 | Kid Ledger | `wishlist_goals` (one row per kid ledger), `expenses.kind` (`'spend'` \| `'earn'`) |
 | Push | `push_subscriptions` |
 
@@ -178,23 +189,42 @@ Two easily-confused things:
 - Ledger recipients = `ledgers.owner_id` **∪** `ledger_role.user_id`. The owner
   does not necessarily have a `ledger_role` row.
 
-**Inventory, grocery, and store setup are household-wide, not per-ledger**
-(migration 038). They used to carry a `ledger_id` like every other table, but
-the Home page always presented "Ledger & Transactions" / "Inventory Hub" /
-"Smart Grocery" as three peer cards — switching the ledger switcher was
-silently emptying the other two, since their data was never actually shared,
-just coincidentally populated under whatever ledger you'd last added items
-from. RLS on these four tables now runs on `is_household_member()` (membership
-in `members`, the original login allowlist — unused for row security since
-migration 009, repurposed here) instead of `has_ledger_role()`. There is no
-VIEWER/EDITOR split on them: presence in `members` grants full read/write,
-matching how these features already behaved. `household_settings` exists
-because `GroceryListPanel`/`StoreSetupPanel`/`PriceMatchModePanel` all used to
-key off `ledgers.postal_code`, which no longer has a home once these aren't
-tied to one ledger. `notifications.ledger_id` is nullable for the same reason
-— only the inventory-expiry producer writes a null row; per-expense and
-upcoming-charge reminders stay ledger-scoped, since expenses genuinely are
-per-ledger.
+**Inventory, grocery, and store setup went household-wide in migration 038,
+then back to per-(household-)ledger in 043 — this is not a mistake being
+undone twice, it's the household-count assumption changing.** 038 was correct
+for exactly one household ever using the app: it gated these tables on
+`is_household_member()` (membership in `members`, the flat login allowlist),
+because the Home page presented "Ledger & Transactions" / "Inventory Hub" /
+"Smart Grocery" as three peer cards and switching ledgers was silently
+emptying the other two — their data was never actually shared, just
+coincidentally populated under whatever ledger you'd last added items from.
+That stopped being sufficient the moment a second, unrelated household group
+(roommates, friends) could use the same app instance: anyone who could log in
+would see *every* household's pantry and shopping list, not just their own.
+
+043's fix reuses `has_ledger_role(ledger_id, role)` (migration 009 — the same
+mechanism `expenses`/`budgets` have always used) rather than reinventing
+anything, scoped to whichever ledger has `template = 'household'`. A person
+can belong to more than one (their own place, a family member's) — see
+`InventoryPanel`'s household resolution in BudgetApp.jsx above. `grocery_list`
+gained an intermediate `grocery_lists` row (`list_id`) instead of going straight
+back to `ledger_id`, because Smart Grocery additionally needed a private
+option: sharing a household ledger (e.g. splitting rent as roommates) does not
+imply wanting to share a grocery list, mirroring `expenses.split:
+'personal'|'shared'`. Inventory Hub did **not** get this — it stays one shared
+list per household ledger, since a pantry has one household owner but a
+shopping list might not.
+
+`household_settings` moved from a singleton (`id = 1`) to one row per
+household ledger for the same reason `GroceryListPanel`/`StoreSetupPanel`/
+`PriceMatchModePanel`'s postal code needed a home in 038: `ledgers.postal_code`
+stays dropped (migration 042) and is never coming back, so this table is its
+only home, just re-keyed per household now instead of once for the whole app.
+`notifications.ledger_id` went back to `NOT NULL` — every producer, inventory
+expiry included, now resolves recipients from `usersByLedger` (the ledger's
+owner + `ledger_role` rows), the same mechanism upcoming-charge reminders
+always used; the `members`-based "everyone who can log in" recipient set
+`api/send-reminders.js` used for inventory expiry under 038 is gone.
 
 Two smaller additions since: `ledgers.archived` (migration 041) hides a ledger
 from every list — picker, switcher, notification routing, the nightly
@@ -256,10 +286,11 @@ must also be added to that list**, or it 404s in dev only.
 ### 1. Flyer prices (price matching)
 
 Flipp is called **only** by the cron (Thursday and Saturday — see below),
-which copies whole flyers for the household's saved postal code
-(`household_settings`, migration 038) into `flyer_items`. User searches hit
-that table. So no amount of tapping "Price Match Check" can rate-limit the
-IP, and a product nobody ever searched still answers instantly.
+which copies whole flyers for every distinct postal code any household has
+saved (`household_settings`, one row per household ledger since migration
+043) into `flyer_items`. User searches hit that table. So no amount of tapping
+"Price Match Check" can rate-limit the IP, and a product nobody ever searched
+still answers instantly.
 
 **The whole feature is only as fresh as that weekly run, and it fails silently
 when it doesn't happen.** An unrefreshed mirror doesn't error — every grocery
@@ -674,17 +705,21 @@ picker), receipt/statement/product scanning, scan-to-price-match from the
 grocery page, expired-deal handling on grocery rows, deal fields cleared on
 completion, expiry reminders in the bell, cron-side reminder generation,
 notification dismiss (`dismissed` flag, not a hard delete — 035), **web push
-end-to-end** (see below), household-wide inventory/grocery/store setup (038,
-one shared list/store config instead of per-ledger), flyer deep links to a
-saved deal's exact item (039), travel-period ledgers that skip month-scoping
-(040), ledger archiving (041), Kid Ledger dashboard + wishlist goals (016,
-restyled 2026-08 — see Non-obvious pipelines).
+end-to-end** (see below), flyer deep links to a saved deal's exact item (039),
+travel-period ledgers that skip month-scoping (040), ledger archiving (041),
+Kid Ledger dashboard + wishlist goals (016, restyled 2026-08 — see Non-obvious
+pipelines).
 
-**Migrations 001–041 are all applied.** 038–041 confirmed live against the
-production schema on 2026-08-09 (`household_settings` reachable,
-`flyer_items.item_id`/`ledgers.start_date`/`ledgers.archived`/
-`grocery_list.deal_item_id` all present, `inventory_items.ledger_id` correctly
-gone — 400 on select).
+**Migrations 001–042 are confirmed applied** (038–042 verified live against
+the production schema on 2026-08-09). **Migration 043 (household-ledger-scoped
+inventory/grocery/store-setup, replacing 038's app-wide model) is written but
+NOT yet run against production as of this writing** — the code in this repo
+already expects its post-043 shape (`inventory_items.ledger_id` NOT NULL,
+`grocery_list.list_id`, `household_settings` keyed by `ledger_id`, etc.), so
+**do not deploy this code before running `migrations/043-*.sql` by hand** —
+see that file's own header for the required run order (DB migration first,
+app deploy second) and why. Once it's run, update this paragraph with the
+same kind of live-schema probe 038–042 got, rather than assuming.
 
 **Cloud Vision receipt reading is confirmed working in production
 (2026-07-31)**, verified by scanning real receipts on a phone and watching

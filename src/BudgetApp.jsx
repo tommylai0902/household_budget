@@ -148,7 +148,7 @@ const STRINGS = {
     // Inventory / Grocery
     addToInventory: "Add to Inventory", addToInventoryHint: "Track this purchase in your inventory",
     quantity: "Quantity", unit: "Unit", expiryDate: "Expiry date",
-    searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.",
+    searchInventoryPh: "Search inventory…", noInventoryItems: "No inventory items yet.", noHouseholdLedger: "You're not part of a household ledger yet — create one to use Inventory Hub.",
     addItem: "Add Item", itemNamePh: "Item name", minQuantityLabel: "Low stock at (optional)",
     editItem: "Edit item", deleteItem: "Delete item", saveItem: "Save changes",
     deleteItemConfirm: 'Delete "{name}" from your inventory? This cannot be undone.',
@@ -202,7 +202,7 @@ const STRINGS = {
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     navDropdownLabel: "Ledgers",
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
-    groceryCardTitle: "Smart Grocery & Deals", groceryShortTitle: "Smart Grocery", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
+    groceryCardTitle: "Smart Grocery & Deals", groceryShortTitle: "Smart Grocery", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check", myGroceryList: "My list",
     viewingLedger: "Viewing: {name}",
     budgetBannerLine: "SPENT: {spent}/{budget} ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
@@ -368,7 +368,7 @@ const STRINGS = {
     // 存貨 / 買餸清單
     addToInventory: "加入存貨", addToInventoryHint: "將呢次買嘅嘢記入存貨",
     quantity: "數量", unit: "單位", expiryDate: "到期日",
-    searchInventoryPh: "搵存貨…", noInventoryItems: "仲未有存貨。",
+    searchInventoryPh: "搵存貨…", noInventoryItems: "仲未有存貨。", noHouseholdLedger: "你未屬於任何 household 帳簿——去建立一本先用得到 Inventory Hub。",
     addItem: "新增物品", itemNamePh: "物品名稱", minQuantityLabel: "低過幾多就提醒（可選）",
     editItem: "編輯物品", deleteItem: "刪除物品", saveItem: "儲存修改",
     deleteItemConfirm: "確定喺存貨度刪除「{name}」？呢個動作無法還原。",
@@ -423,7 +423,7 @@ const STRINGS = {
     ledgerCard: "帳簿同交易", totalMonthSpent: "本月總支出", lastEntry: "最新一筆",
     navDropdownLabel: "帳簿",
     inventoryCardTitle: "存貨中心", trackedItemsLabel: "追蹤中：", lowStockAlert: "{n} 樣嘢存貨唔夠！",
-    groceryCardTitle: "智能買餸格價", groceryShortTitle: "智能買餸", pendingItemsLabel: "未買：", dealsActiveBadge: "有優惠喇！· 格價",
+    groceryCardTitle: "智能買餸格價", groceryShortTitle: "智能買餸", pendingItemsLabel: "未買：", dealsActiveBadge: "有優惠喇！· 格價", myGroceryList: "我嘅清單",
     viewingLedger: "而家睇緊：{name}",
     budgetBannerLine: "已用：{spent}/{budget}（{pct}%）",
     budgetRemainingLine: "剩餘：{amount}", budgetOverLine: "超出咗 {amount}",
@@ -588,7 +588,7 @@ const STRINGS = {
     // 库存 / 购物清单
     addToInventory: "加入库存", addToInventoryHint: "把这次购买记入库存",
     quantity: "数量", unit: "单位", expiryDate: "到期日",
-    searchInventoryPh: "搜索库存…", noInventoryItems: "还没有库存物品。",
+    searchInventoryPh: "搜索库存…", noInventoryItems: "还没有库存物品。", noHouseholdLedger: "你还不属于任何 household 账本——去创建一个才能用 Inventory Hub。",
     addItem: "新增物品", itemNamePh: "物品名称", minQuantityLabel: "低于多少时提醒（可选）",
     editItem: "编辑物品", deleteItem: "删除物品", saveItem: "保存修改",
     deleteItemConfirm: "确定从库存中删除「{name}」？此操作无法撤销。",
@@ -643,7 +643,7 @@ const STRINGS = {
     ledgerCard: "账本与交易", totalMonthSpent: "本月总支出", lastEntry: "最新一笔",
     navDropdownLabel: "账本",
     inventoryCardTitle: "库存中心", trackedItemsLabel: "追踪中：", lowStockAlert: "{n} 件商品库存不足！",
-    groceryCardTitle: "智能购物比价", groceryShortTitle: "智能购物", pendingItemsLabel: "待购：", dealsActiveBadge: "有优惠了！· 比价",
+    groceryCardTitle: "智能购物比价", groceryShortTitle: "智能购物", pendingItemsLabel: "待购：", dealsActiveBadge: "有优惠了！· 比价", myGroceryList: "我的清单",
     viewingLedger: "正在查看：{name}",
     budgetBannerLine: "已用：{spent}/{budget}（{pct}%）",
     budgetRemainingLine: "剩余：{amount}", budgetOverLine: "超支 {amount}",
@@ -806,7 +806,7 @@ const STRINGS = {
     // Inventaire / Liste de courses
     addToInventory: "Ajouter à l'inventaire", addToInventoryHint: "Suivre cet achat dans votre inventaire",
     quantity: "Quantité", unit: "Unité", expiryDate: "Date de péremption",
-    searchInventoryPh: "Rechercher dans l'inventaire…", noInventoryItems: "Aucun article pour l'instant.",
+    searchInventoryPh: "Rechercher dans l'inventaire…", noInventoryItems: "Aucun article pour l'instant.", noHouseholdLedger: "Vous n'appartenez encore à aucun registre foyer — créez-en un pour utiliser l'inventaire.",
     addItem: "Ajouter un article", itemNamePh: "Nom de l'article", minQuantityLabel: "Alerte sous (facultatif)",
     editItem: "Modifier l'article", deleteItem: "Supprimer l'article", saveItem: "Enregistrer",
     deleteItemConfirm: "Supprimer « {name} » de votre inventaire ? Cette action est irréversible.",
@@ -861,7 +861,7 @@ const STRINGS = {
     ledgerCard: "Registre et transactions", totalMonthSpent: "Dépenses totales du mois", lastEntry: "Dernière entrée",
     navDropdownLabel: "Registres",
     inventoryCardTitle: "Centre d'inventaire", trackedItemsLabel: "Articles suivis :", lowStockAlert: "{n} article(s) en stock faible !",
-    groceryCardTitle: "Courses intelligentes et offres", groceryShortTitle: "Courses intelligentes",
+    groceryCardTitle: "Courses intelligentes et offres", groceryShortTitle: "Courses intelligentes", myGroceryList: "Ma liste",
     pendingItemsLabel: "Articles en attente :", dealsActiveBadge: "Offres actives ! · Comparer les prix",
     viewingLedger: "Affichage : {name}",
     budgetBannerLine: "DÉPENSÉ : {spent}/{budget} ({pct} %)",
@@ -1025,7 +1025,7 @@ const STRINGS = {
     // Inventario / Lista de la compra
     addToInventory: "Añadir al inventario", addToInventoryHint: "Registra esta compra en tu inventario",
     quantity: "Cantidad", unit: "Unidad", expiryDate: "Fecha de caducidad",
-    searchInventoryPh: "Buscar en el inventario…", noInventoryItems: "Aún no hay artículos.",
+    searchInventoryPh: "Buscar en el inventario…", noInventoryItems: "Aún no hay artículos.", noHouseholdLedger: "Aún no perteneces a ningún libro de tipo hogar — crea uno para usar el inventario.",
     addItem: "Añadir artículo", itemNamePh: "Nombre del artículo", minQuantityLabel: "Avisar por debajo de (opcional)",
     editItem: "Editar artículo", deleteItem: "Eliminar artículo", saveItem: "Guardar cambios",
     deleteItemConfirm: '¿Eliminar "{name}" de tu inventario? Esta acción no se puede deshacer.',
@@ -1080,7 +1080,7 @@ const STRINGS = {
     ledgerCard: "Registro y transacciones", totalMonthSpent: "Gasto total del mes", lastEntry: "Última entrada",
     navDropdownLabel: "Libros",
     inventoryCardTitle: "Centro de inventario", trackedItemsLabel: "Artículos registrados:", lowStockAlert: "¡{n} artículo(s) con poco stock!",
-    groceryCardTitle: "Compras inteligentes y ofertas", groceryShortTitle: "Compras inteligentes",
+    groceryCardTitle: "Compras inteligentes y ofertas", groceryShortTitle: "Compras inteligentes", myGroceryList: "Mi lista",
     pendingItemsLabel: "Artículos pendientes:", dealsActiveBadge: "¡Ofertas activas! · Comparar precios",
     viewingLedger: "Viendo: {name}",
     budgetBannerLine: "GASTADO: {spent}/{budget} ({pct}%)",
@@ -1331,14 +1331,49 @@ const getAccent = () => {
   return ACCENT_COLORS[0];
 };
 const cacheAccent = (c) => { try { localStorage.setItem("accent", c); } catch {} };
-// Device-level, not account-level — Flipp results are location-specific, and
-// nothing else in the schema has a place for it.
-const getPostalCode = () => { try { return localStorage.getItem("postalCode") || ""; } catch { return ""; } };
-const cachePostalCode = (v) => { try { localStorage.setItem("postalCode", v); } catch {} };
+// Device-level, not account-level — Flipp results are location-specific.
+// Keyed per household ledger (migration 043): two households in different
+// regions on one device must not flash each other's cached postal code
+// while the real per-ledger value is still loading.
+const getPostalCode = (ledgerId) => { try { return localStorage.getItem(`postalCode:${ledgerId}`) || ""; } catch { return ""; } };
+const cachePostalCode = (ledgerId, v) => { try { localStorage.setItem(`postalCode:${ledgerId}`, v); } catch {} };
 // Which ledger to auto-open on a fresh sign-in, so Bento home doesn't need a
 // picker round-trip every time. Device-level, like accent/theme/postal code.
 const getLastLedgerId = () => { try { return localStorage.getItem("lastLedgerId") || null; } catch { return null; } };
 const cacheLastLedgerId = (id) => { try { localStorage.setItem("lastLedgerId", id); } catch {} };
+// Same idea, one level down: which household ledger Inventory/Grocery/the
+// expense-form checkboxes default to when the user belongs to more than one
+// (migration 043 — a single "the household" no longer always exists), and
+// which grocery list (shared or private) Smart Grocery last had open.
+const getLastHouseholdLedgerId = () => { try { return localStorage.getItem("lastHouseholdLedgerId") || null; } catch { return null; } };
+const cacheLastHouseholdLedgerId = (id) => { try { localStorage.setItem("lastHouseholdLedgerId", id); } catch {} };
+const getLastGroceryListId = () => { try { return localStorage.getItem("lastGroceryListId") || null; } catch { return null; } };
+const cacheLastGroceryListId = (id) => { try { localStorage.setItem("lastGroceryListId", id); } catch {} };
+// Picks which of the user's household ledgers a panel should show: the
+// cached last-used one if they're still in it, else the first by whatever
+// order fetchLedgers() already returned (sort_order). Pure — callers own the
+// fetch and the caching side effect.
+const pickHouseholdLedger = (households, preferId) =>
+  households.find((h) => h.id === preferId) || households[0] || null;
+
+// Async wrapper around the above for a caller that just wants a household
+// ledger to write to and doesn't need the full list (HomePage's Bento
+// counts, the expense-form checkboxes). InventoryPanel keeps its own copy of
+// this fetch-and-pick, since it also needs the full list for its switcher.
+async function resolveDefaultHousehold() {
+  const households = (await db.fetchLedgers()).filter((l) => l.template === "household");
+  return pickHouseholdLedger(households, getLastHouseholdLedgerId());
+}
+
+// Same idea for Smart Grocery's default list: the cached last-used one if
+// it's still one of the user's lists, else their own private list (which
+// always exists, unlike a household ledger).
+async function resolveDefaultGroceryListId() {
+  const lists = await db.fetchMyGroceryLists();
+  const valid = new Set([...lists.shared.map((s) => s.id), lists.private.id]);
+  const cached = getLastGroceryListId();
+  return valid.has(cached) ? cached : lists.private.id;
+}
 
 /* ============================ Root ================================= */
 export default function App() {
@@ -1423,9 +1458,9 @@ export default function App() {
   // one the Ledger has already handled and ignores.
   const [nav, setNav] = useState(() => (deepLink ? { ...deepLink, n: 0 } : null));
 
-  // Which ledger a notification opens in. Its own, when it names one —
-  // otherwise the last-used one, since household-wide inventory reminders
-  // (migration 038) belong to no single ledger. Never a Kid ledger: that
+  // Which ledger a notification opens in. Its own, when it names one — every
+  // producer does now, inventory included (migration 043 gave it back a real
+  // ledger_id) — otherwise the last-used one. Never a Kid ledger: that
   // template replaces the whole UI and has no Inventory Hub to land on.
   const pickLedger = (all, wantedId) => {
     const grownUp = all.filter((l) => l.template !== "kid");
@@ -1437,11 +1472,12 @@ export default function App() {
     try {
       const all = await db.fetchLedgers();
       const match = pickLedger(all, target.ledgerId);
-      // Inventory notifications are household-wide (038) and name no ledger,
-      // so they need one only as a container. When there isn't a grown-up one
-      // — no ledgers at all, or a household whose only ledger is a Kid Ledger,
-      // which pickLedger deliberately skips — the tap used to do nothing at
-      // all. Show the tool on its own instead.
+      // Normally finds the exact household ledger the notification names.
+      // Only misses now if the recipient has since lost access to it, or (for
+      // the "recurring"/"ledger" targets that always named a ledger) it's
+      // been deleted — no grown-up ledger at all, or a household whose only
+      // ledger is a Kid Ledger, which pickLedger deliberately skips. Show the
+      // tool on its own instead of dead-ending the tap.
       if (!match) {
         if (target.view === "inventory" || target.view === "grocery") setStandaloneView(target.view);
         return;
@@ -1459,17 +1495,17 @@ export default function App() {
   // nothing's cached yet, or the cached ledger is gone/inaccessible.
   useEffect(() => {
     if (!userId || ledger) return;
-    // A deep link names its own ledger, except for household-wide inventory
-    // (migration 038), which carries none — it opens inside whatever ledger is
-    // handy, or on its own if there isn't one.
+    // A deep link names its own ledger (inventory notifications included,
+    // since migration 043) — falls back to whatever ledger is handy, or
+    // standalone, only if that specific one is no longer accessible.
     if (!deepLink && !getLastLedgerId()) return;
     let live = true;
     db.fetchLedgers().then((all) => {
       const match = deepLink ? pickLedger(all, deepLink.ledgerId) : all.find((l) => l.id === getLastLedgerId());
       if (!live) return;
       if (!match) {
-        // Same dead end as openNotification: with no grown-up ledger to host
-        // it, tapping an inventory notification did nothing at all.
+        // Same fallback as openNotification — rare now that the deep link
+        // names a real ledger, but still possible if access was lost since.
         if (deepLink?.view === "inventory" || deepLink?.view === "grocery") setStandaloneView(deepLink.view);
         return;
       }
@@ -1512,8 +1548,13 @@ export default function App() {
     return (
       <ToolScreen theme={theme}>
         {/* "ledger" is the only exit with no ledger to switch to — back to the
-            picker, which is where a ledger gets created. */}
-        <Panel t={t} lang={lang} onSwitchView={(v) => setStandaloneView(v === "ledger" ? null : v)} />
+            picker, which is where a ledger gets created. initialLedgerId only
+            matters to InventoryPanel — a rare fallback now that inventory
+            notifications carry a real ledger id (see notificationLink.js):
+            it only fires if the recipient has since lost access to that
+            specific household ledger. GroceryListPanel ignores the prop. */}
+        <Panel t={t} lang={lang} onSwitchView={(v) => setStandaloneView(v === "ledger" ? null : v)}
+          initialLedgerId={nav?.ledgerId} />
       </ToolScreen>
     );
   }
@@ -3277,9 +3318,12 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
       await db.syncUpcomingChargeReminders(ledger.id, (name, days) => t("upcomingChargeTitle", { name, days })).catch(() => {});
       // Same deal for food about to go off — expiry_date has existed since
       // migration 021 but never reached the bell (migration 033). Inventory
-      // is household-wide (038), so this isn't scoped to this ledger — it
-      // just runs opportunistically whenever any ledger loads.
-      await db.syncExpiryReminders((name, date) => t("expiryReminderTitle", { name, date: shortDate(date, lang) })).catch(() => {});
+      // is scoped to one household ledger (043), so this only runs when the
+      // ledger that just loaded actually IS one — a household ledger nobody's
+      // opened gets its expiry reminders from the send-reminders.js cron instead.
+      if (ledger.template === "household") {
+        await db.syncExpiryReminders(ledger.id, (name, date) => t("expiryReminderTitle", { name, date: shortDate(date, lang) })).catch(() => {});
+      }
       // No lazy seeding here — categories are seeded from the chosen template when
       // the ledger is created, so an intentionally blank ledger stays blank.
       // Wishlist goal is Kid-Ledger-only — every other template skips the query
@@ -3398,12 +3442,18 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
         await db.deleteReminderNotification(expenseId);
       }
       if (personal) await db.insertPersonalExpense(personal, memberById(members, draft.paidById)?.name);
-      // No ledger id: inventory and grocery are household-wide as of migration
-      // 038. These three calls kept passing one and were silently shifting
-      // every argument along — the item object landed in a parameter that no
-      // longer exists, and the write failed on a row with no name.
-      if (draft.addToInventory && draft.description) {
-        await db.upsertInventoryItem({
+      // Household ledger to write into — resolved once, not necessarily THIS
+      // ledger (migration 043): the form's inventory/grocery checkboxes are
+      // offered regardless of template, so `ledger` here may be a Travel or
+      // Personal ledger with no relation to any household. ExpenseForm hides
+      // these checkboxes at zero household ledgers, so `household` being null
+      // here should only happen in a race (one delete between opening the
+      // form and saving) — skip the write rather than crash the whole save.
+      const needsHousehold = (draft.addToInventory && draft.description)
+        || (draft.inventoryItemNames || []).length || (draft.groceryItemNames || []).length;
+      const household = needsHousehold ? await resolveDefaultHousehold() : null;
+      if (draft.addToInventory && draft.description && household) {
+        await db.upsertInventoryItem(household.id, {
           name: draft.description, quantity: draft.invQuantity, unit: draft.invUnit,
           expiryDate: draft.invExpiryDate, category: catName(catById(draft.categoryId), lang),
         });
@@ -3414,11 +3464,14 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
       // every other batch write in this file (importExpensesBatch etc.) —
       // household-scale volume, and upsertInventoryItem's own read-then-write
       // isn't safe to run concurrently against itself.
-      for (const name of draft.inventoryItemNames || []) {
-        await db.upsertInventoryItem({ name, quantity: 1, unit: "", expiryDate: null, category: catName(catById(draft.categoryId), lang) });
-      }
-      for (const name of draft.groceryItemNames || []) {
-        await db.addGroceryItem(name, 1);
+      if (household) {
+        for (const name of draft.inventoryItemNames || []) {
+          await db.upsertInventoryItem(household.id, { name, quantity: 1, unit: "", expiryDate: null, category: catName(catById(draft.categoryId), lang) });
+        }
+        if ((draft.groceryItemNames || []).length) {
+          const listId = await db.fetchHouseholdGroceryListId(household.id);
+          for (const name of draft.groceryItemNames || []) await db.addGroceryItem(listId, name, 1);
+        }
       }
       setEditing(null);
       refresh();
@@ -3708,9 +3761,13 @@ function Ledger({ ledger, startView, nav, onNotification, currentUserId, onExit,
             else it appears (the Home dashboard's card does the same); the
             in-ledger transactions view is reached via the budget banner's
             "View transactions" instead, same as from Home. */}
-        {/* No ledgerId — Inventory Hub and Smart Grocery are household-wide,
-            not scoped to this ledger (migration 038). */}
-        {viewState === "inventory" && <InventoryPanel t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
+        {/* initialLedgerId is a hint, not a scope: InventoryPanel resolves its
+            own household ledger and only takes this as the preferred default
+            (harmless if `ledger` isn't a household template — it just won't
+            match and the panel falls through to its own cache/first-household
+            default). GroceryListPanel ignores it; nothing pins Smart Grocery
+            to whichever ledger happens to be open (migration 043). */}
+        {viewState === "inventory" && <InventoryPanel t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} initialLedgerId={ledger.id} />}
         {viewState === "grocery" && <GroceryListPanel t={t} lang={lang} onSwitchView={(v) => (v === "ledger" ? onExit() : setViewState(v))} />}
       </div>
 
@@ -4548,6 +4605,13 @@ async function fileToUpload(file) {
 }
 
 function ExpenseForm({ initial, categories, members, merchants, expenses = [], ledgers = [], lang, t, onClose, onSave, onEditMembers, onEditCategories, defaultMonth, defaultDate, features, onBatchImport, existingReminder }) {
+  // Inventory/Grocery are scoped to a household ledger (migration 043) — with
+  // none, "add to inventory"/"add to grocery" have nowhere to write, so those
+  // checkboxes are hidden rather than offered and silently doing nothing.
+  // `ledgers` already carries every ledger's template (fetched once in Ledger
+  // for exactly this kind of cross-ledger lookup), so this is free — no
+  // extra query just to decide whether to show a checkbox.
+  const hasHousehold = ledgers.some((l) => l.template === "household");
   // Personal-template ledgers (features.showSplit false) have no one to split
   // with — the payer is just whoever's account this is, silently the first
   // member, and every expense is personal. Nothing left to ask about.
@@ -4938,7 +5002,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
                       style={{ ...iconBtn, width: 30, height: 28, borderColor: it.mode === "drop" ? TEAL : LINE, background: it.mode === "drop" ? TEAL : CARD, color: it.mode === "drop" ? ACCENT_INK : SUB, boxShadow: it.mode === "drop" ? ACCENT_GLOW : "none" }}>
                       <Trash2 size={13} />
                     </button>
-                    {[["addToInventory", t("itemAddToInventory"), Package], ["addToGrocery", t("itemAddToGrocery"), ShoppingCart]].map(([key, label, Icon]) => (
+                    {hasHousehold && [["addToInventory", t("itemAddToInventory"), Package], ["addToGrocery", t("itemAddToGrocery"), ShoppingCart]].map(([key, label, Icon]) => (
                       <button key={key} onClick={() => toggleItemFlag(idx, key)} aria-label={label} title={label}
                         style={{ ...iconBtn, width: 30, height: 28, borderColor: it[key] ? TEAL : LINE, background: it[key] ? TEAL : CARD, color: it[key] ? ACCENT_INK : SUB, boxShadow: it[key] ? ACCENT_GLOW : "none" }}>
                         <Icon size={13} />
@@ -4979,7 +5043,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
         </div>
         {categories.length === 0 && <div style={{ fontSize: 12, color: DANGER, marginTop: 6 }}>{t("noCategoriesHint")}</div>}
       </Field>
-      <Field label={t("addToInventory")}>
+      {hasHousehold && <Field label={t("addToInventory")}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: SUB, cursor: "pointer" }}>
           <input type="checkbox" checked={!!d.addToInventory} onChange={(e) => setD({ ...d, addToInventory: e.target.checked })} />
           {t("addToInventoryHint")}
@@ -5004,7 +5068,7 @@ function ExpenseForm({ initial, categories, members, merchants, expenses = [], l
             </Field>
           </>
         )}
-      </Field>
+      </Field>}
       {/* Shown for every expense, not just a category literally named
           "Subscriptions". That name-match was removed from recurring rules for
           exactly this reason (see syncUpcomingChargeReminders in db.js): a
@@ -6345,17 +6409,21 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
   const [pendingGrocery, setPendingGrocery] = useState(0);
   const [dealsActive, setDealsActive] = useState(false);
 
-  // Inventory/grocery are household-wide, not ledger-scoped (migration 038)
-  // — these counts don't depend on ledgerId, and shouldn't refetch (or
-  // change) when the Home ledger switcher changes.
+  // Inventory/grocery are scoped to a household ledger (migration 043), which
+  // may not be the ledger this dashboard belongs to (Home can be a Travel or
+  // Personal ledger's) — resolve the user's default household/list
+  // independently and don't refetch when the Home ledger switcher changes.
   useEffect(() => {
     let live = true;
-    db.fetchInventoryItems().then((items) => {
-      if (!live) return;
-      setInventoryCount(items.length);
-      setLowStockCount(items.filter((it) => it.minQuantity != null && it.quantity <= it.minQuantity).length);
+    resolveDefaultHousehold().then((household) => {
+      if (!live || !household) return;
+      return db.fetchInventoryItems(household.id).then((items) => {
+        if (!live) return;
+        setInventoryCount(items.length);
+        setLowStockCount(items.filter((it) => it.minQuantity != null && it.quantity <= it.minQuantity).length);
+      });
     }).catch(() => {});
-    db.fetchGroceryList().then((items) => {
+    resolveDefaultGroceryListId().then((listId) => db.fetchGroceryList(listId)).then((items) => {
       if (!live) return;
       setPendingGrocery(items.filter((it) => !it.isCompleted).length);
       // A deal past its own valid-to date isn't "active" — the flyer mirror
@@ -6618,7 +6686,70 @@ function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
   );
 }
 
-function InventoryPanel({ t, lang, onSwitchView }) {
+// Compact "which one" dropdown for Inventory/Grocery — same list shape as
+// LedgerSwitcher's menu (icon + name + checkmark) but sized to sit next to
+// ViewSwitcher in a panel header rather than replace the big ledger-name
+// heading, and driven by whatever list the caller already has (migration 043
+// — a caller may have more than one household ledger, or more than one
+// grocery list) rather than fetching its own. Renders nothing for exactly one
+// option: there's nothing to pick. Each option is `{id, name, icon?}` — icon
+// defaults to Home (used as-is for a household ledger; Grocery passes Lock
+// for its private list, since "Home" would misleadingly suggest it's shared).
+function HouseholdSwitcher({ households, activeId, onSwitch, t }) {
+  const [open, setOpen] = useState(false);
+  const ref = useCloseOnOutside(open, () => setOpen(false));
+  if (households.length < 2) return null;
+  const active = households.find((h) => h.id === activeId) || households[0];
+  const ActiveIcon = active?.icon || Home;
+  return (
+    <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} style={chip(open)}>
+        <ActiveIcon size={12} style={{ flexShrink: 0 }} />
+        <span style={{ maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{active?.name}</span>
+        <ChevronDown size={12} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+      </button>
+      {open && (
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.13)", padding: 6, minWidth: 200, zIndex: 60 }}>
+          {households.map((h) => {
+            const isActive = h.id === activeId;
+            const Icon = h.icon || Home;
+            return (
+              <button key={h.id} role="menuitem" onClick={() => { setOpen(false); if (!isActive) onSwitch(h.id); }}
+                style={{ ...menuItem, background: isActive ? OK_BG : "none", color: isActive ? OK_INK : INK }}>
+                <Icon size={15} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
+                {isActive && <Check size={14} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InventoryPanel({ t, lang, onSwitchView, initialLedgerId }) {
+  // Household resolution (migration 043): a person may belong to more than
+  // one household ledger, so this panel picks one rather than assuming a
+  // single global inventory the way it did pre-043. `initialLedgerId` is only
+  // ever passed by the notification-routing render site — see App.
+  const [households, setHouseholds] = useState(null); // null = loading
+  const [ledgerId, setLedgerId] = useState(null);
+  useEffect(() => {
+    db.fetchLedgers().then((all) => {
+      const list = all.filter((l) => l.template === "household");
+      setHouseholds(list);
+      const active = pickHouseholdLedger(list, initialLedgerId || getLastHouseholdLedgerId());
+      setLedgerId(active?.id || null);
+      if (active) cacheLastHouseholdLedgerId(active.id);
+    }).catch(() => setHouseholds([]));
+    // Deliberately once per mount plus whenever a notification hands over a
+    // specific ledger — not on every render, or picking a household would
+    // fight the switcher below every time its own state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLedgerId]);
+  const switchHousehold = (id) => { setLedgerId(id); cacheLastHouseholdLedgerId(id); };
+
   const [items, setItems] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -6655,23 +6786,25 @@ function InventoryPanel({ t, lang, onSwitchView }) {
     setScanning(false);
   };
   const load = useCallback(() => {
-    db.fetchInventoryItems().then(setItems).catch((e) => setError(e.message || String(e)));
-  }, []);
+    if (!ledgerId) return;
+    db.fetchInventoryItems(ledgerId).then(setItems).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeInventory(load), [load]);
 
   const [labels, setLabels] = useState([]);
   const [manageKind, setManageKind] = useState(null); // 'category' | 'location' while its manager is open
   const loadLabels = useCallback(() => {
-    db.fetchInventoryLabels().then(setLabels).catch((e) => setError(e.message || String(e)));
-  }, []);
+    if (!ledgerId) return;
+    db.fetchInventoryLabels(ledgerId).then(setLabels).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
   useEffect(() => { loadLabels(); }, [loadLabels]);
   useEffect(() => db.subscribeInventoryLabels(loadLabels), [loadLabels]);
   const categories = labels.filter((l) => l.kind === "category");
   const locations = labels.filter((l) => l.kind === "location");
   const labelName = (id) => labels.find((l) => l.id === id)?.name || "";
   const saveLabels = async (kind, list) => {
-    await db.saveInventoryLabels(kind, list);
+    await db.saveInventoryLabels(ledgerId, kind, list);
     loadLabels();
     load(); // a deleted label leaves its items unfiled — reflect that straight away
   };
@@ -6692,15 +6825,20 @@ function InventoryPanel({ t, lang, onSwitchView }) {
   };
   const [confirmAddItem, setConfirmAddItem] = useState(null); // inventory item pending "already on the list" confirmation
   const [toast, setToast] = useState(null); // { id, text } — id changes so a repeat message restarts the timer
+  // Targets this household's own shared grocery list — an item tracked in
+  // ITS pantry belongs on ITS shopping list, not whichever list the person
+  // tapping "add to grocery" happens to have open elsewhere.
   const doAddToGrocery = async (item) => {
     try {
-      await db.addGroceryItem(item.name, Math.max(1, (item.minQuantity || 1) - item.quantity));
+      const listId = await db.fetchHouseholdGroceryListId(ledgerId);
+      await db.addGroceryItem(listId, item.name, Math.max(1, (item.minQuantity || 1) - item.quantity));
       setToast({ id: Date.now(), text: t("addedToGroceryList", { name: item.name }) });
     } catch (e) { setError(e.message || String(e)); }
   };
   const addToGrocery = async (item) => {
     try {
-      const groceryItems = await db.fetchGroceryList();
+      const listId = await db.fetchHouseholdGroceryListId(ledgerId);
+      const groceryItems = await db.fetchGroceryList(listId);
       const alreadyPending = groceryItems.some((g) => !g.isCompleted && g.itemName.toLowerCase() === item.name.toLowerCase());
       if (alreadyPending) { setConfirmAddItem(item); return; }
       await doAddToGrocery(item);
@@ -6710,7 +6848,7 @@ function InventoryPanel({ t, lang, onSwitchView }) {
     if (!draft.name.trim() || saving) return;
     setSaving(true);
     try {
-      await db.upsertInventoryItem({
+      await db.upsertInventoryItem(ledgerId, {
         name: draft.name.trim(), quantity: draft.quantity, unit: draft.unit,
         minQuantity: draft.minQuantity === "" ? null : Number(draft.minQuantity),
         expiryDate: draft.expiryDate || null,
@@ -6758,11 +6896,20 @@ function InventoryPanel({ t, lang, onSwitchView }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="inventory" onSwitch={onSwitchView} t={t} />
-        <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
-          <Plus size={15} /> {t("addItem")}
-        </button>
+        <HouseholdSwitcher households={households || []} activeId={ledgerId} onSwitch={switchHousehold} t={t} />
+        {!!households?.length && (
+          <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
+            <Plus size={15} /> {t("addItem")}
+          </button>
+        )}
       </div>
       {error && <div style={errorBox}>{error}</div>}
+      {households !== null && households.length === 0 ? (
+        <div style={{ textAlign: "center", color: SUB, padding: "30px 0", fontSize: 13 }}>{t("noHouseholdLedger")}</div>
+      ) : households === null ? (
+        <Centered>{t("connecting")}</Centered>
+      ) : (
+      <>
       {showAddForm && (
         <div style={{ background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))", border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           {/* A label, not a button — the file input is what has to be clicked to
@@ -6882,6 +7029,8 @@ function InventoryPanel({ t, lang, onSwitchView }) {
           onSave={(list) => saveLabels(manageKind, list)} onClose={() => setManageKind(null)} />
       )}
       {toast && <Toast key={toast.id} message={toast.text} onDone={() => setToast(null)} />}
+      </>
+      )}
     </div>
   );
 }
@@ -7082,22 +7231,55 @@ const dealsMirrorMessage = (result, t, lang, query = "") => {
 };
 
 function GroceryListPanel({ t, lang, onSwitchView }) {
+  // Which list (migration 043): one shared list per household ledger the
+  // user belongs to, plus their own private list, which always exists — so
+  // this panel stays reachable even with zero household ledgers, unlike
+  // Inventory Hub. Options are built once the real list resolves; the cached
+  // last-used one wins if it's still valid, else the private list.
+  const [lists, setLists] = useState(null); // null = loading
+  const [activeListId, setActiveListId] = useState(null);
+  useEffect(() => {
+    db.fetchMyGroceryLists().then((ls) => {
+      setLists(ls);
+      const valid = new Set([...ls.shared.map((s) => s.id), ls.private.id]);
+      const cached = getLastGroceryListId();
+      const initial = valid.has(cached) ? cached : ls.private.id;
+      setActiveListId(initial);
+      cacheLastGroceryListId(initial);
+    }).catch((e) => setError(e.message || String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const switchList = (id) => { setActiveListId(id); cacheLastGroceryListId(id); };
+  const activeShared = lists?.shared.find((s) => s.id === activeListId);
+  const activeLedgerId = activeShared?.ledgerId || null; // null on the private list
+  const isPrivate = !!lists && activeListId === lists.private.id;
+  const listOptions = lists
+    ? [...lists.shared.map((s) => ({ id: s.id, name: s.ledgerName })), { id: lists.private.id, name: t("myGroceryList"), icon: Lock }]
+    : [];
+
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  // The device cache renders instantly while the real (household-wide, not
-  // per-ledger — migration 038) value loads in the background below.
-  const [postalCode, setPostalCode] = useState(() => getPostalCode());
+  // Postal code / price matching only make sense for a shared (household)
+  // list — a private list has no location tied to it. The device cache
+  // renders instantly while the real per-household value loads in the
+  // background below; both are keyed by ledger, not flat, since two
+  // households can be in different regions on one device.
+  const [postalCode, setPostalCode] = useState("");
   useEffect(() => {
-    db.fetchHouseholdPostalCode().then((pc) => { if (pc) { setPostalCode(pc); cachePostalCode(pc); } }).catch(() => {});
-  }, []);
+    if (!activeLedgerId) { setPostalCode(""); return; }
+    setPostalCode(getPostalCode(activeLedgerId));
+    db.fetchHouseholdPostalCode(activeLedgerId)
+      .then((pc) => { if (pc) { setPostalCode(pc); cachePostalCode(activeLedgerId, pc); } }).catch(() => {});
+  }, [activeLedgerId]);
   const postalRef = useRef(null); // focused when a search is attempted without one
   const [toast, setToast] = useState(null);
   const [checkingId, setCheckingId] = useState(null);
   const [scanning, setScanning] = useState(false);
   const load = useCallback(() => {
-    db.fetchGroceryList().then(setItems).catch((e) => setError(e.message || String(e)));
-  }, []);
+    if (!activeListId) return;
+    db.fetchGroceryList(activeListId).then(setItems).catch((e) => setError(e.message || String(e)));
+  }, [activeListId]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => db.subscribeGroceryList(load), [load]);
 
@@ -7107,7 +7289,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
   const [addKey, setAddKey] = useState(0);
   const add = async ({ itemName, quantityNeeded, brand }) => {
     try {
-      await db.addGroceryItem(itemName, quantityNeeded, brand);
+      await db.addGroceryItem(activeListId, itemName, quantityNeeded, brand);
       setAddKey((k) => k + 1);
       load();
     } catch (e) { setError(e.message || String(e)); }
@@ -7200,8 +7382,9 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
   // stay in step — marking a store in one is reflected in the other.
   const [storePolicies, setStorePolicies] = useState([]);
   const loadStorePolicies = useCallback(() => {
-    db.fetchStorePolicies().then(setStorePolicies).catch(() => {});
-  }, []);
+    if (!activeLedgerId) { setStorePolicies([]); return; }
+    db.fetchStorePolicies(activeLedgerId).then(setStorePolicies).catch(() => {});
+  }, [activeLedgerId]);
   useEffect(() => { loadStorePolicies(); }, [loadStorePolicies]);
   useEffect(() => db.subscribeStorePolicies(loadStorePolicies), [loadStorePolicies]);
   const pending = (items || []).filter((it) => !it.isCompleted);
@@ -7221,7 +7404,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
     try {
       // A scanned product isn't on the list yet (id null) — add it first, then
       // stamp the deal on the new row. A real list item already has an id.
-      const id = dealsFor.item.id ?? await db.addGroceryItem(dealsFor.item.itemName, 1, dealsFor.item.brand);
+      const id = dealsFor.item.id ?? await db.addGroceryItem(activeListId, dealsFor.item.itemName, 1, dealsFor.item.brand);
       await db.setGroceryDeal(id, {
         targetSupermarket: deal.merchant, dealPrice: deal.price,
         dealImageUrl: deal.imageUrl, dealItemName: deal.name,
@@ -7237,6 +7420,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
+        <HouseholdSwitcher households={listOptions} activeId={activeListId} onSwitch={switchList} t={t} />
         {/* Scan moved inside the add-item panel below — it's an alternative to
             typing the fields there, not a separate header action. */}
         <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
@@ -7244,6 +7428,13 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
         </button>
       </div>
       {error && <div style={errorBox}>{error}</div>}
+      {/* Postal code, price matching and store setup have no home on a private
+          list — they resolve to this household's own saved region and store
+          policies, and a private list isn't tied to a household ledger at
+          all. The list is still fully usable for add/check-off/delete;
+          only these resolve-to-a-region actions disappear. */}
+      {!isPrivate && (
+      <>
       {/* Postal code and the two store actions used to be two rows — the code
           field full-width above, the buttons below it. They all scope the
           same region/shop context, so they're one row now: the code field
@@ -7254,10 +7445,10 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ position: "relative", flexShrink: 0 }}>
           <MapPin size={13} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: SUB, pointerEvents: "none" }} />
-          {/* Saved household-wide on blur, not per keystroke — the cron reads
-              it from there to know which region's flyers to pull. */}
-          <input ref={postalRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(e.target.value); }}
-            onBlur={() => db.updateHouseholdPostalCode(postalCode.trim()).catch((e) => setError(e.message || String(e)))}
+          {/* Saved per household ledger on blur, not per keystroke — the cron
+              reads it from there to know which region's flyers to pull. */}
+          <input ref={postalRef} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); cachePostalCode(activeLedgerId, e.target.value); }}
+            onBlur={() => db.updateHouseholdPostalCode(activeLedgerId, postalCode.trim()).catch((e) => setError(e.message || String(e)))}
             placeholder={t("postalCodePh")}
             style={{ ...input, width: 104, height: 34, borderRadius: 8, fontSize: 13, padding: "0 6px 0 25px", borderColor: hasPostal ? undefined : WARN }} />
         </div>
@@ -7279,6 +7470,8 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
       {/* Stated up front rather than only on a failed tap — price matching is
           the point of this screen and it can't work without a region. */}
       {!hasPostal && <div style={{ fontSize: 12, color: WARN, marginTop: -4 }}>{t("postalCodeRequired")}</div>}
+      </>
+      )}
       {/* Stays open after each add — the toast comment below spells out why
           adding several in a row is the normal case here. */}
       {showAddForm && (
@@ -7315,7 +7508,7 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
           onPick={pickDeal} onClose={() => setDealsFor(null)} />
       )}
       {showStores && (
-        <StoreSetupPanel postalCode={postalCode} t={t} lang={lang} onClose={() => setShowStores(false)} />
+        <StoreSetupPanel ledgerId={activeLedgerId} postalCode={postalCode} t={t} lang={lang} onClose={() => setShowStores(false)} />
       )}
       {showPriceMatch && (
         <PriceMatchModePanel postalCode={postalCode} items={pending} stores={storePolicies}
@@ -7742,7 +7935,7 @@ function PriceMatchModePanel({ postalCode, items, stores, t, lang, onClose, onSe
 // must stay distinct from "no" — a wrong "no" quietly hides real savings, a
 // wrong "yes" sends you to the counter for an argument. Nothing ships
 // pre-filled because policies vary by franchise owner and change unannounced.
-function StoreSetupPanel({ postalCode, t, lang, onClose }) {
+function StoreSetupPanel({ ledgerId, postalCode, t, lang, onClose }) {
   const [merchants, setMerchants] = useState(null); // null = loading
   const [policies, setPolicies] = useState([]);
   const [query, setQuery] = useState("");
@@ -7766,8 +7959,8 @@ function StoreSetupPanel({ postalCode, t, lang, onClose }) {
   }, [typeFilterOpen]);
 
   const loadPolicies = useCallback(() => {
-    db.fetchStorePolicies().then(setPolicies).catch((e) => setError(e.message || String(e)));
-  }, []);
+    db.fetchStorePolicies(ledgerId).then(setPolicies).catch((e) => setError(e.message || String(e)));
+  }, [ledgerId]);
   useEffect(() => {
     db.fetchNearbyMerchants(postalCode).then(setMerchants).catch((e) => { setError(e.message || String(e)); setMerchants([]); });
   }, [postalCode]);
@@ -7776,11 +7969,11 @@ function StoreSetupPanel({ postalCode, t, lang, onClose }) {
 
   const policyFor = (merchant) => policies.find((p) => p.merchant === merchant) || {};
   const patch = async (merchant, fields) => {
-    try { await db.setStorePolicy(merchant, fields); loadPolicies(); }
+    try { await db.setStorePolicy(ledgerId, merchant, fields); loadPolicies(); }
     catch (e) { setError(e.message || String(e)); }
   };
   const setLocal = async (merchant) => {
-    try { await db.setLocalStore(merchant); loadPolicies(); }
+    try { await db.setLocalStore(ledgerId, merchant); loadPolicies(); }
     catch (e) { setError(e.message || String(e)); }
   };
 
