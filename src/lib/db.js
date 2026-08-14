@@ -1095,31 +1095,32 @@ export const dealUrl = (itemId, flyerId, postalCode) =>
 // re-selects instead of erroring, same pattern saveInventoryLabels already
 // uses for a duplicate name.
 async function getOrCreateGroceryList(filter) {
-  const { data: existing, error: selErr } = await supabase.from("grocery_lists").select("id").match(filter).maybeSingle();
+  const { data: existing, error: selErr } = await supabase.from("grocery_lists").select("id, name").match(filter).maybeSingle();
   if (selErr) throw selErr;
-  if (existing) return existing.id;
-  const { data, error } = await supabase.from("grocery_lists").insert(filter).select("id").single();
+  if (existing) return existing;
+  const { data, error } = await supabase.from("grocery_lists").insert(filter).select("id, name").single();
   if (error) {
     if (error.code !== "23505") throw error;
-    const { data: retry, error: reErr } = await supabase.from("grocery_lists").select("id").match(filter).single();
+    const { data: retry, error: reErr } = await supabase.from("grocery_lists").select("id, name").match(filter).single();
     if (reErr) throw reErr;
-    return retry.id;
+    return retry;
   }
-  return data.id;
+  return data;
 }
 
 // One household ledger's shared list id, lazily created on first ask —
 // what "add to inventory"'s sibling "add to grocery" targets, and what
 // InventoryPanel resolves once it already knows which household it's showing.
 export async function fetchHouseholdGroceryListId(ledgerId) {
-  return getOrCreateGroceryList({ ledger_id: ledgerId });
+  return (await getOrCreateGroceryList({ ledger_id: ledgerId })).id;
 }
 
-// Every list the signed-in user can add to: their own private list (always
-// exists) plus one shared list per household ledger they belong to. Lazily
-// creates whichever of those don't exist yet, so a user's first-ever visit to
-// Smart Grocery — or a household's first member to open it — just works
-// rather than needing a separate "set up your list" step.
+// Every list the signed-in user can add to: one shared list per household
+// ledger they belong to (lazily created on first ask, same as
+// fetchHouseholdGroceryListId), plus every private list they've made —
+// which can now be any number, including zero (migration 044). A blank
+// `name` on a shared row means "no custom name yet"; the UI falls back to
+// the ledger's own name in that case.
 export async function fetchMyGroceryLists() {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
@@ -1127,10 +1128,50 @@ export async function fetchMyGroceryLists() {
 
   const households = (await fetchLedgers()).filter((l) => l.template === "household");
   const shared = [];
-  for (const h of households) shared.push({ id: await getOrCreateGroceryList({ ledger_id: h.id }), ledgerId: h.id, ledgerName: h.name });
-  const privateId = await getOrCreateGroceryList({ owner_id: userId });
+  for (const h of households) {
+    const row = await getOrCreateGroceryList({ ledger_id: h.id });
+    shared.push({ id: row.id, ledgerId: h.id, ledgerName: h.name, name: row.name || "" });
+  }
+  const { data: priv, error } = await supabase.from("grocery_lists")
+    .select("id, name").eq("owner_id", userId).order("created_at");
+  if (error) throw error;
 
-  return { shared, private: { id: privateId } };
+  return { shared, private: priv };
+}
+
+// Creates a new private list for the signed-in user. Shared lists don't go
+// through this — they're lazily created one-per-household-ledger by
+// fetchMyGroceryLists/fetchHouseholdGroceryListId instead.
+export async function createGroceryList(name) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("not signed in");
+  const { data, error } = await supabase.from("grocery_lists")
+    .insert({ owner_id: userId, name }).select("id").single();
+  if (error) throw error;
+  return data.id;
+}
+
+// Renames either kind of list — RLS already covers both (household EDITOR
+// for a shared row, owner for a private one).
+export async function renameGroceryList(id, name) {
+  const { error } = await supabase.from("grocery_lists").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+// Private lists only in the UI — a shared list's delete button isn't
+// offered, though RLS would technically allow a household EDITOR to do it.
+export async function deleteGroceryList(id) {
+  const { error } = await supabase.from("grocery_lists").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export function subscribeGroceryLists(onChange) {
+  const ch = supabase
+    .channel(`grocery-lists-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "grocery_lists" }, onChange)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
 }
 
 // Scoped to one list (migration 043) — either a household ledger's shared
