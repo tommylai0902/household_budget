@@ -48,20 +48,20 @@ Covered: `settle.js`, `csv.js`, `categorize.js`, `recurring.js`,
 ```
 src/
   main.jsx          31    entry
-  BudgetApp.jsx   8321    App (auth gate) + Login + Ledger + EVERY panel & i18n
+  BudgetApp.jsx   8485    App (auth gate) + Login + Ledger + EVERY panel & i18n
   sw.js             55    service worker: precache + push handlers
   index.css              reset + a few keyframes/media queries
   assets/
     kid-pig.svg           licensed vector art, see Kid Ledger below
   lib/
     supabase.js     16    client (VITE_ env vars)
-    db.js         1323    ALL data access: row⇄app mappers, CRUD, realtime, syncs
+    db.js         1364    ALL data access: row⇄app mappers, CRUD, realtime, syncs
     settle.js       60    split-bill netting        (+ .test.js)
     csv.js         107    statement/CSV parsing     (+ .test.js)
     categorize.js   16    keyword category guesser  (+ .test.js)
     recurring.js    28    recurrence date math      (+ .test.js)
 api/                     7 Vercel functions (below)
-migrations/              001–043, applied BY HAND (below — 043 not yet run, see State)
+migrations/              001–044, applied BY HAND (below — all confirmed run, see State)
 ```
 
 `BudgetApp.jsx` is one 8,300-line file on purpose — every component, every
@@ -179,7 +179,7 @@ Ledger-scoped tables all follow the same RLS shape from migration 009:
 | Reminders | `notifications` — always ledger-scoped (`ledger_id` is `NOT NULL`) |
 | Inventory/stores | `inventory_items`, `inventory_labels`, `store_policies` — scoped to a `template = 'household'` ledger (migration 043) |
 | Household | `household_settings` — one row per household ledger (`ledger_id` primary key), currently just that household's postal code |
-| Grocery | `grocery_list` (items) + `grocery_lists` (migration 043) — a list is either shared with a household ledger's members or private to one user (`owner_id`), never both |
+| Grocery | `grocery_list` (items) + `grocery_lists` (043) — a list is either shared with a household ledger's members or private to one user (`owner_id`), never both. One shared list per household ledger; **any number** of private lists per user (044) |
 | Kid Ledger | `wishlist_goals` (one row per kid ledger), `expenses.kind` (`'spend'` \| `'earn'`) |
 | Push | `push_subscriptions` |
 
@@ -214,6 +214,22 @@ imply wanting to share a grocery list, mirroring `expenses.split:
 'personal'|'shared'`. Inventory Hub did **not** get this — it stays one shared
 list per household ledger, since a pantry has one household owner but a
 shopping list might not.
+
+043 shipped with exactly two lists per user (one shared, one private), each
+enforced by a partial unique index and switched with the same
+`HouseholdSwitcher` dropdown Inventory Hub uses. **Migration 044 drops
+`uq_grocery_lists_one_private`** so a user can keep several private lists
+(different kinds of shopping), and Smart Grocery moved to a card picker
+(`GroceryListPicker`) as its entry point — a dropdown menu item has nowhere
+to put per-list rename/delete. `uq_grocery_lists_one_shared` is untouched:
+the shared list stays 1:1 with its household ledger. `grocery_lists.name`
+was created unused in 043 and is what both halves now rename through; **a
+blank `name` on a shared row means "follow the ledger's name"**, so renaming
+the ledger still retitles the card until someone overrides it. Because the
+picker is always the entry point there is no "default list" to resolve —
+`resolveDefaultGroceryListId` and the `lastGroceryListId` device cache were
+deleted rather than taught about multiple lists, and Home's Bento grocery
+count sums every list instead of guessing one.
 
 `household_settings` moved from a singleton (`id = 1`) to one row per
 household ledger for the same reason `GroceryListPanel`/`StoreSetupPanel`/
@@ -710,16 +726,12 @@ travel-period ledgers that skip month-scoping (040), ledger archiving (041),
 Kid Ledger dashboard + wishlist goals (016, restyled 2026-08 — see Non-obvious
 pipelines).
 
-**Migrations 001–042 are confirmed applied** (038–042 verified live against
-the production schema on 2026-08-09). **Migration 043 (household-ledger-scoped
-inventory/grocery/store-setup, replacing 038's app-wide model) is written but
-NOT yet run against production as of this writing** — the code in this repo
-already expects its post-043 shape (`inventory_items.ledger_id` NOT NULL,
-`grocery_list.list_id`, `household_settings` keyed by `ledger_id`, etc.), so
-**do not deploy this code before running `migrations/043-*.sql` by hand** —
-see that file's own header for the required run order (DB migration first,
-app deploy second) and why. Once it's run, update this paragraph with the
-same kind of live-schema probe 038–042 got, rather than assuming.
+**Migrations 001–044 are confirmed applied** (038–042 verified live against
+the production schema on 2026-08-09; 043 on 2026-08-15 by probing every new
+column/table for a 200 and the old singleton shape for a 400, plus
+service-role row counts confirming the backfill left no nulls; 044 on
+2026-08-16 by creating a second private grocery list in the running app,
+which is exactly the insert its dropped index used to reject).
 
 **Cloud Vision receipt reading is confirmed working in production
 (2026-07-31)**, verified by scanning real receipts on a phone and watching

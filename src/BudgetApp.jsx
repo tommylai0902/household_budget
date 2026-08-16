@@ -202,7 +202,9 @@ const STRINGS = {
     ledgerCard: "Ledger & Transactions", totalMonthSpent: "Total Month Spent", lastEntry: "Last Entry",
     navDropdownLabel: "Ledgers",
     inventoryCardTitle: "Inventory Hub", trackedItemsLabel: "Total Items Tracked:", lowStockAlert: "{n} items Low Stock!",
-    groceryCardTitle: "Smart Grocery & Deals", groceryShortTitle: "Smart Grocery", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check", myGroceryList: "My list",
+    groceryCardTitle: "Smart Grocery & Deals", groceryShortTitle: "Smart Grocery", pendingItemsLabel: "Pending Items:", dealsActiveBadge: "Deals Active! · Price Match Check",
+    householdListLabel: "Household", myLists: "My Lists", privateListLabel: "Private", newList: "New List", newListPh: "List name",
+    renameList: "Rename list", deleteList: "Delete list", deleteListConfirm: 'Delete "{name}"? This cannot be undone.', backToLists: "Back", untitledList: "My List",
     viewingLedger: "Viewing: {name}",
     budgetBannerLine: "SPENT: {spent}/{budget} ({pct}%)",
     budgetRemainingLine: "Remaining: {amount}", budgetOverLine: "Over by {amount}",
@@ -423,7 +425,9 @@ const STRINGS = {
     ledgerCard: "帳簿同交易", totalMonthSpent: "本月總支出", lastEntry: "最新一筆",
     navDropdownLabel: "帳簿",
     inventoryCardTitle: "存貨中心", trackedItemsLabel: "追蹤中：", lowStockAlert: "{n} 樣嘢存貨唔夠！",
-    groceryCardTitle: "智能買餸格價", groceryShortTitle: "智能買餸", pendingItemsLabel: "未買：", dealsActiveBadge: "有優惠喇！· 格價", myGroceryList: "我嘅清單",
+    groceryCardTitle: "智能買餸格價", groceryShortTitle: "智能買餸", pendingItemsLabel: "未買：", dealsActiveBadge: "有優惠喇！· 格價",
+    householdListLabel: "家庭", myLists: "我嘅清單", privateListLabel: "私人", newList: "新增清單", newListPh: "清單名稱",
+    renameList: "重新命名清單", deleteList: "刪除清單", deleteListConfirm: '刪除「{name}」？此操作無法復原。', backToLists: "返回", untitledList: "我嘅清單",
     viewingLedger: "而家睇緊：{name}",
     budgetBannerLine: "已用：{spent}/{budget}（{pct}%）",
     budgetRemainingLine: "剩餘：{amount}", budgetOverLine: "超出咗 {amount}",
@@ -643,7 +647,9 @@ const STRINGS = {
     ledgerCard: "账本与交易", totalMonthSpent: "本月总支出", lastEntry: "最新一笔",
     navDropdownLabel: "账本",
     inventoryCardTitle: "库存中心", trackedItemsLabel: "追踪中：", lowStockAlert: "{n} 件商品库存不足！",
-    groceryCardTitle: "智能购物比价", groceryShortTitle: "智能购物", pendingItemsLabel: "待购：", dealsActiveBadge: "有优惠了！· 比价", myGroceryList: "我的清单",
+    groceryCardTitle: "智能购物比价", groceryShortTitle: "智能购物", pendingItemsLabel: "待购：", dealsActiveBadge: "有优惠了！· 比价",
+    householdListLabel: "家庭", myLists: "我的清单", privateListLabel: "私人", newList: "新建清单", newListPh: "清单名称",
+    renameList: "重命名清单", deleteList: "删除清单", deleteListConfirm: '删除「{name}」？此操作无法撤销。', backToLists: "返回", untitledList: "我的清单",
     viewingLedger: "正在查看：{name}",
     budgetBannerLine: "已用：{spent}/{budget}（{pct}%）",
     budgetRemainingLine: "剩余：{amount}", budgetOverLine: "超支 {amount}",
@@ -861,7 +867,9 @@ const STRINGS = {
     ledgerCard: "Registre et transactions", totalMonthSpent: "Dépenses totales du mois", lastEntry: "Dernière entrée",
     navDropdownLabel: "Registres",
     inventoryCardTitle: "Centre d'inventaire", trackedItemsLabel: "Articles suivis :", lowStockAlert: "{n} article(s) en stock faible !",
-    groceryCardTitle: "Courses intelligentes et offres", groceryShortTitle: "Courses intelligentes", myGroceryList: "Ma liste",
+    groceryCardTitle: "Courses intelligentes et offres", groceryShortTitle: "Courses intelligentes",
+    householdListLabel: "Foyer", myLists: "Mes listes", privateListLabel: "Privée", newList: "Nouvelle liste", newListPh: "Nom de la liste",
+    renameList: "Renommer la liste", deleteList: "Supprimer la liste", deleteListConfirm: 'Supprimer « {name} » ? Action irréversible.', backToLists: "Retour", untitledList: "Ma liste",
     pendingItemsLabel: "Articles en attente :", dealsActiveBadge: "Offres actives ! · Comparer les prix",
     viewingLedger: "Affichage : {name}",
     budgetBannerLine: "DÉPENSÉ : {spent}/{budget} ({pct} %)",
@@ -1080,7 +1088,9 @@ const STRINGS = {
     ledgerCard: "Registro y transacciones", totalMonthSpent: "Gasto total del mes", lastEntry: "Última entrada",
     navDropdownLabel: "Libros",
     inventoryCardTitle: "Centro de inventario", trackedItemsLabel: "Artículos registrados:", lowStockAlert: "¡{n} artículo(s) con poco stock!",
-    groceryCardTitle: "Compras inteligentes y ofertas", groceryShortTitle: "Compras inteligentes", myGroceryList: "Mi lista",
+    groceryCardTitle: "Compras inteligentes y ofertas", groceryShortTitle: "Compras inteligentes",
+    householdListLabel: "Hogar", myLists: "Mis listas", privateListLabel: "Privada", newList: "Nueva lista", newListPh: "Nombre de la lista",
+    renameList: "Renombrar lista", deleteList: "Eliminar lista", deleteListConfirm: '¿Eliminar "{name}"? No se puede deshacer.', backToLists: "Volver", untitledList: "Mi lista",
     pendingItemsLabel: "Artículos pendientes:", dealsActiveBadge: "¡Ofertas activas! · Comparar precios",
     viewingLedger: "Viendo: {name}",
     budgetBannerLine: "GASTADO: {spent}/{budget} ({pct}%)",
@@ -1341,14 +1351,12 @@ const cachePostalCode = (ledgerId, v) => { try { localStorage.setItem(`postalCod
 // picker round-trip every time. Device-level, like accent/theme/postal code.
 const getLastLedgerId = () => { try { return localStorage.getItem("lastLedgerId") || null; } catch { return null; } };
 const cacheLastLedgerId = (id) => { try { localStorage.setItem("lastLedgerId", id); } catch {} };
-// Same idea, one level down: which household ledger Inventory/Grocery/the
+// Same idea, one level down: which household ledger Inventory/the
 // expense-form checkboxes default to when the user belongs to more than one
-// (migration 043 — a single "the household" no longer always exists), and
-// which grocery list (shared or private) Smart Grocery last had open.
+// (migration 043 — a single "the household" no longer always exists). Smart
+// Grocery has no equivalent — it always opens on its list picker.
 const getLastHouseholdLedgerId = () => { try { return localStorage.getItem("lastHouseholdLedgerId") || null; } catch { return null; } };
 const cacheLastHouseholdLedgerId = (id) => { try { localStorage.setItem("lastHouseholdLedgerId", id); } catch {} };
-const getLastGroceryListId = () => { try { return localStorage.getItem("lastGroceryListId") || null; } catch { return null; } };
-const cacheLastGroceryListId = (id) => { try { localStorage.setItem("lastGroceryListId", id); } catch {} };
 // Picks which of the user's household ledgers a panel should show: the
 // cached last-used one if they're still in it, else the first by whatever
 // order fetchLedgers() already returned (sort_order). Pure — callers own the
@@ -1363,16 +1371,6 @@ const pickHouseholdLedger = (households, preferId) =>
 async function resolveDefaultHousehold() {
   const households = (await db.fetchLedgers()).filter((l) => l.template === "household");
   return pickHouseholdLedger(households, getLastHouseholdLedgerId());
-}
-
-// Same idea for Smart Grocery's default list: the cached last-used one if
-// it's still one of the user's lists, else their own private list (which
-// always exists, unlike a household ledger).
-async function resolveDefaultGroceryListId() {
-  const lists = await db.fetchMyGroceryLists();
-  const valid = new Set([...lists.shared.map((s) => s.id), lists.private.id]);
-  const cached = getLastGroceryListId();
-  return valid.has(cached) ? cached : lists.private.id;
 }
 
 /* ============================ Root ================================= */
@@ -6411,8 +6409,10 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
 
   // Inventory/grocery are scoped to a household ledger (migration 043), which
   // may not be the ledger this dashboard belongs to (Home can be a Travel or
-  // Personal ledger's) — resolve the user's default household/list
-  // independently and don't refetch when the Home ledger switcher changes.
+  // Personal ledger's) — resolve the user's default household independently
+  // and don't refetch when the Home ledger switcher changes. Grocery has no
+  // single "default" list any more (a user can have several private lists,
+  // migration 044), so this counts pending items across every list at once.
   useEffect(() => {
     let live = true;
     resolveDefaultHousehold().then((household) => {
@@ -6423,8 +6423,12 @@ function HomePage({ ledgerId, ledgerName, t, spent, budget, lastEntry, onOpenLed
         setLowStockCount(items.filter((it) => it.minQuantity != null && it.quantity <= it.minQuantity).length);
       });
     }).catch(() => {});
-    resolveDefaultGroceryListId().then((listId) => db.fetchGroceryList(listId)).then((items) => {
+    db.fetchMyGroceryLists().then((ls) => {
+      const ids = [...ls.shared.map((s) => s.id), ...ls.private.map((p) => p.id)];
+      return Promise.all(ids.map((id) => db.fetchGroceryList(id)));
+    }).then((lists) => {
       if (!live) return;
+      const items = lists.flat();
       setPendingGrocery(items.filter((it) => !it.isCompleted).length);
       // A deal past its own valid-to date isn't "active" — the flyer mirror
       // sweeps it away on the next Thursday run regardless, but the saved
@@ -6686,15 +6690,17 @@ function ViewSwitcher({ current, onSwitch, t, label, hideIcon }) {
   );
 }
 
-// Compact "which one" dropdown for Inventory/Grocery — same list shape as
+// Compact "which household" dropdown for InventoryPanel — same list shape as
 // LedgerSwitcher's menu (icon + name + checkmark) but sized to sit next to
 // ViewSwitcher in a panel header rather than replace the big ledger-name
 // heading, and driven by whatever list the caller already has (migration 043
-// — a caller may have more than one household ledger, or more than one
-// grocery list) rather than fetching its own. Renders nothing for exactly one
-// option: there's nothing to pick. Each option is `{id, name, icon?}` — icon
-// defaults to Home (used as-is for a household ledger; Grocery passes Lock
-// for its private list, since "Home" would misleadingly suggest it's shared).
+// — a user may belong to more than one household ledger) rather than
+// fetching its own. Renders nothing for exactly one option: there's nothing
+// to pick. Smart Grocery used to share this for its own list-switching, but
+// moved to a card-based picker (GroceryListPicker, migration 044) instead —
+// it needed room for per-list rename/delete and any number of private lists,
+// which a dropdown menu item can't hold. Each option is `{id, name, icon?}`
+// — icon defaults to Home.
 function HouseholdSwitcher({ households, activeId, onSwitch, t }) {
   const [open, setOpen] = useState(false);
   const ref = useCloseOnOutside(open, () => setOpen(false));
@@ -7230,35 +7236,176 @@ const dealsMirrorMessage = (result, t, lang, query = "") => {
   return "";
 };
 
+const GROCERY_CARD_ACTIONS_WIDTH_1 = 50; // one 44px tile + hairline gap
+const GROCERY_CARD_ACTIONS_WIDTH_2 = 92; // two 44px tiles + hairline gap — same as LedgerRow
+
+// Same swipe-to-reveal glass card as LedgerRow (see useSwipeReveal), reused
+// here for a grocery list's entry in GroceryListPicker. A shared (household)
+// card only ever reveals Rename — onDelete is only passed for a private
+// list, see the picker below for why.
+function GroceryListCard({ name, eyebrow, t, onOpen, onRename, onDelete }) {
+  const actionsWidth = onDelete ? GROCERY_CARD_ACTIONS_WIDTH_2 : GROCERY_CARD_ACTIONS_WIDTH_1;
+  const { x, dragging, closeRow, toggle, onTapOrClose, handlers } = useSwipeReveal(actionsWidth);
+  const handleOpen = () => onTapOrClose(onOpen);
+  return (
+    <div style={{ position: "relative", borderRadius: 16 }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 16, display: "flex", justifyContent: "flex-end", alignItems: "stretch", gap: 6, padding: 4, visibility: x ? "visible" : "hidden" }}>
+        <button onClick={() => { closeRow(); onRename(); }} style={{ ...swipeActionBtn, background: TEAL, color: ACCENT_INK }} aria-label={t("renameList")}>
+          <Pencil size={16} />
+        </button>
+        {onDelete && (
+          <button onClick={() => { closeRow(); onDelete(); }} style={{ ...swipeActionBtn, background: "#DC2626", color: "#fff" }} aria-label={t("deleteList")}>
+            <Trash2 size={16} />
+          </button>
+        )}
+      </div>
+      <div role="button" tabIndex={0} aria-label={name} className="swipe-row" {...handlers}
+        onClick={handleOpen} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpen(); } }}
+        style={{
+          position: "relative", zIndex: 1,
+          background: "var(--glass-bg)", backdropFilter: "blur(var(--glass-blur))", WebkitBackdropFilter: "blur(var(--glass-blur))",
+          border: "1px solid var(--glass-border)", boxShadow: "var(--glass-card-shadow)",
+          borderRadius: 16, padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          transform: x ? `translateX(${x}px)` : "none", transition: dragging ? "none" : "transform .2s ease", touchAction: "pan-y", userSelect: "none",
+        }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: ACCENT_TEXT, minWidth: 0 }}>
+            {eyebrow}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <ChevronRight size={16} style={{ color: SUB }} />
+            <button className="swipe-more-btn" onClick={(e) => { e.stopPropagation(); toggle(); }} aria-label={t("moreActions")} style={moreBtn}>
+              <MoreVertical size={16} />
+            </button>
+          </div>
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.2, color: INK, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+      </div>
+    </div>
+  );
+}
+
+// Smart Grocery's entry screen (migration 044): a card per list instead of
+// the dropdown InventoryPanel still uses — the shared list(s) first, auto-
+// named from their household ledger unless renamed, then every private list
+// the user has made (any number, including zero). Modeled directly on
+// LedgerPicker's inline-rename-swap and ConfirmDialog-backed delete.
+function GroceryListPicker({ lists, t, onOpen, onChanged, onError }) {
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState("");
+  const startRename = (id, name) => { setEditingId(id); setDraft(name); };
+  const cancelRename = () => { setEditingId(null); setDraft(""); };
+  const saveRename = async (id) => {
+    const trimmed = draft.trim();
+    if (!trimmed) return cancelRename();
+    try { await db.renameGroceryList(id, trimmed); cancelRename(); onChanged(); }
+    catch (e) { onError(e); cancelRename(); }
+  };
+
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
+  const doDelete = async () => {
+    const target = confirmDelete;
+    setConfirmDelete(null);
+    try { await db.deleteGroceryList(target.id); onChanged(); }
+    catch (e) { onError(e); }
+  };
+
+  // "+ New list" auto-opens the list it just made (skips a second tap back
+  // through this picker) — the whole point of tapping it is to start using
+  // the list right away.
+  const [creating, setCreating] = useState(false);
+  const [newDraft, setNewDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    const trimmed = newDraft.trim();
+    if (!trimmed || busy) return;
+    setBusy(true);
+    try { onOpen(await db.createGroceryList(trimmed)); }
+    catch (e) { onError(e); setBusy(false); }
+  };
+
+  const renderEditor = (id, onSave) => (
+    <div key={id} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") onSave(); if (e.key === "Escape") cancelRename(); }}
+          style={{ ...input, flex: 1, fontWeight: 700 }} />
+        <button onClick={onSave} style={{ ...iconBtn, color: ACCENT_TEXT }} aria-label={t("saveChanges")}><Check size={16} /></button>
+        <button onClick={cancelRename} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {lists.shared.map((s) => {
+        const name = s.name || s.ledgerName;
+        return editingId === s.id ? renderEditor(s.id, () => saveRename(s.id)) : (
+          <GroceryListCard key={s.id} name={name} t={t}
+            eyebrow={<><Home size={13} /><span>{t("householdListLabel")}</span></>}
+            onOpen={() => onOpen(s.id)} onRename={() => startRename(s.id, name)} />
+        );
+      })}
+      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, textTransform: "uppercase", letterSpacing: 0.5, marginTop: lists.shared.length ? 6 : 0 }}>
+        {t("myLists")}
+      </div>
+      {lists.private.map((p) => {
+        // A blank name only happens on the one private list migration 043
+        // auto-created before this picker (or its rename) existed — every
+        // list made through "+ New list" requires a name up front.
+        const name = p.name || t("untitledList");
+        return editingId === p.id ? renderEditor(p.id, () => saveRename(p.id)) : (
+          <GroceryListCard key={p.id} name={name} t={t}
+            eyebrow={<><Lock size={13} /><span>{t("privateListLabel")}</span></>}
+            onOpen={() => onOpen(p.id)} onRename={() => startRename(p.id, name)}
+            onDelete={() => setConfirmDelete({ id: p.id, name })} />
+        );
+      })}
+      {creating ? (
+        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input autoFocus value={newDraft} onChange={(e) => setNewDraft(e.target.value)} placeholder={t("newListPh")}
+              onKeyDown={(e) => { if (e.key === "Enter") create(); if (e.key === "Escape") { setCreating(false); setNewDraft(""); } }}
+              style={{ ...input, flex: 1, fontWeight: 700 }} />
+            <button onClick={create} disabled={busy || !newDraft.trim()} style={{ ...iconBtn, color: ACCENT_TEXT, opacity: busy || !newDraft.trim() ? 0.5 : 1 }} aria-label={t("saveChanges")}><Check size={16} /></button>
+            <button onClick={() => { setCreating(false); setNewDraft(""); }} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setCreating(true)} style={{ ...ghostBtn, justifyContent: "center", padding: 12 }}>
+          <Plus size={15} /> {t("newList")}
+        </button>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog t={t} message={t("deleteListConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />
+      )}
+    </div>
+  );
+}
+
 function GroceryListPanel({ t, lang, onSwitchView }) {
-  // Which list (migration 043): one shared list per household ledger the
-  // user belongs to, plus their own private list, which always exists — so
-  // this panel stays reachable even with zero household ledgers, unlike
-  // Inventory Hub. Options are built once the real list resolves; the cached
-  // last-used one wins if it's still valid, else the private list.
+  // Which list (migrations 043/044): one shared list per household ledger
+  // the user belongs to, lazily created on first ask, plus as many private
+  // lists as they've made — possibly zero, unlike the old "always exactly
+  // one private list" shape. There's no single default any more, so this
+  // panel always opens on a card picker (below); activeListId only becomes
+  // non-null once a card is tapped, and clears back to null on "back".
   const [lists, setLists] = useState(null); // null = loading
-  const [activeListId, setActiveListId] = useState(null);
-  useEffect(() => {
-    db.fetchMyGroceryLists().then((ls) => {
-      setLists(ls);
-      const valid = new Set([...ls.shared.map((s) => s.id), ls.private.id]);
-      const cached = getLastGroceryListId();
-      const initial = valid.has(cached) ? cached : ls.private.id;
-      setActiveListId(initial);
-      cacheLastGroceryListId(initial);
-    }).catch((e) => setError(e.message || String(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const switchList = (id) => { setActiveListId(id); cacheLastGroceryListId(id); };
+  const [activeListId, setActiveListId] = useState(null); // null = picker view
+  const [error, setError] = useState("");
+  const reloadLists = useCallback(
+    () => db.fetchMyGroceryLists().then(setLists).catch((e) => setError(e.message || String(e))),
+    []
+  );
+  useEffect(() => { reloadLists(); }, [reloadLists]);
+  useEffect(() => db.subscribeGroceryLists(reloadLists), [reloadLists]);
   const activeShared = lists?.shared.find((s) => s.id === activeListId);
-  const activeLedgerId = activeShared?.ledgerId || null; // null on the private list
-  const isPrivate = !!lists && activeListId === lists.private.id;
-  const listOptions = lists
-    ? [...lists.shared.map((s) => ({ id: s.id, name: s.ledgerName })), { id: lists.private.id, name: t("myGroceryList"), icon: Lock }]
-    : [];
+  const activePrivate = lists?.private.find((p) => p.id === activeListId);
+  const activeLedgerId = activeShared?.ledgerId || null; // null on a private list
+  const isPrivate = !!activePrivate;
+  const activeName = activeShared ? (activeShared.name || activeShared.ledgerName) : (activePrivate?.name || t("untitledList"));
 
   const [items, setItems] = useState(null);
-  const [error, setError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   // Postal code / price matching only make sense for a shared (household)
   // list — a private list has no location tied to it. The device cache
@@ -7416,17 +7563,34 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
     } catch (e) { setError(e.message || String(e)); }
   };
 
+  if (lists === null) return <Centered>{t("connecting")}</Centered>;
+
+  // No list open yet — the picker is Smart Grocery's entry point (migration
+  // 044); tapping a card is the only way into the item view below.
+  if (activeListId === null) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
+        {error && <div style={errorBox}>{error}</div>}
+        <GroceryListPicker lists={lists} t={t} onOpen={setActiveListId} onChanged={reloadLists}
+          onError={(e) => setError(e.message || String(e))} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
-        <HouseholdSwitcher households={listOptions} activeId={activeListId} onSwitch={switchList} t={t} />
+        <button onClick={() => setActiveListId(null)} style={ghostBtn} aria-label={t("backToLists")}>
+          <ArrowLeft size={15} /> {t("backToLists")}
+        </button>
         {/* Scan moved inside the add-item panel below — it's an alternative to
             typing the fields there, not a separate header action. */}
         <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
           <Plus size={15} /> {t("addItem")}
         </button>
       </div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeName}</div>
       {error && <div style={errorBox}>{error}</div>}
       {/* Postal code, price matching and store setup have no home on a private
           list — they resolve to this household's own saved region and store
