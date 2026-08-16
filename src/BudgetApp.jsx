@@ -7290,7 +7290,7 @@ function GroceryListCard({ name, eyebrow, t, onOpen, onRename, onDelete }) {
 // named from their household ledger unless renamed, then every private list
 // the user has made (any number, including zero). Modeled directly on
 // LedgerPicker's inline-rename-swap and ConfirmDialog-backed delete.
-function GroceryListPicker({ lists, t, onOpen, onChanged, onError }) {
+function GroceryListPicker({ lists, t, error, onSwitchView, onOpen, onChanged, onError }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
   const startRename = (id, name) => { setEditingId(id); setDraft(name); };
@@ -7338,6 +7338,29 @@ function GroceryListPicker({ lists, t, onOpen, onChanged, onError }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Same header shape as the item view below: tool switcher on the left,
+          the one "add a thing here" action as a chip on the right. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
+        <button onClick={() => setCreating(true)} disabled={creating}
+          style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0, opacity: creating ? 0.5 : 1 }}>
+          <Plus size={15} /> {t("newList")}
+        </button>
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+      {/* Sits directly under the chip that opened it, rather than at the far
+          end of the list where that chip used to live. */}
+      {creating && (
+        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input autoFocus value={newDraft} onChange={(e) => setNewDraft(e.target.value)} placeholder={t("newListPh")}
+              onKeyDown={(e) => { if (e.key === "Enter") create(); if (e.key === "Escape") { setCreating(false); setNewDraft(""); } }}
+              style={{ ...input, flex: 1, fontWeight: 700 }} />
+            <button onClick={create} disabled={busy || !newDraft.trim()} style={{ ...iconBtn, color: ACCENT_TEXT, opacity: busy || !newDraft.trim() ? 0.5 : 1 }} aria-label={t("saveChanges")}><Check size={16} /></button>
+            <button onClick={() => { setCreating(false); setNewDraft(""); }} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
+          </div>
+        </div>
+      )}
       {lists.shared.map((s) => {
         const name = s.name || s.ledgerName;
         return editingId === s.id ? renderEditor(s.id, () => saveRename(s.id)) : (
@@ -7361,21 +7384,6 @@ function GroceryListPicker({ lists, t, onOpen, onChanged, onError }) {
             onDelete={() => setConfirmDelete({ id: p.id, name })} />
         );
       })}
-      {creating ? (
-        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input autoFocus value={newDraft} onChange={(e) => setNewDraft(e.target.value)} placeholder={t("newListPh")}
-              onKeyDown={(e) => { if (e.key === "Enter") create(); if (e.key === "Escape") { setCreating(false); setNewDraft(""); } }}
-              style={{ ...input, flex: 1, fontWeight: 700 }} />
-            <button onClick={create} disabled={busy || !newDraft.trim()} style={{ ...iconBtn, color: ACCENT_TEXT, opacity: busy || !newDraft.trim() ? 0.5 : 1 }} aria-label={t("saveChanges")}><Check size={16} /></button>
-            <button onClick={() => { setCreating(false); setNewDraft(""); }} style={iconBtn} aria-label={t("cancel")}><X size={15} /></button>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setCreating(true)} style={{ ...ghostBtn, justifyContent: "center", padding: 12 }}>
-          <Plus size={15} /> {t("newList")}
-        </button>
-      )}
       {confirmDelete && (
         <ConfirmDialog t={t} message={t("deleteListConfirm", { name: confirmDelete.name })} onConfirm={doDelete} onCancel={() => setConfirmDelete(null)} />
       )}
@@ -7569,12 +7577,9 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
   // 044); tapping a card is the only way into the item view below.
   if (activeListId === null) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
-        {error && <div style={errorBox}>{error}</div>}
-        <GroceryListPicker lists={lists} t={t} onOpen={setActiveListId} onChanged={reloadLists}
-          onError={(e) => setError(e.message || String(e))} />
-      </div>
+      <GroceryListPicker lists={lists} t={t} error={error} onSwitchView={onSwitchView}
+        onOpen={setActiveListId} onChanged={reloadLists}
+        onError={(e) => setError(e.message || String(e))} />
     );
   }
 
