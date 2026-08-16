@@ -7584,7 +7584,6 @@ function GroceryListPanel({ t, lang, onSwitchView }) {
         <button onClick={() => setActiveListId(null)} style={ghostBtn} aria-label={t("backToLists")}>
           <ArrowLeft size={15} /> {t("backToLists")}
         </button>
-        <ViewSwitcher current="grocery" onSwitch={onSwitchView} t={t} />
         {/* Scan moved inside the add-item panel below — it's an alternative to
             typing the fields there, not a separate header action. */}
         <button onClick={() => setShowAddForm((s) => !s)} style={{ ...ghostBtn, padding: "8px 12px", marginLeft: "auto", flexShrink: 0 }}>
